@@ -16,7 +16,7 @@ One Worker serves many named key sets, each under its own path segment (`[a-z0-9
 | `/<name>/rec/<kid>` | POST | McCallum-Relyea recovery, when `<kid>` names the exchange key; 404 otherwise |
 
 A clevis pin uses `{"url":"https://tang.example/<name>","thp":"<signing key thumbprint>"}`.
-Over HTTPS, the initramfs needs a CA bundle (dracut: include the system one), or clevis fails TLS.
+Over HTTPS, the initramfs needs name resolution and a CA bundle, or clevis cannot reach keystone at boot.
 
 ## Key sets
 
