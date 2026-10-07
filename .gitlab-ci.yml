@@ -1,0 +1,55 @@
+default:
+  interruptible: true
+
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+stages:
+  - lint
+  - test
+  - release
+
+include:
+  - component: gitlab.com/dunn.dev/pipeline/reference-check@4
+    inputs:
+      reference_ref: main
+      fail_on_violation: true
+  - component: gitlab.com/dunn.dev/pipeline/release-create@4
+    inputs:
+      package_name: keystone
+      release_title: "keystone $CI_COMMIT_TAG"
+      binary_job: test
+
+.fedora:
+  image: quay.io/fedora/fedora:44
+
+test:
+  extends: .fedora
+  script:
+    - dnf -y -q install tang jose nodejs npm
+    - npm ci
+    - npm test
+    - npm run mutate
+
+interop:
+  extends: .fedora
+  script:
+    - dnf -y -q install tang jose clevis curl procps-ng util-linux-core nodejs npm
+    - npm ci
+    - bash scripts/interop.sh
+
+# The release description is the tag's CHANGELOG.md entry, not the tag message.
+create-release:
+  before_script:
+    - export CI_COMMIT_TAG_MESSAGE="$(awk -v t="$CI_COMMIT_TAG" '/^## /{p = $2 == t; next} p' CHANGELOG.md)"
+    - test -n "$(printf %s "$CI_COMMIT_TAG_MESSAGE" | tr -d "[:space:]")" || { echo "CHANGELOG.md has no entry for $CI_COMMIT_TAG" >&2; exit 1; }
+  needs:
+    - job: test
+      artifacts: false
+    - job: interop
+      artifacts: false

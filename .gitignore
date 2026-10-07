@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+.dev.vars
+test/tangd-fixture.json
+.dev.vars.*
+.env
+.env.*
+deploy/

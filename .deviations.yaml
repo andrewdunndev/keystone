@@ -1,0 +1,8 @@
+- standard: repository
+  assertion: gitlab:only_allow_merge_if_pipeline_succeeds
+  reason: |
+    Covered by the dunn.dev group-level setting (group 13121531 sets
+    only_allow_merge_if_pipeline_succeeds: true), which outranks this
+    project flag; the project copy reads false and flipping it would be
+    redundant state.
+  owner: andrew@dunn.dev

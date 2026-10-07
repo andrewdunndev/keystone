@@ -1,0 +1,22 @@
+{
+  "name": "keystone",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "keyset": "bin/keyset.mjs"
+  },
+  "scripts": {
+    "pretest": "node --import ./test/register.mjs test/gen-fixture.mjs",
+    "test": "node --disable-warning=ExperimentalWarning --import ./test/register.mjs --test test/*.test.js",
+    "mutate": "bash scripts/mutate.sh",
+    "dev": "wrangler dev --port 8787"
+  },
+  "devDependencies": {
+    "@noble/curves": "2.4.0",
+    "wrangler": "4.148.0"
+  },
+  "engines": {
+    "node": ">=22.15"
+  }
+}

@@ -1,0 +1,59 @@
+<svg viewBox="0 0 1200 430" width="1200" height="430" font-family="IBM Plex Sans, Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="keystone hero: a Tang server for clevis network-bound disk encryption, running as a Cloudflare Worker. Title and tagline on the left above a stone arch held by its keystone; on the right, a four-tile data sheet covering flow (in, out) and discipline (posture, lifetime). Bottom line: territory tags and license.">
+  <rect x="0" y="0" width="1200" height="430" fill="#f4f4f4"/>
+  <g font-family="IBM Plex Sans, Helvetica, Arial, sans-serif">
+  <text x="60" y="34" font-size="10" font-weight="600" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">KEYSTONE · TANG SERVER · NETWORK-BOUND DISK ENCRYPTION</text>
+  <text x="1140" y="34" text-anchor="end" font-size="10" font-weight="600" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">2026</text>
+  <line x1="60" y1="48" x2="1140" y2="48" stroke="#e0e0e0" stroke-width="1"/>
+
+  <text x="60" y="138" font-size="72" font-weight="700" fill="#4a6741" letter-spacing="-2">keystone</text>
+  <text x="60" y="172" font-size="14" fill="#404040">A Tang server for clevis network-bound disk encryption,</text>
+  <text x="60" y="192" font-size="14" fill="#404040">running as a Cloudflare Worker, wire-compatible with stock tangd.</text>
+  <text x="60" y="222" font-size="12" font-style="italic" fill="#404040">binds the disk, never sees its key</text>
+
+  <g transform="translate(110 220) scale(2.2)" stroke="#4a6741" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 45 A24 24 0 0 1 27.01 21.52" stroke-width="2"/>
+    <path d="M36.99 21.52 A24 24 0 0 1 56 45" stroke-width="2"/>
+    <path d="M18 45 A14 14 0 0 1 29.09 31.31" stroke-width="2"/>
+    <path d="M34.91 31.31 A14 14 0 0 1 46 45" stroke-width="2"/>
+    <line x1="23" y1="34.28" x2="16.57" y2="26.61" stroke-width="1.6"/>
+    <line x1="41" y1="34.28" x2="47.43" y2="26.61" stroke-width="1.6"/>
+    <line x1="19.31" y1="39.08" x2="10.25" y2="34.86" stroke-width="1.6"/>
+    <line x1="44.69" y1="39.08" x2="53.75" y2="34.86" stroke-width="1.6"/>
+    <path d="M8 45 V56 H18 V45 Z" stroke-width="2"/>
+    <path d="M46 45 V56 H56 V45 Z" stroke-width="2"/>
+    <line x1="2" y1="56" x2="62" y2="56" stroke-width="1.6"/>
+    <polygon points="26.26,18 37.74,18 34.91,31.31 29.09,31.31" fill="#4a6741" stroke-width="1.5"/>
+  </g>
+
+  <text x="560" y="72" font-size="10" font-weight="700" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">FLOW</text>
+  <text x="850" y="72" font-size="10" font-weight="700" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">DISCIPLINE</text>
+
+  <rect x="560" y="84" width="270" height="130" rx="3" fill="#ffffff" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="578" y="106" font-size="10" font-weight="700" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">IN</text>
+  <text x="578" y="152" font-size="34" font-weight="700" fill="#4a6741" letter-spacing="-0.5">clevis</text>
+  <text x="578" y="178" font-size="11" fill="#404040">a pin's advertisement fetch and recovery POST</text>
+  <text x="578" y="200" font-size="9" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="0.6">GET /ADV · POST /REC</text>
+
+  <rect x="850" y="84" width="270" height="130" rx="3" fill="#ffffff" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="868" y="106" font-size="10" font-weight="700" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">POSTURE</text>
+  <text x="868" y="152" font-size="34" font-weight="700" fill="#4a6741" letter-spacing="-0.5">blind</text>
+  <text x="868" y="178" font-size="11" fill="#404040">never sees the disk key, only blinded points</text>
+  <text x="868" y="200" font-size="9" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="0.6">MCCALLUM-RELYEA EXCHANGE</text>
+
+  <rect x="560" y="224" width="270" height="130" rx="3" fill="#ffffff" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="578" y="246" font-size="10" font-weight="700" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">OUT</text>
+  <text x="578" y="292" font-size="34" font-weight="700" fill="#4a6741" letter-spacing="-0.5">signed</text>
+  <text x="578" y="318" font-size="11" fill="#404040">a JWS advertisement and the recovered point</text>
+  <text x="578" y="340" font-size="9" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="0.6">ES256/ES512 · ECMR · P-256/P-521</text>
+
+  <rect x="850" y="224" width="270" height="130" rx="3" fill="#ffffff" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="868" y="246" font-size="10" font-weight="700" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">LIFETIME</text>
+  <text x="868" y="292" font-size="34" font-weight="700" fill="#4a6741" letter-spacing="-0.5">write-once</text>
+  <text x="868" y="318" font-size="11" fill="#404040">a set keeps its keys; rotation names a new one</text>
+  <text x="868" y="340" font-size="9" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="0.6">MINT · DEPLOY · CHECK · REVOKE</text>
+
+  <line x1="60" y1="386" x2="1140" y2="386" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="60" y="412" font-size="10" font-weight="600" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">TANG · CLEVIS · NBDE · DISK ENCRYPTION</text>
+  <text x="1140" y="412" text-anchor="end" font-size="10" font-weight="600" font-family="IBM Plex Mono, Menlo, monospace" fill="#707070" letter-spacing="1.4">MIT · GITLAB.COM/DUNN.DEV/KEYSTONE</text>
+  </g>
+</svg>

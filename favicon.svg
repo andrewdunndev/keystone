@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="keystone favicon: a stone arch held by its keystone.">
+  <g stroke="#4a6741" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 45 A24 24 0 0 1 27.01 21.52" stroke-width="2"/>
+    <path d="M36.99 21.52 A24 24 0 0 1 56 45" stroke-width="2"/>
+    <path d="M18 45 A14 14 0 0 1 29.09 31.31" stroke-width="2"/>
+    <path d="M34.91 31.31 A14 14 0 0 1 46 45" stroke-width="2"/>
+    <line x1="23" y1="34.28" x2="16.57" y2="26.61" stroke-width="1.6"/>
+    <line x1="41" y1="34.28" x2="47.43" y2="26.61" stroke-width="1.6"/>
+    <path d="M8 45 V56 H18 V45 Z" stroke-width="2"/>
+    <path d="M46 45 V56 H56 V45 Z" stroke-width="2"/>
+  </g>
+  <polygon points="26.26,18 37.74,18 34.91,31.31 29.09,31.31" fill="#4a6741" stroke="#4a6741" stroke-width="1.5" stroke-linejoin="round"/>
+</svg>
