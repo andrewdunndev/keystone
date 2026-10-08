@@ -1,8 +1,89 @@
-<svg viewBox="0 0 660 240" role="img" aria-label="Placeholder for the figure on lifecycle." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+<svg class="figure-wide" viewBox="0 0 660 280" role="img" aria-label="A key set goes from minted to live when deployed with --new, to revoked when its secret is deleted, to a tombstone when its entry in the deploy input becomes null; new keys under a live name are refused." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="lifecycle-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="lifecycle-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
   <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
-    <rect x="20" y="20" width="620" height="200" rx="6" fill="var(--bg)" stroke="var(--border)"/>
-    <rect x="180" y="84" width="300" height="72" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
-    <text x="330" y="112" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="12" letter-spacing="0.08em" fill="var(--text-muted)">FIGURE 6</text>
-    <text x="330" y="138" text-anchor="middle" font-size="20" font-weight="600" fill="var(--text-2)">lifecycle</text>
+    <rect x="20" y="20" width="620" height="240" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- arrows -->
+    <path d="M136,100 H200" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#lifecycle-arrow-moss)"/>
+    <path d="M296,100 H360" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#lifecycle-arrow-moss)"/>
+    <path d="M456,100 H520" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#lifecycle-arrow-moss)"/>
+    <path d="M248,196 V140" fill="none" stroke="var(--text-2)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#lifecycle-arrow-muted)"/>
+    <!-- labels -->
+    <rect x="138" y="80" width="60" height="12" fill="var(--bg)"/>
+    <text x="168" y="89" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">deploy --new</text>
+    <rect x="312" y="80" width="32" height="12" fill="var(--bg)"/>
+    <text x="328" y="89" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">revoke</text>
+    <rect x="462" y="80" width="52" height="12" fill="var(--bg)"/>
+    <text x="488" y="89" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">null entry</text>
+    <!-- nodes -->
+    <rect x="40" y="60" width="96" height="80" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text x="88" y="86" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">MINTED</text>
+    <text x="88" y="102" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">server-1</text>
+    <text x="88" y="118" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">keyset new</text>
+    <rect x="200" y="60" width="96" height="80" rx="6" fill="var(--accent)"/>
+    <text x="248" y="86" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">LIVE</text>
+    <text x="248" y="102" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">server-1</text>
+    <text x="248" y="118" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">adv 200</text>
+    <rect x="360" y="60" width="96" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="408" y="86" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">REVOKED</text>
+    <text x="408" y="102" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">no secret</text>
+    <text x="408" y="118" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">adv 404</text>
+    <rect x="520" y="60" width="96" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="568" y="86" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">TOMBSTONE</text>
+    <text x="568" y="102" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">null</text>
+    <text x="568" y="118" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">deploy input</text>
+    <rect x="148" y="196" width="200" height="48" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="164" y="216" font-size="12" font-weight="600" fill="var(--text)">new keys, same name</text>
+    <text x="164" y="232" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">REFUSE · rotate to server-2</text>
+    <!-- notes -->
+    <text x="88" y="160" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">private keys in</text>
+    <text x="88" y="172" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">your key store</text>
+    <text x="408" y="160" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">its disks stop</text>
+    <text x="408" y="172" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">unlocking</text>
+    <text x="568" y="160" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">each deploy</text>
+    <text x="568" y="172" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">proves 404</text>
+  </g>
+</svg>
+<svg class="figure-narrow" viewBox="0 0 340 572" role="img" aria-label="A key set goes from minted to live when deployed with --new, to revoked when its secret is deleted, to a tombstone when its entry in the deploy input becomes null; new keys under a live name are refused." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="lifecycle-n-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="lifecycle-n-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="20" y="20" width="300" height="532" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- arrows -->
+    <path d="M170,120 V152" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#lifecycle-n-arrow-moss)"/>
+    <path d="M170,232 V264" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#lifecycle-n-arrow-moss)"/>
+    <path d="M170,344 V376" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#lifecycle-n-arrow-moss)"/>
+    <path d="M260,504 H292 V192 H260" fill="none" stroke="var(--text-2)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#lifecycle-n-arrow-muted)"/>
+    <!-- labels -->
+    <rect x="178" y="130" width="64" height="12" fill="var(--bg)"/>
+    <text x="210" y="139" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">deploy --new</text>
+    <rect x="178" y="242" width="36" height="12" fill="var(--bg)"/>
+    <text x="196" y="251" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">revoke</text>
+    <rect x="178" y="354" width="56" height="12" fill="var(--bg)"/>
+    <text x="206" y="363" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">null entry</text>
+    <!-- nodes -->
+    <rect x="80" y="40" width="180" height="80" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text x="170" y="66" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">MINTED</text>
+    <text x="170" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">server-1</text>
+    <text x="170" y="98" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">keyset new · key store</text>
+    <rect x="80" y="152" width="180" height="80" rx="6" fill="var(--accent)"/>
+    <text x="170" y="178" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">LIVE</text>
+    <text x="170" y="194" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">server-1</text>
+    <text x="170" y="210" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">adv 200</text>
+    <rect x="80" y="264" width="180" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="170" y="290" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">REVOKED</text>
+    <text x="170" y="306" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">no secret</text>
+    <text x="170" y="322" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">adv 404 · disks stop unlocking</text>
+    <rect x="80" y="376" width="180" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="170" y="402" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">TOMBSTONE</text>
+    <text x="170" y="418" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">null</text>
+    <text x="170" y="434" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">each deploy proves 404</text>
+    <rect x="80" y="480" width="180" height="48" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="96" y="500" font-size="12" font-weight="600" fill="var(--text)">new keys, same name</text>
+    <text x="96" y="516" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">REFUSE · rotate to server-2</text>
   </g>
 </svg>

@@ -60,25 +60,25 @@ import mark from '../../public/favicon.svg?raw';
 
   <section class="section">
     <h2 class="section-title">A key set</h2>
-    <div class="cat-explainer">
+    <div class="cat-explainer figure-pair">
       <KeySet />
-      <p>A set is one signing key and one exchange key on one curve, held in one Worker secret. Its name is the first segment of every route.</p>
+      <p>A set is one signing key and one exchange key on one curve, held in one Worker secret.</p>
     </div>
   </section>
 
   <section class="section">
     <h2 class="section-title">Lifecycle</h2>
-    <div class="cat-explainer">
+    <div class="cat-explainer figure-pair">
       <Lifecycle />
-      <p>Sets are write-once: a live name never changes keys, so rotation mints a new name. Revoking deletes the secret, and a <code>null</code> entry in the deploy input proves on every deploy that it stays revoked.</p>
+      <p>Sets are write-once: a live name never changes keys, so rotation mints a new name.</p>
     </div>
   </section>
 
   <section class="section">
     <h2 class="section-title">Rotation</h2>
-    <div class="cat-explainer">
+    <div class="cat-explainer figure-pair">
       <Rotation />
-      <p>Bind a second slot to the new set, reboot to prove it, then unbind the old slot and revoke the old set. The old keys still open copies of the disk taken before the unbind.</p>
+      <p>Bind a second slot to the new set, reboot to prove it, then unbind the old slot and revoke the old set.</p>
     </div>
   </section>
 
