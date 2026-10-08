@@ -12,6 +12,8 @@ workflow:
 stages:
   - lint
   - test
+  - build
+  - deploy
   - release
 
 include:
@@ -24,6 +26,14 @@ include:
       package_name: keystone
       release_title: "keystone $CI_COMMIT_TAG"
       binary_job: test
+  - component: gitlab.com/dunn.dev/pipeline/cloudflare-worker@4
+    inputs:
+      wrangler_config: site/wrangler.toml
+      build_command: npm run build
+      output_dir: site/dist
+      needs_npm_install: true
+      npm_dir: site
+      production_url: https://keystone.dunn.dev
 
 .fedora:
   image: quay.io/fedora/fedora:44
