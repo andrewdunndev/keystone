@@ -1,0 +1,88 @@
+<svg class="figure-wide" viewBox="0 0 660 384" role="img" aria-label="The Cloudflare account, anyone who can deploy a Worker version on it, and every Worker version can read the key sets; the API lists only secret names, and disk hosts hold only public keys." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="trust-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="trust-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="20" y="20" width="620" height="344" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- zones -->
+    <rect x="36" y="52" width="136" height="296" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
+    <rect x="48" y="46" width="52" height="12" fill="var(--bg)"/>
+    <text x="74" y="55" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CAN READ</text>
+    <rect x="488" y="96" width="136" height="208" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
+    <rect x="500" y="90" width="68" height="12" fill="var(--bg)"/>
+    <text x="534" y="99" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CANNOT READ</text>
+    <!-- arrows -->
+    <path d="M158,108 H244 V184 H276" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#trust-arrow-moss)"/>
+    <path d="M158,200 H276" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#trust-arrow-moss)"/>
+    <path d="M158,292 H244 V216 H276" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#trust-arrow-moss)"/>
+    <path d="M416,152 V184 H384 M416,152 H502" fill="none" stroke="var(--text-2)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <path d="M384,216 H416 V248 H502" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#trust-arrow-muted)"/>
+    <!-- labels -->
+    <rect x="184" y="180" width="36" height="12" fill="var(--bg)"/>
+    <text x="202" y="189" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">reads</text>
+    <rect x="420" y="132" width="64" height="12" fill="var(--bg)"/>
+    <text x="452" y="141" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">write-only</text>
+    <rect x="426" y="228" width="52" height="12" fill="var(--bg)"/>
+    <text x="452" y="237" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">adv only</text>
+    <!-- nodes -->
+    <rect x="50" y="68" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/><text x="104" y="94" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CLOUDFLARE</text><text x="104" y="110" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">account</text><text x="104" y="126" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">whoever controls</text>
+    <rect x="50" y="160" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/><text x="104" y="186" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DEPLOY RIGHTS</text><text x="104" y="202" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">new version</text><text x="104" y="218" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">any user or token</text>
+    <rect x="50" y="252" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/><text x="104" y="278" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">WORKER VERSIONS</text><text x="104" y="294" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">every version</text><text x="104" y="310" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">own snapshot</text>
+    <rect x="276" y="160" width="108" height="80" rx="6" fill="var(--accent)"/>
+    <text x="330" y="186" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">WORKER SECRETS</text>
+    <text x="330" y="202" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">key sets</text>
+    <text x="330" y="218" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">TANG_KEY_&lt;NAME&gt;</text>
+    <rect x="502" y="112" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="556" y="138" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CLOUDFLARE API</text>
+    <text x="556" y="154" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">secret list</text>
+    <text x="556" y="170" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">names only</text>
+    <rect x="502" y="208" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="556" y="234" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DISK HOSTS</text>
+    <text x="556" y="250" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">LUKS header</text>
+    <text x="556" y="266" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">public keys only</text>
+  </g>
+</svg>
+<svg class="figure-narrow" viewBox="0 0 340 672" role="img" aria-label="The Cloudflare account, anyone who can deploy a Worker version on it, and every Worker version can read the key sets; the API lists only secret names, and disk hosts hold only public keys." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="trust-n-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="trust-n-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="20" y="20" width="300" height="632" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- zones -->
+    <rect x="56" y="44" width="228" height="300" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
+    <rect x="68" y="38" width="52" height="12" fill="var(--bg)"/>
+    <text x="94" y="47" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CAN READ</text>
+    <rect x="36" y="516" width="268" height="116" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
+    <rect x="48" y="626" width="68" height="12" fill="var(--bg)"/>
+    <text x="82" y="635" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CANNOT READ</text>
+    <!-- arrows -->
+    <path d="M170,344 V392" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#trust-n-arrow-moss)"/>
+    <path d="M140,472 V496 H106 V536" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#trust-n-arrow-muted)"/>
+    <path d="M200,472 V496 H234 V536" fill="none" stroke="var(--text-2)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <!-- labels -->
+    <rect x="180" y="362" width="36" height="12" fill="var(--bg)"/>
+    <text x="198" y="371" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">reads</text>
+    <rect x="48" y="500" width="52" height="12" fill="var(--bg)"/>
+    <text x="74" y="509" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">adv only</text>
+    <rect x="240" y="500" width="64" height="12" fill="var(--bg)"/>
+    <text x="272" y="509" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">write-only</text>
+    <!-- nodes -->
+    <rect x="80" y="64" width="180" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/><text x="170" y="90" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CLOUDFLARE</text><text x="170" y="106" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">account</text><text x="170" y="122" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">whoever controls</text>
+    <rect x="80" y="156" width="180" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/><text x="170" y="182" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DEPLOY RIGHTS</text><text x="170" y="198" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">new version</text><text x="170" y="214" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">any user or token</text>
+    <rect x="80" y="248" width="180" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/><text x="170" y="274" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">WORKER VERSIONS</text><text x="170" y="290" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">every version</text><text x="170" y="306" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">own snapshot</text>
+    <rect x="80" y="392" width="180" height="80" rx="6" fill="var(--accent)"/>
+    <text x="170" y="418" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">WORKER SECRETS</text>
+    <text x="170" y="434" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">key sets</text>
+    <text x="170" y="450" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">TANG_KEY_&lt;NAME&gt;</text>
+    <rect x="48" y="536" width="116" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="106" y="562" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DISK HOSTS</text>
+    <text x="106" y="578" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">LUKS header</text>
+    <text x="106" y="594" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">public keys only</text>
+    <rect x="176" y="536" width="116" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="234" y="562" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CLOUDFLARE API</text>
+    <text x="234" y="578" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">secret list</text>
+    <text x="234" y="594" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">names only</text>
+  </g>
+</svg>

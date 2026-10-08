@@ -1,0 +1,14 @@
+@import '@dunn.dev/reference/tokens/index.css';
+@import '@dunn.dev/reference/site.css';
+
+html { color-scheme: light; }
+
+.figure-pair .figure-narrow { display: none; width: 340px; }
+@media (max-width: 640px) {
+  .figure-pair .figure-wide { display: none; }
+  .figure-pair .figure-narrow { display: block; }
+}
+
+.cat-explainer { width: 100%; }
+.cat-explainer svg.figure-wide { width: 100%; }
+.footer-inner { padding: 0 var(--space-5); }

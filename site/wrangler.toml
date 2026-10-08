@@ -1,0 +1,21 @@
+name = "keystone-site"
+compatibility_date = "2026-05-10"
+workers_dev = false
+
+[[routes]]
+pattern = "keystone.dunn.dev"
+custom_domain = true
+zone_name = "dunn.dev"
+
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"
+html_handling = "auto-trailing-slash"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true

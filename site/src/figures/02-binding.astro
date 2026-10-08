@@ -1,0 +1,84 @@
+<svg class="figure-wide" viewBox="0 0 660 256" role="img" aria-label="clevis fetches the key set's signed advertisement from the Worker, checks it against the pinned thumbprint, derives a key from the exchange public key and a fresh ephemeral key, and keeps only public values in the LUKS header." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="binding-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="binding-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="20" y="20" width="620" height="216" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- zone -->
+    <rect x="208" y="52" width="420" height="168" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
+    <rect x="220" y="46" width="96" height="12" fill="var(--bg)"/>
+    <text x="268" y="55" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CLEVIS LUKS BIND</text>
+    <!-- arrows -->
+    <path d="M224,108 H144" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#binding-arrow-moss)"/>
+    <path d="M144,140 H224" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#binding-arrow-moss)"/>
+    <path d="M332,124 H364" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#binding-arrow-muted)"/>
+    <path d="M472,124 H504" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#binding-arrow-muted)"/>
+    <!-- labels -->
+    <rect x="150" y="88" width="52" height="12" fill="var(--bg)"/>
+    <text x="176" y="97" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">adv/&lt;thp&gt;</text>
+    <rect x="148" y="120" width="56" height="12" fill="var(--bg)"/>
+    <text x="176" y="129" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">signed adv</text>
+    <!-- nodes -->
+    <rect x="36" y="84" width="108" height="80" rx="6" fill="var(--accent)"/>
+    <text x="90" y="110" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">WORKER</text>
+    <text x="90" y="126" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">keystone</text>
+    <text x="90" y="142" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">serves adv only</text>
+    <rect x="224" y="84" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="278" y="110" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">VERIFY</text>
+    <text x="278" y="126" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">signature</text>
+    <text x="278" y="142" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">against pinned thp</text>
+    <rect x="364" y="84" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="418" y="110" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DERIVE</text>
+    <text x="418" y="126" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">K = c·S</text>
+    <text x="418" y="142" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">fresh c, C = c·G</text>
+    <rect x="504" y="84" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="558" y="110" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">LUKS HEADER</text>
+    <text x="558" y="126" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">public only</text>
+    <text x="558" y="142" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">C · kid · adv</text>
+    <!-- notes -->
+    <text x="90" y="188" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">S: exchange public key</text>
+    <text x="418" y="188" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">c and K discarded</text>
+    <text x="558" y="188" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">+ slot passphrase</text><text x="558" y="200" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">wrapped under K</text>
+  </g>
+</svg>
+<svg class="figure-narrow" viewBox="0 0 340 544" role="img" aria-label="clevis fetches the key set's signed advertisement from the Worker, checks it against the pinned thumbprint, derives a key from the exchange public key and a fresh ephemeral key, and keeps only public values in the LUKS header." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="binding-n-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="binding-n-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="20" y="20" width="300" height="504" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- zone -->
+    <rect x="56" y="152" width="228" height="352" rx="8" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
+    <rect x="68" y="498" width="96" height="12" fill="var(--bg)"/>
+    <text x="116" y="507" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CLEVIS LUKS BIND</text>
+    <!-- arrows -->
+    <path d="M144,176 V120" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#binding-n-arrow-moss)"/>
+    <path d="M196,120 V176" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#binding-n-arrow-moss)"/>
+    <path d="M170,256 V288" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#binding-n-arrow-muted)"/>
+    <path d="M170,368 V400" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#binding-n-arrow-muted)"/>
+    <!-- labels -->
+    <rect x="84" y="128" width="52" height="12" fill="var(--bg)"/>
+    <text x="110" y="137" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">adv/&lt;thp&gt;</text>
+    <rect x="204" y="128" width="56" height="12" fill="var(--bg)"/>
+    <text x="232" y="137" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">signed adv</text>
+    <!-- nodes -->
+    <rect x="80" y="40" width="180" height="80" rx="6" fill="var(--accent)"/>
+    <text x="170" y="66" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">WORKER</text>
+    <text x="170" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">keystone</text>
+    <text x="170" y="98" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">adv: exchange key S</text>
+    <rect x="80" y="176" width="180" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="170" y="202" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">VERIFY</text>
+    <text x="170" y="218" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">signature</text>
+    <text x="170" y="234" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">against pinned thp</text>
+    <rect x="80" y="288" width="180" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="170" y="314" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DERIVE</text>
+    <text x="170" y="330" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">K = c·S</text>
+    <text x="170" y="346" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">C = c·G kept; c, K dropped</text>
+    <rect x="80" y="400" width="180" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="170" y="426" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">LUKS HEADER</text>
+    <text x="170" y="442" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">public only</text>
+    <text x="170" y="458" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">C, kid, adv, passphrase under K</text>
+  </g>
+</svg>

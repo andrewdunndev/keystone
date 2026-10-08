@@ -1,0 +1,132 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Overview from '../figures/01-overview.astro';
+import Binding from '../figures/02-binding.astro';
+import Unlock from '../figures/03-unlock.astro';
+import Wire from '../figures/04-wire.astro';
+import KeySet from '../figures/05-key-set.astro';
+import Lifecycle from '../figures/06-lifecycle.astro';
+import Rotation from '../figures/07-rotation.astro';
+import Rollback from '../figures/08-rollback.astro';
+import Deploy from '../figures/09-deploy.astro';
+import Curves from '../figures/10-curves.astro';
+import Trust from '../figures/11-trust.astro';
+import Alerts from '../figures/12-alerts.astro';
+import Failure from '../figures/13-failure.astro';
+import mark from '../../public/favicon.svg?raw';
+---
+<Layout title="keystone" description="keystone is a Tang server for clevis network-bound disk encryption, running as a Cloudflare Worker.">
+  <header class="hero">
+    <div class="hero-mark" aria-hidden="true" set:html={mark} />
+    <div>
+      <p class="hero-eyebrow">Tang server · Cloudflare Worker</p>
+      <h1 class="hero-title">keystone</h1>
+      <p class="hero-lede">keystone is a Tang server for clevis network-bound disk encryption. It runs as a Cloudflare Worker, speaks the protocol of stock <code>tangd</code> and serves many named key sets from one deployment. A bound disk unlocks at boot by reaching the Worker over HTTPS. Deleting a set's secret revokes it. <code>keyset</code> mints, checks, deploys and revokes the sets.</p>
+      <p class="hero-lede">A <code>tangd</code> on your LAN suits hosts that can reach one. keystone is for hosts that cannot.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <h2 class="section-title">Overview</h2>
+    <div class="cat-explainer figure-pair">
+      <Overview />
+    </div>
+    <p class="section-prose">clevis in the host's initramfs talks to keystone through Cloudflare's edge, where a WAF rate limit can sit ahead of the Worker to slow a flood that would otherwise spend the Free plan's daily request quota. A key set is one signing key and one exchange key, held in a Worker secret named <code>TANG_KEY_&lt;NAME&gt;</code>. keystone answers two requests per set: adv returns its signed public keys, and rec runs the key recovery a booting host needs.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Binding</h2>
+    <div class="cat-explainer figure-pair">
+      <Binding />
+    </div>
+    <p class="section-prose">clevis checks the advertisement's signature against the pinned thp, the thumbprint of the set's signing key, so a forged advertisement fails the bind. It picks a random c and computes K = c·S from S, the exchange public key; K wraps a new slot passphrase. The header keeps C = c·G (G is the curve's base point), the kid (the exchange key's thumbprint) and the advertisement, and c and K are discarded.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Unlock</h2>
+    <div class="cat-explainer figure-pair">
+      <Unlock />
+    </div>
+    <p class="section-prose">At boot clevis reads C from the header, picks a fresh random e and sends X = C + e·G to rec. The Worker returns Y = s·X, where s is the exchange private key. With S from the advertisement stored in the header, the host computes K = Y − e·S = s·C, which equals the bind's c·S because both are s·c·G, and K unwraps the slot passphrase. The Worker sees only the blinded X, never C or K.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">On the wire</h2>
+    <div class="cat-explainer figure-pair">
+      <Wire />
+    </div>
+    <p class="section-prose">The advertisement, X, Y, and the set name, kid and client address cross the network; the Worker logs one line per successful rec with name, address, ASN and country. C, e, K and the passphrase never leave the host. Since e is fresh each boot, X differs every time. A recording gives up neither C nor K, even to someone holding s: e hides C, and K needs s together with C from the disk's own header.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">A key set</h2>
+    <div class="cat-explainer figure-pair">
+      <KeySet />
+    </div>
+    <p class="section-prose">The set <code>server-1</code> lives in the Worker secret <code>TANG_KEY_SERVER_1</code>: the name upper-cased, with <code>-</code> turned into <code>_</code>. Its routes are <code>/server-1/adv</code>, <code>/server-1/adv/&lt;thp&gt;</code>, which answers only for the matching signing thumbprint, and <code>POST /server-1/rec/&lt;kid&gt;</code>. The signing key (ES512 on P-521) signs the advertisement; the exchange key, labelled ECMR for the McCallum-Relyea exchange above, answers rec. Sets share no keys, so revoking one leaves the others serving.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Lifecycle</h2>
+    <div class="cat-explainer figure-pair">
+      <Lifecycle />
+    </div>
+    <p class="section-prose"><code>keyset new</code> mints a set for the offline key store, <code>deploy --new</code> makes it live, and <code>revoke</code> deletes its secret, so its adv answers 404 and its disks stop unlocking. The store then keeps null under that name, a tombstone, and every later deploy checks it still answers 404. <code>keyset</code> refuses new keys under a live name, which would strand every disk bound to it, so rotation uses a new name.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Rotation</h2>
+    <div class="cat-explainer figure-pair">
+      <Rotation />
+    </div>
+    <p class="section-prose">The disk's LUKS header holds a passphrase slot and one clevis slot per bound set. Rotation binds <code>server-2</code> in a second slot, reboots, then unbinds and revokes <code>server-1</code>. Rebooting before the unbind proves the new slot while the old one still opens the disk. A copy taken before the unbind still opens with <code>server-1</code>'s keys, so the store swaps them for the tombstone.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Rollback</h2>
+    <div class="cat-explainer figure-pair">
+      <Rollback />
+    </div>
+    <p class="section-prose">Each Worker version carries the secrets it was deployed with. After the revoke in version 3, rolling back to version 2 serves <code>server-1</code> again, though the Worker's secret list no longer shows it. <code>keyset deploy</code> flags that through the tombstone as REVOKED-LIVE, and <code>--apply</code> builds version 4 from the current secrets, which drops it. So never roll back across a revoke.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">keyset deploy</h2>
+    <div class="cat-explainer figure-pair">
+      <Deploy />
+    </div>
+    <p class="section-prose"><code>keyset deploy</code> reads the key store on stdin as one JSON object, a set or null per name, and gives each entry a verdict against the live Worker. Any REFUSE stops the run with exit 1; without <code>--apply</code> it ends at the plan. With <code>--apply</code>, wrangler uploads only the <code>--new</code> sets, then <code>keyset</code> checks each set's signed adv and a real rec, and each tombstone for a 404. The commands are in <a href="/setup/">Setup</a>.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Curves</h2>
+    <div class="cat-explainer figure-pair">
+      <Curves />
+    </div>
+    <p class="section-prose">Each bar is the measured CPU time for one rec, against the Free plan's 10 ms of CPU per request. P-521, the default and the curve <code>tangd-keygen</code> uses, takes 7 ms at the median and up to 12 ms cold, so it needs Workers Paid. P-256 stays at 6 ms or under and fits the Free plan; <code>keyset new --curve P-256</code> mints one.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Trust</h2>
+    <div class="cat-explainer figure-pair">
+      <Trust />
+    </div>
+    <p class="section-prose">Cloudflare, and whoever controls the account, can read the private keys, as can any user or token allowed to deploy a new version, since that code reads the secrets. The API lists secret names only, and disk hosts hold only public keys. To split trust, bind with clevis sss at a threshold of two across keystone and a second Tang server, so neither alone unlocks the disk.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Alerts</h2>
+    <div class="cat-explainer figure-pair">
+      <Alerts />
+    </div>
+    <p class="section-prose">When alerts are set up, each successful rec asks whether its source, a /24 or /48 network plus ASN and country, is new for the set. The first new source in an hour sends one alert; up to five more wait in KV for the hourly digest, and the host never waits on the mail. The kid is public, so an alert flags a request, not an unlock; the Workers log stays the full record.</p>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Failure</h2>
+    <div class="cat-explainer figure-pair">
+      <Failure />
+    </div>
+    <p class="section-prose">If keystone is unreachable or the day's request quota is spent, clevis gets no key and LUKS asks for the passphrase, so losing keystone costs a typed passphrase per disk, never data, as long as each disk keeps its passphrase slot. If a disk is stolen, revoking its set makes rec answer 404, and the disk stays locked from then on.</p>
+  </section>
+</Layout>
