@@ -1,0 +1,38 @@
+---
+import { getEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import Quickstart from '../../figures/14-quickstart.astro';
+
+const DOCS = 'https://gitlab.com/dunn.dev/keystone/-/blob/main/docs/';
+
+// docs/setup.md is written for the forge: its h1 is this page's title, and its relative links resolve against docs/ there.
+const setup = await getEntry('docs', 'setup');
+if (!setup?.rendered) throw new Error('docs/setup.md did not render');
+const html = setup.rendered.html
+  .replace(/<h1[^>]*>.*?<\/h1>/s, '')
+  .replace(/href="(?![a-z]+:|#|\/)([^"]*)"/gi, (_, url) => `href="${new URL(url, DOCS).href}"`);
+---
+<Layout title="Setup" description="Install keystone, bind a first disk, rotate, revoke and set up alerts.">
+  <header class="page-header">
+    <h1 class="page-title">Setup</h1>
+  </header>
+  <div class="cat-explainer">
+    <Quickstart />
+    <p>The quickstart: deploy the Worker, confirm it serves no sets, mint and deploy a set, bind the disk, rebuild the initramfs and reboot.</p>
+  </div>
+  <article class="doc">
+    <Fragment set:html={html} />
+  </article>
+</Layout>
+
+<style>
+  .doc { max-width: 46rem; color: var(--text-2); line-height: 1.7; }
+  .doc :global(h2) { font-family: var(--font-display); font-size: var(--text-2xl); color: var(--text); margin: var(--space-7) 0 var(--space-4); letter-spacing: -0.01em; }
+  .doc :global(h3) { font-size: var(--text-lg); color: var(--text); margin: var(--space-6) 0 var(--space-3); }
+  .doc :global(p), .doc :global(ul), .doc :global(ol), .doc :global(pre), .doc :global(table) { margin-bottom: var(--space-4); }
+  .doc :global(ul), .doc :global(ol) { padding-left: var(--space-5); }
+  .doc :global(li) { margin-bottom: var(--space-2); }
+  .doc :global(li > p) { margin-bottom: var(--space-2); }
+  .doc :global(pre) { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4); color: var(--text); }
+  .doc :global(:not(pre) > code) { background: var(--surface); padding: 0.1em 0.4em; border-radius: var(--radius-sm); }
+</style>
