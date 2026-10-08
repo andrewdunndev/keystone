@@ -4,4 +4,4 @@ Report a vulnerability as a confidential issue: open [a new issue](https://gitla
 
 Only the latest tag is supported. keystone has a single maintainer, so responses are best effort.
 
-The trust root is the Cloudflare account that hosts the Worker. Whoever controls it controls every key set. See the security model in the [README](README.md).
+The security model, including the trust root, is in the [README](README.md#security-model).

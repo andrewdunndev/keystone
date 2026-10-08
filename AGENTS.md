@@ -22,18 +22,8 @@ revokes its key sets.
   unless given `--apply`; only `keyset revoke <name> --apply` deletes, one set at a time.
 - Private keys are never printed, logged or written, except by `keyset new` to stdout and in the 0600 secrets file
   `deploy --apply` hands wrangler and removes.
-- No real hostnames, domains or accounts anywhere: examples use `https://tang.example` and `server-1`.
+- No real hostnames, domains or accounts anywhere: examples use reserved example domains and `server-1`.
 
 ## Commands
 
-```sh
-npm ci
-npm test                       # needs tang and jose for the fixture
-npm run mutate
-bash scripts/interop.sh        # needs clevis; `luks` as root in a throwaway container
-```
-
-`just test`, `just mutate` and `just interop` wrap these; `mise.toml` pins node and just. CI (`.gitlab-ci.yml`, Fedora)
-runs `test` (npm test, npm run mutate) and `interop` on merge requests, the default branch and tags, beside the
-`reference-check` component, which fails on any unwaived reference finding; `.deviations.yaml` holds the
-waivers. On a tag, the `release-create` component publishes the tag's `CHANGELOG.md` entry as the GitLab release.
+Test, mutation, interop and release steps are in [CONTRIBUTING.md](CONTRIBUTING.md); `.deviations.yaml` holds the reference-check waivers.

@@ -24,10 +24,6 @@ bash scripts/interop.sh
 
 `bash scripts/interop.sh luks`, as root in a throwaway container, adds a LUKS2 bind and unlock.
 
-## Vocabulary
-
-McCallum-Relyea is the recovery protocol Tang implements, and ECMR is the algorithm of the exchange key it uses. `rec` is the recovery request. A mutant is one small edit to the source that the suite must catch.
-
 ## Releases
 
 1. Add a `## vX.Y.Z - date` entry to `CHANGELOG.md`, replacing "Unreleased".

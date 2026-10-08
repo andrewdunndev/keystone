@@ -30,4 +30,4 @@ An internet-facing Tang server unlocks a stolen disk from anywhere it can be rea
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and merge requests live on GitLab; the GitHub copy is a mirror.
+See [CONTRIBUTING.md](CONTRIBUTING.md). The GitHub copy is a mirror.
