@@ -36,15 +36,15 @@ import mark from '../../public/favicon.svg?raw';
 
   <section class="section">
     <h2 class="section-title">Binding</h2>
-    <div class="cat-explainer">
+    <div class="cat-explainer figure-pair">
       <Binding />
-      <p>clevis fetches the set's advertisement, verifies its signature against the pinned <code>thp</code>, and derives the disk key from the exchange public key and a fresh ephemeral key. The LUKS header keeps the ephemeral public key and ciphertext, never the key; binding needs only <code>adv</code>.</p>
+      <p>clevis fetches the set's advertisement, verifies its signature against the pinned <code>thp</code>, and derives the disk key from the exchange public key and a fresh ephemeral key.</p>
     </div>
   </section>
 
   <section class="section">
     <h2 class="section-title">Unlock</h2>
-    <div class="cat-explainer">
+    <div class="cat-explainer figure-pair">
       <Unlock />
       <p>At boot clevis adds a fresh ephemeral point to the stored one and posts the sum to <code>/&lt;name&gt;/rec/&lt;kid&gt;</code>. The Worker multiplies it by the exchange private key; clevis subtracts its ephemeral share and is left with the disk key.</p>
     </div>
@@ -52,9 +52,9 @@ import mark from '../../public/favicon.svg?raw';
 
   <section class="section">
     <h2 class="section-title">On the wire</h2>
-    <div class="cat-explainer">
+    <div class="cat-explainer figure-pair">
       <Wire />
-      <p>The Worker sees a point blinded afresh at every boot and returns it multiplied by its key. The disk key and the unblinded point never leave the host.</p>
+      <p>The disk key and the unblinded point never leave the host.</p>
     </div>
   </section>
 
