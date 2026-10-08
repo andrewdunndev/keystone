@@ -41,6 +41,8 @@ interop:
   script:
     - dnf -y -q install tang jose clevis curl procps-ng util-linux-core nodejs npm
     - npm ci
+    - cp deploy/wrangler.toml.example deploy/wrangler.toml
+    - WRANGLER_SEND_METRICS=false node_modules/.bin/wrangler deploy --dry-run --config deploy/wrangler.toml --outdir "$(mktemp -d)"
     - bash scripts/interop.sh
 
 # The release description is the tag's CHANGELOG.md entry, not the tag message.

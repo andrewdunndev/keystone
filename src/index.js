@@ -186,13 +186,11 @@ async function sendMail(env, subject, text) {
   }
 }
 
-
 function add(set, k) {
   if (set.size >= SEEN_MAX) set.clear();
   set.add(k);
 }
 
-// At most HELD_CAP sources per set per cooldown are held, which bounds KV writes when many sources arrive.
 // A recovery request from a (/24 or /48, ASN, country) not seen before mails once per set per cooldown. The kid is
 // public, so a request proves nothing about an unlock. Sources met during the cooldown or while a mail is in flight are
 // held for the digest. The set name and source are claimed before the first await so concurrent requests send one mail.

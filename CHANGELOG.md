@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.1 - 2026-10-08
+
+Documentation and housekeeping; the Worker and `keyset` behave as in v0.1.0.
+
+- README reduced to what keystone is and its security model. `docs/setup.md` covers install, Cloudflare setup, a first bound disk, rotation, revocation, moving hosts, alerts and the reference.
+- `deploy/wrangler.toml.example`, checked in CI with `wrangler deploy --dry-run`.
+- `SECURITY.md` and `CONTRIBUTING.md`.
+- The justfile is gone: run `npm test`, `npm run mutate` and `scripts/interop.sh` directly.
+
 ## v0.1.0 - 2026-10-07
 
 First release. keystone is a Tang server for clevis network-bound disk
