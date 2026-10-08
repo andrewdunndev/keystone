@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- README reduced to what keystone is, its security model and pointers.
+- `docs/setup.md`: install, Cloudflare setup, a numbered quickstart to a bound disk, rotation, revocation, alerts and the reference.
+- `deploy/wrangler.toml.example`, checked in CI with `wrangler deploy --dry-run`.
+- `SECURITY.md` and `CONTRIBUTING.md`.
+
 ## v0.1.0 - 2026-10-07
 
 First release. keystone is a Tang server for clevis network-bound disk
