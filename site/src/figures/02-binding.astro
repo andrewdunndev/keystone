@@ -39,7 +39,7 @@
     <!-- notes -->
     <text x="90" y="188" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">S: exchange public key</text>
     <text x="418" y="188" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">c and K discarded</text>
-    <text x="558" y="188" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">+ slot key under K</text>
+    <text x="558" y="188" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">+ slot passphrase</text><text x="558" y="200" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">wrapped under K</text>
   </g>
 </svg>
 <svg class="figure-narrow" viewBox="0 0 340 544" role="img" aria-label="clevis fetches the key set's signed advertisement from the Worker, checks it against the pinned thumbprint, derives a key from the exchange public key and a fresh ephemeral key, and keeps only public values in the LUKS header." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
@@ -79,6 +79,6 @@
     <rect x="80" y="400" width="180" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
     <text x="170" y="426" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">LUKS HEADER</text>
     <text x="170" y="442" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">public only</text>
-    <text x="170" y="458" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">C, kid, adv, slot key under K</text>
+    <text x="170" y="458" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">C, kid, adv, passphrase under K</text>
   </g>
 </svg>
