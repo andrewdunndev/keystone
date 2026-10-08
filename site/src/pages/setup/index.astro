@@ -20,7 +20,7 @@ const html = setup.rendered.html
     <Quickstart />
   </div>
   <article class="doc">
-    <p>The quickstart deploys an empty Worker, confirms it serves no sets, mints a set into the key store and deploys it, which also checks it. The disk is then bound with the thp read from the live advertisement, and the initramfs is rebuilt with network, DNS and a CA bundle so clevis can reach the Worker before the root filesystem mounts. The numbered steps under Quickstart give each its commands.</p>
+    <p>The quickstart deploys an empty Worker, confirms it serves no sets, mints a set into the key store and deploys it, which also checks it. The disk is then bound with the thp (the signing key's thumbprint) read from the live advertisement, and the initramfs is rebuilt with network, DNS and a CA bundle so clevis can reach the Worker before the root filesystem mounts. A reboot then unlocks the disk with no passphrase prompt. The numbered steps under Quickstart give each its commands.</p>
     <Fragment set:html={html} />
   </article>
 </Layout>

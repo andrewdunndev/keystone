@@ -31,7 +31,7 @@ import mark from '../../public/favicon.svg?raw';
     <div class="cat-explainer figure-pair">
       <Overview />
     </div>
-    <p class="section-prose">clevis in the host's initramfs talks to keystone through Cloudflare's edge, where a WAF rate limit can sit ahead of the Worker. A key set is one signing key and one exchange key, held in a Worker secret named <code>TANG_KEY_&lt;NAME&gt;</code>. keystone answers two requests per set: adv returns its signed public keys, and rec runs the key recovery a booting host needs. On the Free plan a flood can spend the daily request quota; the rate limit mitigates it.</p>
+    <p class="section-prose">clevis in the host's initramfs talks to keystone through Cloudflare's edge, where a WAF rate limit can sit ahead of the Worker to slow a flood that would otherwise spend the Free plan's daily request quota. A key set is one signing key and one exchange key, held in a Worker secret named <code>TANG_KEY_&lt;NAME&gt;</code>. keystone answers two requests per set: adv returns its signed public keys, and rec runs the key recovery a booting host needs.</p>
   </section>
 
   <section class="section">
@@ -47,7 +47,7 @@ import mark from '../../public/favicon.svg?raw';
     <div class="cat-explainer figure-pair">
       <Unlock />
     </div>
-    <p class="section-prose">At boot clevis reads C from the header, picks a fresh random e and sends X = C + e·G to rec. The Worker returns Y = s·X, where s is the exchange private key. Since S = s·G, the host removes its blinding with K = Y − e·S = s·C, the K the bind computed, which unwraps the slot passphrase. The Worker sees only the blinded X, never C or K.</p>
+    <p class="section-prose">At boot clevis reads C from the header, picks a fresh random e and sends X = C + e·G to rec. The Worker returns Y = s·X, where s is the exchange private key. With S from the advertisement stored in the header, the host computes K = Y − e·S = s·C, which equals the bind's c·S because both are s·c·G, and K unwraps the slot passphrase. The Worker sees only the blinded X, never C or K.</p>
   </section>
 
   <section class="section">
@@ -55,7 +55,7 @@ import mark from '../../public/favicon.svg?raw';
     <div class="cat-explainer figure-pair">
       <Wire />
     </div>
-    <p class="section-prose">The advertisement, X, Y, and the set name, kid and client address cross the network; the Worker logs one line per successful rec with name, address, ASN and country. C, e, K and the passphrase never leave the host. Since e is fresh each boot, X differs every time, and without s a recording of every exchange gives up neither C nor K.</p>
+    <p class="section-prose">The advertisement, X, Y, and the set name, kid and client address cross the network; the Worker logs one line per successful rec with name, address, ASN and country. C, e, K and the passphrase never leave the host. Since e is fresh each boot, X differs every time. A recording gives up neither C nor K, even to someone holding s: e hides C, and K needs s together with C from the disk's own header.</p>
   </section>
 
   <section class="section">
@@ -63,7 +63,7 @@ import mark from '../../public/favicon.svg?raw';
     <div class="cat-explainer figure-pair">
       <KeySet />
     </div>
-    <p class="section-prose">The set <code>server-1</code> lives in the Worker secret <code>TANG_KEY_SERVER_1</code>: the name upper-cased, with <code>-</code> turned into <code>_</code>. It holds two private keys on one curve. The signing key (ES512 on P-521) signs the advertisement; the exchange key, labelled ECMR for the McCallum-Relyea exchange above, answers rec. Sets share no keys, so revoking one leaves the others serving.</p>
+    <p class="section-prose">The set <code>server-1</code> lives in the Worker secret <code>TANG_KEY_SERVER_1</code>: the name upper-cased, with <code>-</code> turned into <code>_</code>. Its routes are <code>/server-1/adv</code>, <code>/server-1/adv/&lt;thp&gt;</code>, which answers only for the matching signing thumbprint, and <code>POST /server-1/rec/&lt;kid&gt;</code>. The signing key (ES512 on P-521) signs the advertisement; the exchange key, labelled ECMR for the McCallum-Relyea exchange above, answers rec. Sets share no keys, so revoking one leaves the others serving.</p>
   </section>
 
   <section class="section">
@@ -127,6 +127,6 @@ import mark from '../../public/favicon.svg?raw';
     <div class="cat-explainer figure-pair">
       <Failure />
     </div>
-    <p class="section-prose">If keystone is unreachable or the day's request quota is spent, clevis gets no key and LUKS asks for the passphrase, data intact. If a disk is stolen, revoking its set makes rec answer 404, and the disk stays locked from then on. Losing keystone costs a passphrase per disk at boot, never data, as long as each disk keeps its passphrase slot.</p>
+    <p class="section-prose">If keystone is unreachable or the day's request quota is spent, clevis gets no key and LUKS asks for the passphrase, so losing keystone costs a typed passphrase per disk, never data, as long as each disk keeps its passphrase slot. If a disk is stolen, revoking its set makes rec answer 404, and the disk stays locked from then on.</p>
   </section>
 </Layout>
