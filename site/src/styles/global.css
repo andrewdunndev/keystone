@@ -8,3 +8,7 @@ html { color-scheme: light; }
   .figure-pair .figure-wide { display: none; }
   .figure-pair .figure-narrow { display: block; }
 }
+
+.cat-explainer { width: 100%; }
+.cat-explainer svg.figure-wide { width: 100%; }
+.footer-inner { padding: 0 var(--space-5); }
