@@ -1,6 +1,6 @@
 # Contributing
 
-Merge requests go to GitLab at https://gitlab.com/dunn.dev/keystone. There is no DCO and no CLA.
+Issues and merge requests go to GitLab at https://gitlab.com/dunn.dev/keystone. There is no DCO and no CLA.
 
 ## Tests
 

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- `docs/setup.md`, and `deploy/wrangler.toml.example`, checked in CI with `wrangler deploy --dry-run`.
+- `docs/setup.md`, `SECURITY.md`, `CONTRIBUTING.md`, and `deploy/wrangler.toml.example` (checked in CI with `wrangler deploy --dry-run`).
 
 ## v0.1.0 - 2026-10-07
 
