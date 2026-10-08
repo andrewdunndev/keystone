@@ -9,8 +9,7 @@
   "scripts": {
     "pretest": "node --import ./test/register.mjs test/gen-fixture.mjs",
     "test": "node --disable-warning=ExperimentalWarning --import ./test/register.mjs --test test/*.test.js",
-    "mutate": "bash scripts/mutate.sh",
-    "dev": "wrangler dev --port 8787"
+    "mutate": "bash scripts/mutate.sh"
   },
   "devDependencies": {
     "@noble/curves": "2.4.0",
