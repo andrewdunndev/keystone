@@ -30,7 +30,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Overview</h2>
     <div class="cat-explainer figure-pair">
       <Overview />
-      <p>A bound disk's initramfs reaches the Worker over HTTPS through Cloudflare's edge, which can apply a WAF rate limit. Each key set lives in its own Worker secret.</p>
+      <p>On the Free plan a flood can spend the daily request quota; a WAF rate limit mitigates.</p>
     </div>
   </section>
 
@@ -38,7 +38,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Binding</h2>
     <div class="cat-explainer figure-pair">
       <Binding />
-      <p>clevis fetches the set's advertisement, verifies its signature against the pinned <code>thp</code>, and derives the disk key from the exchange public key and a fresh ephemeral key.</p>
+      <p>Pinning the thp makes a forged advertisement fail the bind.</p>
     </div>
   </section>
 
@@ -46,7 +46,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Unlock</h2>
     <div class="cat-explainer figure-pair">
       <Unlock />
-      <p>At boot clevis adds a fresh ephemeral point to the stored one and posts the sum to <code>/&lt;name&gt;/rec/&lt;kid&gt;</code>. The Worker multiplies it by the exchange private key; clevis subtracts its ephemeral share and is left with the disk key.</p>
+      <p>The Worker sees only the blinded X, never C or K.</p>
     </div>
   </section>
 
@@ -54,7 +54,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">On the wire</h2>
     <div class="cat-explainer figure-pair">
       <Wire />
-      <p>The disk key and the unblinded point never leave the host.</p>
+      <p>Without s, a recording of every exchange gives up neither C nor K.</p>
     </div>
   </section>
 
@@ -62,7 +62,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">A key set</h2>
     <div class="cat-explainer figure-pair">
       <KeySet />
-      <p>A set is one signing key and one exchange key on one curve, held in one Worker secret.</p>
+      <p>Sets share no keys, so revoking one leaves the others serving.</p>
     </div>
   </section>
 
@@ -70,7 +70,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Lifecycle</h2>
     <div class="cat-explainer figure-pair">
       <Lifecycle />
-      <p>Sets are write-once: a live name never changes keys, so rotation mints a new name.</p>
+      <p>New keys under a live name would strand every disk bound to it, so rotation is a new name.</p>
     </div>
   </section>
 
@@ -78,7 +78,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Rotation</h2>
     <div class="cat-explainer figure-pair">
       <Rotation />
-      <p>Bind a second slot to the new set, reboot to prove it, then unbind the old slot and revoke the old set.</p>
+      <p>Rebooting before the unbind proves the new slot while the old one still opens the disk.</p>
     </div>
   </section>
 
@@ -86,7 +86,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Rollback</h2>
     <div class="cat-explainer figure-pair">
       <Rollback />
-      <p>Each Worker version carries the secrets it was deployed with, so a rollback past a revoke serves the set again. <code>--apply</code> redeploys from current secrets and drops it.</p>
+      <p>Each Worker version carries the secrets it was deployed with, so never roll back across a revoke.</p>
     </div>
   </section>
 
@@ -94,7 +94,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">keyset deploy</h2>
     <div class="cat-explainer figure-pair">
       <Deploy />
-      <p>Nothing deploys while a set is refused, including when the wrangler target's secrets disagree with <code>--url</code>. The commands are in <a href="/setup/">Setup</a>.</p>
+      <p>The commands are in <a href="/setup/">Setup</a>.</p>
     </div>
   </section>
 
@@ -102,7 +102,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Curves</h2>
     <div class="cat-explainer figure-pair">
       <Curves />
-      <p>Measured CPU for one <code>rec</code>. P-521, the default, needs Workers Paid; P-256 fits the Free plan.</p>
+      <p>Measured CPU time for one rec. P-521, the default, needs Workers Paid; P-256 fits the Free plan.</p>
     </div>
   </section>
 
@@ -110,7 +110,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Trust</h2>
     <div class="cat-explainer figure-pair">
       <Trust />
-      <p>Whoever controls the Cloudflare account controls the keys: any Worker version deployed on it can read the secrets, and every version keeps its own copy. Secrets cannot be read back through the API, and the disks never hold keystone's keys.</p>
+      <p>To split trust, bind with clevis sss across keystone and a second Tang server.</p>
     </div>
   </section>
 
@@ -118,7 +118,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Alerts</h2>
     <div class="cat-explainer figure-pair">
       <Alerts />
-      <p>A successful <code>rec</code> from a new source, a /24 or /48 with its ASN and country, mails one alert per set per hour through <code>send_email</code>; sources met meanwhile wait for the hourly digest. A failed alert never changes the unlock.</p>
+      <p>The alert is a tripwire, not an audit log; Workers Logs records every successful rec.</p>
     </div>
   </section>
 
@@ -126,7 +126,7 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title">Failure</h2>
     <div class="cat-explainer figure-pair">
       <Failure />
-      <p>If keystone is unreachable or the Free plan's daily quota is spent, clevis fails and the host asks for its passphrase. Revoking a stolen disk's set stops it unlocking from then on. Losing keystone costs a passphrase per disk at boot, never data.</p>
+      <p>Losing keystone costs a passphrase per disk at boot, never data.</p>
     </div>
   </section>
 </Layout>
