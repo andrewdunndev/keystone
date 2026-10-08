@@ -1,8 +1,72 @@
-<svg viewBox="0 0 660 240" role="img" aria-label="Placeholder for the figure on rollback hazard." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+<svg class="figure-wide" viewBox="0 0 660 308" role="img" aria-label="A rollback to version 2 after server-1 was revoked serves server-1 again while the wrangler secret list no longer holds it; keyset deploy reports it as REVOKED-LIVE and its --apply deploys version 4 from current secrets, where server-1 answers 404." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
   <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
-    <rect x="20" y="20" width="620" height="200" rx="6" fill="var(--bg)" stroke="var(--border)"/>
-    <rect x="180" y="84" width="300" height="72" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
-    <text x="330" y="112" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="12" letter-spacing="0.08em" fill="var(--text-muted)">FIGURE 8</text>
-    <text x="330" y="138" text-anchor="middle" font-size="20" font-weight="600" fill="var(--text-2)">rollback hazard</text>
+    <rect x="20" y="20" width="620" height="268" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- steps -->
+    <text x="202" y="56" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DEPLOY</text>
+    <text x="202" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">version 1</text>
+    <text x="294" y="56" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DEPLOY --NEW</text>
+    <text x="294" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">version 2</text>
+    <text x="386" y="56" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">REVOKE</text>
+    <text x="386" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">version 3</text>
+    <text x="478" y="56" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">ROLLBACK</text>
+    <text x="478" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">to version 2</text>
+    <text x="570" y="56" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DEPLOY --APPLY</text>
+    <text x="570" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">version 4</text>
+    <path d="M248,84 V240 M340,84 V240 M432,84 V240 M524,84 V240" fill="none" stroke="var(--border)" stroke-dasharray="4 4"/>
+    <!-- rows -->
+    <text x="36" y="102" font-size="12" font-weight="600" fill="var(--text)">server-1</text>
+    <text x="36" y="114" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">served</text>
+    <rect x="160" y="92" width="176" height="24" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text x="386" y="108" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">404</text>
+    <rect x="436" y="92" width="84" height="24" rx="6" fill="var(--accent)"/>
+    <text x="570" y="108" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">404</text>
+    <text x="36" y="142" font-size="12" font-weight="600" fill="var(--text)">server-1</text>
+    <text x="36" y="154" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">in secret list</text>
+    <rect x="160" y="132" width="176" height="24" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text x="36" y="182" font-size="12" font-weight="600" fill="var(--text)">server-2</text>
+    <text x="36" y="194" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">served</text>
+    <rect x="252" y="172" width="360" height="24" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text x="36" y="222" font-size="12" font-weight="600" fill="var(--text)">server-2</text>
+    <text x="36" y="234" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">in secret list</text>
+    <rect x="252" y="212" width="360" height="24" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <!-- notes -->
+    <path d="M436,248 V252 H520 V248" fill="none" stroke="var(--text-2)"/>
+    <text x="478" y="268" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">served, not listed: keyset deploy reports REVOKED-LIVE</text>
+  </g>
+</svg>
+<svg class="figure-narrow" viewBox="0 0 340 408" role="img" aria-label="A rollback to version 2 after server-1 was revoked serves server-1 again while the wrangler secret list no longer holds it; keyset deploy reports it as REVOKED-LIVE and its --apply deploys version 4 from current secrets, where server-1 answers 404." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="20" y="20" width="300" height="368" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- columns -->
+    <text x="168" y="48" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">server-1</text>
+    <text x="148" y="62" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">SERVED</text>
+    <text x="188" y="62" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">LISTED</text>
+    <text x="264" y="48" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">server-2</text>
+    <text x="244" y="62" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">SERVED</text>
+    <text x="284" y="62" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">LISTED</text>
+    <path d="M36,124 H304 M36,172 H304 M36,220 H304 M36,268 H304" fill="none" stroke="var(--border)" stroke-dasharray="4 4"/>
+    <!-- steps -->
+    <text x="36" y="98" font-size="12" font-weight="600" fill="var(--text)">deploy</text>
+    <text x="36" y="112" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">version 1</text>
+    <text x="36" y="146" font-size="12" font-weight="600" fill="var(--text)">deploy --new</text>
+    <text x="36" y="160" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">version 2</text>
+    <text x="36" y="194" font-size="12" font-weight="600" fill="var(--text)">revoke</text>
+    <text x="36" y="208" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">version 3</text>
+    <text x="36" y="242" font-size="12" font-weight="600" fill="var(--text)">rollback</text>
+    <text x="36" y="256" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">to version 2</text>
+    <text x="36" y="290" font-size="12" font-weight="600" fill="var(--text)">deploy --apply</text>
+    <text x="36" y="304" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">version 4</text>
+    <!-- bars -->
+    <rect x="134" y="80" width="28" height="88" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text x="148" y="200" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">404</text>
+    <rect x="134" y="224" width="28" height="40" rx="6" fill="var(--accent)"/>
+    <text x="148" y="296" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">404</text>
+    <rect x="174" y="80" width="28" height="88" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <rect x="230" y="128" width="28" height="184" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <rect x="270" y="128" width="28" height="184" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <!-- notes -->
+    <text x="170" y="340" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">server-1 served, not listed:</text>
+    <text x="170" y="356" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">keyset deploy reports REVOKED-LIVE</text>
+    <text x="170" y="370" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">--apply redeploys from current secrets</text>
   </g>
 </svg>

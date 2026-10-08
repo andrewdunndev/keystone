@@ -1,8 +1,152 @@
-<svg viewBox="0 0 660 240" role="img" aria-label="Placeholder for the figure on keyset deploy." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+<svg class="figure-wide" viewBox="0 0 660 308" role="img" aria-label="keyset deploy reads key sets from stdin, plans each against the live Worker and the wrangler target's secret list, stops on any REFUSE or without --apply, and otherwise deploys the new secrets with wrangler and checks every set's advertisement and a real recovery." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="deploy-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="deploy-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
   <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
-    <rect x="20" y="20" width="620" height="200" rx="6" fill="var(--bg)" stroke="var(--border)"/>
-    <rect x="180" y="84" width="300" height="72" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
-    <text x="330" y="112" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="12" letter-spacing="0.08em" fill="var(--text-muted)">FIGURE 9</text>
-    <text x="330" y="138" text-anchor="middle" font-size="20" font-weight="600" fill="var(--text-2)">keyset deploy</text>
+    <rect x="20" y="20" width="620" height="268" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- arrows -->
+    <path d="M128,84 H160" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#deploy-arrow-moss)"/>
+    <path d="M252,84 H284" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#deploy-arrow-moss)"/>
+    <path d="M376,84 H408" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#deploy-arrow-moss)"/>
+    <path d="M500,84 H532" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#deploy-arrow-moss)"/>
+    <path d="M206,124 V160" fill="none" stroke="var(--text-2)" stroke-width="1.5"/>
+    <path d="M330,124 V160" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#deploy-arrow-muted)"/>
+    <path d="M578,124 V160" fill="none" stroke="var(--text-2)" stroke-width="1.5"/>
+    <!-- nodes -->
+    <rect x="36" y="44" width="92" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="82" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">STDIN</text>
+    <text x="82" y="86" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">key sets</text>
+    <text x="82" y="102" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">set | null</text>
+    <rect x="160" y="44" width="92" height="80" rx="6" fill="var(--accent)"/>
+    <text x="206" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">PLAN</text>
+    <text x="206" y="86" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">each set</text>
+    <text x="206" y="102" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">vs live Worker</text>
+    <rect x="284" y="44" width="92" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="330" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">GATE</text>
+    <text x="330" y="86" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">no REFUSE</text>
+    <text x="330" y="102" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">and --apply</text>
+    <rect x="408" y="44" width="92" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="454" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">WRANGLER</text>
+    <text x="454" y="86" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">deploy</text>
+    <text x="454" y="102" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">--new secrets</text>
+    <rect x="532" y="44" width="92" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="578" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CHECK</text>
+    <text x="578" y="86" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">every set</text>
+    <text x="578" y="102" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">adv · rec</text>
+    <!-- verdicts -->
+    <rect x="36" y="160" width="228" height="108" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <rect x="44" y="154" width="60" height="12" fill="var(--bg)"/>
+    <text x="74" y="163" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">VERDICTS</text>
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="9">
+      <text x="48" y="184" fill="var(--text)">ok</text>
+      <text x="128" y="184" fill="var(--text-2)">live and unchanged</text>
+      <text x="48" y="198" fill="var(--text)">new</text>
+      <text x="128" y="198" fill="var(--text-2)">absent, named by --new</text>
+      <text x="48" y="212" fill="var(--text)">revoked</text>
+      <text x="128" y="212" fill="var(--text-2)">null, answers 404</text>
+      <text x="48" y="226" fill="var(--text)">REVOKED-LIVE</text>
+      <text x="128" y="226" fill="var(--text-2)">null, yet served</text>
+      <text x="48" y="240" fill="var(--text)">drift</text>
+      <text x="128" y="240" fill="var(--text-2)">live, not in stdin</text>
+      <text x="48" y="254" fill="var(--text)">REFUSE</text>
+      <text x="128" y="254" fill="var(--text-2)">--url ≠ secret list, …</text>
+    </g>
+    <!-- stop -->
+    <rect x="284" y="160" width="92" height="108" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="330" y="184" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">STOP</text>
+    <text x="330" y="206" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text)">any REFUSE</text>
+    <text x="330" y="218" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">exit 1</text>
+    <text x="330" y="240" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text)">no --apply</text>
+    <text x="330" y="252" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">exit 0, plan</text>
+    <!-- checks -->
+    <rect x="408" y="160" width="216" height="108" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <rect x="416" y="154" width="56" height="12" fill="var(--bg)"/>
+    <text x="444" y="163" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CHECKED</text>
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="9">
+      <text x="420" y="184" fill="var(--text)">adv</text>
+      <text x="468" y="184" fill="var(--text-2)">signed by the set's key</text>
+      <text x="420" y="198" fill="var(--text)">keys</text>
+      <text x="468" y="198" fill="var(--text-2)">exactly the set's</text>
+      <text x="420" y="212" fill="var(--text)">rec</text>
+      <text x="468" y="212" fill="var(--text-2)">a real exchange answers</text>
+      <text x="420" y="226" fill="var(--text)">null</text>
+      <text x="468" y="226" fill="var(--text-2)">answers 404</text>
+    </g>
+  </g>
+</svg>
+<svg class="figure-narrow" viewBox="0 0 340 860" role="img" aria-label="keyset deploy reads key sets from stdin, plans each against the live Worker and the wrangler target's secret list, stops on any REFUSE or without --apply, and otherwise deploys the new secrets with wrangler and checks every set's advertisement and a real recovery." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="deploy-n-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="deploy-n-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="20" y="20" width="300" height="820" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- arrows -->
+    <path d="M102,120 V152" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#deploy-n-arrow-moss)"/>
+    <path d="M102,232 V264" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#deploy-n-arrow-moss)"/>
+    <path d="M102,344 V376" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#deploy-n-arrow-moss)"/>
+    <path d="M102,456 V488" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#deploy-n-arrow-moss)"/>
+    <path d="M168,304 H200" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#deploy-n-arrow-muted)"/>
+    <!-- nodes -->
+    <rect x="36" y="40" width="132" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="102" y="66" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">STDIN</text>
+    <text x="102" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">key sets</text>
+    <text x="102" y="98" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">set | null</text>
+    <rect x="36" y="152" width="132" height="80" rx="6" fill="var(--accent)"/>
+    <text x="102" y="178" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">PLAN</text>
+    <text x="102" y="194" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">each set</text>
+    <text x="102" y="210" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">vs live Worker</text>
+    <rect x="36" y="264" width="132" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="102" y="290" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">GATE</text>
+    <text x="102" y="306" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">no REFUSE</text>
+    <text x="102" y="322" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">and --apply</text>
+    <rect x="36" y="376" width="132" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="102" y="402" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">WRANGLER</text>
+    <text x="102" y="418" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">deploy</text>
+    <text x="102" y="434" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">--new secrets</text>
+    <rect x="36" y="488" width="132" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="102" y="514" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CHECK</text>
+    <text x="102" y="530" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">every set</text>
+    <text x="102" y="546" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">adv · rec</text>
+    <!-- stop -->
+    <rect x="200" y="256" width="104" height="108" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="252" y="280" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">STOP</text>
+    <text x="252" y="302" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text)">any REFUSE</text>
+    <text x="252" y="314" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">exit 1</text>
+    <text x="252" y="336" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text)">no --apply</text>
+    <text x="252" y="348" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">exit 0, plan</text>
+    <!-- verdicts -->
+    <rect x="36" y="604" width="268" height="108" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <rect x="44" y="598" width="60" height="12" fill="var(--bg)"/>
+    <text x="74" y="607" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">VERDICTS</text>
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="9">
+      <text x="48" y="628" fill="var(--text)">ok</text>
+      <text x="128" y="628" fill="var(--text-2)">live and unchanged</text>
+      <text x="48" y="642" fill="var(--text)">new</text>
+      <text x="128" y="642" fill="var(--text-2)">absent, named by --new</text>
+      <text x="48" y="656" fill="var(--text)">revoked</text>
+      <text x="128" y="656" fill="var(--text-2)">null, answers 404</text>
+      <text x="48" y="670" fill="var(--text)">REVOKED-LIVE</text>
+      <text x="128" y="670" fill="var(--text-2)">null, yet served</text>
+      <text x="48" y="684" fill="var(--text)">drift</text>
+      <text x="128" y="684" fill="var(--text-2)">live, not in stdin</text>
+      <text x="48" y="698" fill="var(--text)">REFUSE</text>
+      <text x="128" y="698" fill="var(--text-2)">--url ≠ secret list, …</text>
+    </g>
+    <!-- checks -->
+    <rect x="36" y="740" width="268" height="80" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <rect x="44" y="734" width="56" height="12" fill="var(--bg)"/>
+    <text x="72" y="743" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">CHECKED</text>
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="9">
+      <text x="48" y="764" fill="var(--text)">adv</text>
+      <text x="96" y="764" fill="var(--text-2)">signed by the set's key</text>
+      <text x="48" y="778" fill="var(--text)">keys</text>
+      <text x="96" y="778" fill="var(--text-2)">exactly the set's</text>
+      <text x="48" y="792" fill="var(--text)">rec</text>
+      <text x="96" y="792" fill="var(--text-2)">a real exchange answers</text>
+      <text x="48" y="806" fill="var(--text)">null</text>
+      <text x="96" y="806" fill="var(--text-2)">answers 404</text>
+    </g>
   </g>
 </svg>
