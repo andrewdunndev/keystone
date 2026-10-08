@@ -1,8 +1,118 @@
-<svg viewBox="0 0 660 240" role="img" aria-label="Placeholder for the figure on alerts." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+<svg class="figure-wide" viewBox="0 0 660 288" role="img" aria-label="After a successful rec has answered, a source not seen before mails one alert per set per hour through send_email; new sources met during that hour, or after a failed send, are held and mailed in the hourly digest." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="alerts-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="alerts-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
   <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
-    <rect x="20" y="20" width="620" height="200" rx="6" fill="var(--bg)" stroke="var(--border)"/>
-    <rect x="180" y="84" width="300" height="72" rx="6" fill="var(--surface)" stroke="var(--border)" stroke-dasharray="4 4"/>
-    <text x="330" y="112" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="12" letter-spacing="0.08em" fill="var(--text-muted)">FIGURE 12</text>
-    <text x="330" y="138" text-anchor="middle" font-size="20" font-weight="600" fill="var(--text-2)">alerts</text>
+    <rect x="20" y="20" width="620" height="248" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- arrows -->
+    <path d="M144,84 H196" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#alerts-arrow-moss)"/>
+    <path d="M304,76 H516" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#alerts-arrow-moss)"/>
+    <path d="M304,108 H410 V172" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#alerts-arrow-muted)"/>
+    <path d="M552,124 V148 H440 V172" fill="none" stroke="var(--text-2)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#alerts-arrow-muted)"/>
+    <path d="M464,212 H516" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#alerts-arrow-muted)"/>
+    <path d="M90,124 V172" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#alerts-arrow-muted)"/>
+    <path d="M250,124 V172" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#alerts-arrow-muted)"/>
+    <!-- labels -->
+    <rect x="152" y="64" width="36" height="12" fill="var(--bg)"/>
+    <text x="170" y="73" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">after</text>
+    <rect x="364" y="56" width="92" height="12" fill="var(--bg)"/>
+    <text x="410" y="65" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">first this hour</text>
+    <rect x="326" y="88" width="60" height="12" fill="var(--bg)"/>
+    <text x="356" y="97" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">meanwhile</text>
+    <rect x="464" y="128" width="64" height="12" fill="var(--bg)"/>
+    <text x="496" y="137" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">send fails</text>
+    <rect x="98" y="142" width="44" height="12" fill="var(--bg)"/>
+    <text x="120" y="151" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">answer</text>
+    <rect x="258" y="142" width="32" height="12" fill="var(--bg)"/>
+    <text x="274" y="151" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">seen</text>
+    <!-- nodes -->
+    <rect x="36" y="44" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="90" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">WORKER</text>
+    <text x="90" y="86" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">rec succeeds</text>
+    <text x="90" y="102" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">logs the source</text>
+    <rect x="196" y="44" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="250" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">NEW SOURCE?</text>
+    <text x="250" y="86" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">/24 or /48</text>
+    <text x="250" y="102" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">+ ASN, country</text>
+    <rect x="516" y="44" width="108" height="80" rx="6" fill="var(--accent)"/>
+    <text x="570" y="70" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">SEND_EMAIL</text>
+    <text x="570" y="86" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">one alert</text>
+    <text x="570" y="102" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">per set per hour</text>
+    <rect x="36" y="172" width="108" height="80" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text x="90" y="198" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DISK HOST</text>
+    <text x="90" y="214" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">unlocks</text>
+    <text x="90" y="230" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">never waits</text>
+    <rect x="196" y="172" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="250" y="198" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">SEEN BEFORE</text>
+    <text x="250" y="214" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">no mail</text>
+    <text x="250" y="230" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">nothing held</text>
+    <rect x="356" y="172" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="410" y="198" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">KV</text>
+    <text x="410" y="214" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">held</text>
+    <text x="410" y="230" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">up to 5 an hour</text>
+    <rect x="516" y="172" width="108" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="570" y="198" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">HOURLY CRON</text>
+    <text x="570" y="214" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">one digest</text>
+    <text x="570" y="230" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">send_email</text>
+  </g>
+</svg>
+<svg class="figure-narrow" viewBox="0 0 340 556" role="img" aria-label="After a successful rec has answered, a source not seen before mails one alert per set per hour through send_email; new sources met during that hour, or after a failed send, are held and mailed in the hourly digest." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="alerts-n-arrow-moss" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--accent)"/></marker>
+    <marker id="alerts-n-arrow-muted" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+  </defs>
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="20" y="20" width="300" height="516" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <!-- arrows -->
+    <path d="M148,80 H192" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#alerts-n-arrow-muted)"/>
+    <path d="M92,120 V168" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#alerts-n-arrow-moss)"/>
+    <path d="M148,208 H192" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#alerts-n-arrow-muted)"/>
+    <path d="M72,248 V312" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#alerts-n-arrow-moss)"/>
+    <path d="M128,248 V288 H248 V312" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#alerts-n-arrow-muted)"/>
+    <path d="M148,352 H192" fill="none" stroke="var(--text-2)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#alerts-n-arrow-muted)"/>
+    <path d="M248,392 V440" fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#alerts-n-arrow-muted)"/>
+    <!-- labels -->
+    <rect x="148" y="60" width="44" height="12" fill="var(--bg)"/>
+    <text x="170" y="69" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">answer</text>
+    <rect x="100" y="138" width="36" height="12" fill="var(--bg)"/>
+    <text x="118" y="147" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">after</text>
+    <rect x="154" y="188" width="32" height="12" fill="var(--bg)"/>
+    <text x="170" y="197" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">seen</text>
+    <rect x="78" y="268" width="36" height="12" fill="var(--bg)"/>
+    <text x="96" y="277" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">first</text>
+    <rect x="170" y="268" width="60" height="12" fill="var(--bg)"/>
+    <text x="200" y="277" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">meanwhile</text>
+    <rect x="152" y="332" width="36" height="12" fill="var(--bg)"/>
+    <text x="170" y="341" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">fails</text>
+    <!-- nodes -->
+    <rect x="36" y="40" width="112" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="92" y="66" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">WORKER</text>
+    <text x="92" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">rec succeeds</text>
+    <text x="92" y="98" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">logs the source</text>
+    <rect x="192" y="40" width="112" height="80" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text x="248" y="66" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DISK HOST</text>
+    <text x="248" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">unlocks</text>
+    <text x="248" y="98" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">never waits</text>
+    <rect x="36" y="168" width="112" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="92" y="194" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">NEW SOURCE?</text>
+    <text x="92" y="210" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">/24 or /48</text>
+    <text x="92" y="226" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">+ ASN, country</text>
+    <rect x="192" y="168" width="112" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="248" y="194" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">SEEN BEFORE</text>
+    <text x="248" y="210" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">no mail</text>
+    <text x="248" y="226" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">nothing held</text>
+    <rect x="36" y="312" width="112" height="80" rx="6" fill="var(--accent)"/>
+    <text x="92" y="338" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--accent-contrast)" opacity="0.8">SEND_EMAIL</text>
+    <text x="92" y="354" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">one alert</text>
+    <text x="92" y="370" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--accent-contrast)" opacity="0.85">per set per hour</text>
+    <rect x="192" y="312" width="112" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="248" y="338" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">KV</text>
+    <text x="248" y="354" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">held</text>
+    <text x="248" y="370" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">up to 5 an hour</text>
+    <rect x="192" y="440" width="112" height="80" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="248" y="466" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">HOURLY CRON</text>
+    <text x="248" y="482" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">one digest</text>
+    <text x="248" y="498" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">send_email</text>
   </g>
 </svg>

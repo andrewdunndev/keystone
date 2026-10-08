@@ -108,7 +108,7 @@ import mark from '../../public/favicon.svg?raw';
 
   <section class="section">
     <h2 class="section-title">Trust</h2>
-    <div class="cat-explainer">
+    <div class="cat-explainer figure-pair">
       <Trust />
       <p>Whoever controls the Cloudflare account controls the keys: any Worker version deployed on it can read the secrets, and every version keeps its own copy. Secrets cannot be read back through the API, and the disks never hold keystone's keys.</p>
     </div>
@@ -116,7 +116,7 @@ import mark from '../../public/favicon.svg?raw';
 
   <section class="section">
     <h2 class="section-title">Alerts</h2>
-    <div class="cat-explainer">
+    <div class="cat-explainer figure-pair">
       <Alerts />
       <p>A successful <code>rec</code> from a new source, a /24 or /48 with its ASN and country, mails one alert per set per hour through <code>send_email</code>; sources met meanwhile wait for the hourly digest. A failed alert never changes the unlock.</p>
     </div>
@@ -124,7 +124,7 @@ import mark from '../../public/favicon.svg?raw';
 
   <section class="section">
     <h2 class="section-title">Failure</h2>
-    <div class="cat-explainer">
+    <div class="cat-explainer figure-pair">
       <Failure />
       <p>If keystone is unreachable or the Free plan's daily quota is spent, clevis fails and the host asks for its passphrase. Revoking a stolen disk's set stops it unlocking from then on. Losing keystone costs a passphrase per disk at boot, never data.</p>
     </div>
