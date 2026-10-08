@@ -1,0 +1,37 @@
+# Copy to deploy/wrangler.toml, which git ignores, and set the route to your hostname.
+# Key sets are Worker secrets named TANG_KEY_<NAME>; none belong in this file.
+name = "keystone"
+main = "../src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "tang.example.org", custom_domain = true }]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+# Unlock alerts are off unless all four of the following are bound.
+
+# Seen sources, cooldowns and held sources. Create the id with: npx wrangler kv namespace create UNLOCKS
+# [[kv_namespaces]]
+# binding = "UNLOCKS"
+# id = "<namespace id>"
+
+# Sends the alert through Email Routing; destination_address must be a verified destination.
+# [[send_email]]
+# name = "ALERT"
+# destination_address = "you@example.org"
+
+# ALERT_TO is the destination above; ALERT_FROM is an address on a zone with Email Routing enabled.
+# [vars]
+# ALERT_FROM = "keystone@example.org"
+# ALERT_TO = "you@example.org"
+
+# Hourly trigger that mails the digest of held sources.
+# [triggers]
+# crons = ["0 * * * *"]

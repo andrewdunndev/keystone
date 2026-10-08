@@ -5,4 +5,4 @@ test/tangd-fixture.json
 .dev.vars.*
 .env
 .env.*
-deploy/
+deploy/wrangler.toml
