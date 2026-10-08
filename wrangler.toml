@@ -3,14 +3,6 @@ main = "src/index.js"
 compatibility_date = "2026-09-01"
 workers_dev = false
 
-# One secret per named key set (never in this file), written once and never changed; rotation is a new name:
-#   TANG_KEY_<NAME>  {"keys":[<signing key>, <ECMR exchange key>]}, private keys included, on one curve:
-#                    P-521 with an ES512 signing key, or P-256 with ES256
-# <NAME> is the route segment upper-cased, "-" -> "_": /server-1/... reads TANG_KEY_SERVER_1.
-# Dev: .dev.vars. Deploy: keyset deploy.
-
-# Unlock alerts (all optional; see README): UNLOCKS KV binding, ALERT send_email binding, ALERT_FROM and ALERT_TO vars, and an hourly cron trigger for the held-source digest.
-
 [observability]
 enabled = true
 head_sampling_rate = 1
