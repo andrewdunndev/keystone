@@ -35,5 +35,5 @@ bash scripts/interop.sh        # needs clevis; `luks` as root in a throwaway con
 
 `just test`, `just mutate` and `just interop` wrap these; `mise.toml` pins node and just. CI (`.gitlab-ci.yml`, Fedora)
 runs `test` (npm test, npm run mutate) and `interop` on merge requests, the default branch and tags, beside the
-estate catalog's `reference-check`, which fails on any unwaived reference finding; `.deviations.yaml` holds the
-waivers. On a tag, the catalog's `release-create` publishes the tag's `CHANGELOG.md` entry as the GitLab release.
+`reference-check` component, which fails on any unwaived reference finding; `.deviations.yaml` holds the
+waivers. On a tag, the `release-create` component publishes the tag's `CHANGELOG.md` entry as the GitLab release.
