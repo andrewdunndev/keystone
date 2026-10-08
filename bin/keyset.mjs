@@ -21,7 +21,7 @@ const dec = new TextDecoder();
 const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 
 // stdin is closed, so wrangler's confirmations take their non-interactive answer instead of prompting.
-export const runWrangler = (args, { capture = false, onSpawn } = {}) => new Promise((resolve, reject) => {
+const runWrangler = (args, { capture = false, onSpawn } = {}) => new Promise((resolve, reject) => {
   const p = spawn(WRANGLER, args, { stdio: ['ignore', capture ? 'pipe' : 'inherit', 'inherit'] });
   onSpawn?.(p);
   let stdout = '';
@@ -63,7 +63,7 @@ const base = (url) => url.replace(/\/+$/, '');
 
 // One set against the live Worker: its adv is signed by the set's signing key and advertises exactly the set's public
 // keys, and a recovery of a fresh point R = rG answers with x(rS), S the set's exchange key. Throws on any mismatch.
-export async function check(url, name, set, { fetch }) {
+async function check(url, name, set, { fetch }) {
   const res = await fetch(`${base(url)}/${name}/adv`);
   if (res.status !== 200) throw new Error(`adv ${name}: HTTP ${res.status}`);
   const jws = await res.json();
