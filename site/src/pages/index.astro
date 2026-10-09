@@ -1,16 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Overview from '../figures/01-overview.astro';
 import Failure from '../figures/13-failure.astro';
 import mark from '../../public/favicon.svg?raw';
 ---
-<Layout title="keystone" description="keystone unlocks an encrypted disk at startup with no typed passphrase, and keeps a stolen disk locked once its key is switched off.">
+<Layout title="keystone" description="keystone unlocks an encrypted disk at startup with no typed passphrase. If the computer is stolen, delete its key set before it next starts, and the disk stays locked.">
   <header class="hero">
     <div class="hero-mark" aria-hidden="true" set:html={mark} />
     <div>
       <p class="hero-eyebrow">disk unlock server</p>
       <h1 class="hero-title">keystone</h1>
-      <p class="hero-lede">keystone lets a computer with an encrypted disk unlock it at startup with no one typing a passphrase. At boot the computer asks keystone, over the internet, for help opening the disk. If the computer is stolen, you switch its key off and the disk stays locked.</p>
+      <p class="hero-lede">keystone lets a computer with an encrypted disk unlock it at startup with no one typing a passphrase. At boot the computer gets its part of the key from keystone over the internet. If the computer is stolen, delete its key set before it next starts, and the disk stays locked.</p>
       <div class="hero-cta">
         <a class="cta-primary" href="/setup/">Install</a>
         <a class="cta-secondary" href="/architecture/">Architecture</a>
@@ -21,7 +20,8 @@ import mark from '../../public/favicon.svg?raw';
   <section class="section">
     <h2 class="section-title" id="what-it-is">What it is</h2>
     <p class="section-prose">An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
-    <p class="section-prose">keystone answers for the computer. It never sees the disk's key and holds nothing that opens the disk alone: the unlock needs keystone's answer together with what is stored on the disk. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
+    <p class="section-prose">keystone supplies the missing half of a second key the computer keeps on the disk, so the disk opens without the passphrase. It never sees the passphrase or anything that opens the disk by itself. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
+    <p class="section-prose">You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If a computer is stolen, delete its key set. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk.</p>
   </section>
 
   <section class="section">
@@ -35,21 +35,17 @@ import mark from '../../public/favicon.svg?raw';
       <div class="tile">
         <p class="tile-eyebrow">2 · boot</p>
         <h3 class="tile-headline">Unlock at startup</h3>
-        <p class="tile-prose">At startup the initramfs, the small system that runs before the disk opens, asks keystone for help. They speak Tang, an unlock protocol. keystone is a Cloudflare Worker, a small program Cloudflare runs.</p>
+        <p class="tile-prose">At startup the initramfs, the small system that runs before the disk opens, asks keystone for its part of the key. With keystone's answer and what the disk stores, the disk opens.</p>
       </div>
       <div class="tile">
-        <p class="tile-eyebrow">3 · revoke</p>
-        <h3 class="tile-headline">Switch off a stolen disk</h3>
+        <p class="tile-eyebrow">3 · delete</p>
+        <h3 class="tile-headline">Delete a stolen disk's key set</h3>
         <p class="tile-prose">If a computer or disk is stolen, delete its key set. keystone stops answering for that set, so the disk stays locked to whoever took it.</p>
       </div>
     </div>
     <div class="cat-explainer figure-pair">
-      <Overview />
-      <p>The initramfs reaches keystone through Cloudflare; each key set lives in its own secret.</p>
-    </div>
-    <div class="cat-explainer figure-pair">
       <Failure />
-      <p>If keystone cannot answer, the disk falls back to its passphrase and no data is lost.</p>
+      <p>If keystone is offline or past its daily request limit, the disk asks for its passphrase; once a stolen disk's key set is deleted, keystone refuses it and the disk stays locked.</p>
     </div>
   </section>
 
@@ -57,11 +53,12 @@ import mark from '../../public/favicon.svg?raw';
     <h2 class="section-title" id="what-you-need">What you need</h2>
     <ul class="section-prose">
       <li>A Linux computer with a LUKS disk and clevis installed.</li>
-      <li>A Cloudflare account with a domain on Cloudflare DNS. The Free plan runs key sets on the P-256 curve; the default curve needs Workers Paid.</li>
-      <li>An offline place to keep key sets, such as a password manager.</li>
+      <li>A Cloudflare account and a domain managed there. keystone runs as a Cloudflare Worker, Cloudflare's name for such a program. The free plan works with the smaller key type (<code>--curve P-256</code>); the default key type needs the paid Workers plan.</li>
+      <li>A computer with Node.js, git, jq and jose to create and deploy key sets.</li>
+      <li>An offline place to keep key sets, such as pass on a machine you control; they are as sensitive as the disks.</li>
       <li>Each disk's passphrase, kept for the day keystone cannot answer.</li>
     </ul>
-    <p class="section-prose">Cloudflare, and anyone who can deploy to the account, can read the keys. <a href="/architecture/">Architecture</a> shows how to split trust across two servers.</p>
+    <p class="section-prose">Cloudflare, and anyone who can change the keystone program in your account, can read the key sets. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
   </section>
 
   <section class="section">
@@ -69,14 +66,14 @@ import mark from '../../public/favicon.svg?raw';
     <div class="tile-grid">
       <div class="tile">
         <h3 class="tile-headline"><a href="/architecture/">Architecture</a></h3>
-        <p class="tile-prose">Each mechanism in figures, from binding a disk to revoking a set.</p>
+        <p class="tile-prose">Each mechanism in figures, from binding a disk to deleting a key set.</p>
       </div>
       <div class="tile">
         <h3 class="tile-headline"><a href="/setup/">Install</a></h3>
         <p class="tile-prose">The commands to deploy keystone and bind a first disk.</p>
       </div>
       <div class="tile">
-        <h3 class="tile-headline"><a href="https://gitlab.com/dunn.dev/keystone">Source</a></h3>
+        <h3 class="tile-headline"><a href="https://gitlab.com/dunn.dev/keystone" rel="external">Source</a></h3>
         <p class="tile-prose">Shared as-is: no roadmap, no support promise.</p>
       </div>
     </div>

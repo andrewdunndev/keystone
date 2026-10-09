@@ -22,7 +22,7 @@ import Failure from '../../figures/13-failure.astro';
   </header>
 
   <section class="section">
-    <h2 class="section-title">Overview</h2>
+    <h2 class="section-title" id="overview">Overview</h2>
     <div class="cat-explainer figure-pair">
       <Overview />
     </div>
@@ -30,7 +30,7 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">Binding</h2>
+    <h2 class="section-title" id="binding">Binding</h2>
     <div class="cat-explainer figure-pair">
       <Binding />
     </div>
@@ -38,7 +38,7 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">Unlock</h2>
+    <h2 class="section-title" id="unlock">Unlock</h2>
     <div class="cat-explainer figure-pair">
       <Unlock />
     </div>
@@ -46,7 +46,7 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">On the wire</h2>
+    <h2 class="section-title" id="wire">On the wire</h2>
     <div class="cat-explainer figure-pair">
       <Wire />
     </div>
@@ -54,15 +54,15 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">A key set</h2>
+    <h2 class="section-title" id="key-set">A key set</h2>
     <div class="cat-explainer figure-pair">
       <KeySet />
     </div>
-    <p class="section-prose">The set <code>server-1</code> lives in the Worker secret <code>TANG_KEY_SERVER_1</code>: the name upper-cased, with <code>-</code> turned into <code>_</code>. Its routes are <code>/server-1/adv</code>, <code>/server-1/adv/&lt;thp&gt;</code>, which answers only for the matching signing thumbprint, and <code>POST /server-1/rec/&lt;kid&gt;</code>. The signing key (ES512 on P-521) signs the advertisement; the exchange key, labelled ECMR for the McCallum-Relyea exchange above, answers rec. Sets share no keys, so revoking one leaves the others serving.</p>
+    <p class="section-prose">The set <code>server-1</code> lives in the Worker secret <code>TANG_KEY_SERVER_1</code>: the name upper-cased, with <code>-</code> turned into <code>_</code>. Its routes are <code>/server-1/adv</code>, <code>/server-1/adv/&lt;thp&gt;</code>, which answers only for the matching signing thumbprint, and <code>POST /server-1/rec/&lt;kid&gt;</code>. The signing key (ES512 on P-521, ES256 on P-256) signs the advertisement; the exchange key, labelled ECMR for the McCallum-Relyea exchange above, answers rec. Sets share no keys, so revoking one leaves the others serving.</p>
   </section>
 
   <section class="section">
-    <h2 class="section-title">Lifecycle</h2>
+    <h2 class="section-title" id="lifecycle">Lifecycle</h2>
     <div class="cat-explainer figure-pair">
       <Lifecycle />
     </div>
@@ -70,7 +70,7 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">Rotation</h2>
+    <h2 class="section-title" id="rotation">Rotation</h2>
     <div class="cat-explainer figure-pair">
       <Rotation />
     </div>
@@ -78,7 +78,7 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">Rollback</h2>
+    <h2 class="section-title" id="rollback">Rollback</h2>
     <div class="cat-explainer figure-pair">
       <Rollback />
     </div>
@@ -86,7 +86,7 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">keyset deploy</h2>
+    <h2 class="section-title" id="deploy">keyset deploy</h2>
     <div class="cat-explainer figure-pair">
       <Deploy />
     </div>
@@ -94,7 +94,7 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">Curves</h2>
+    <h2 class="section-title" id="curves">Curves</h2>
     <div class="cat-explainer figure-pair">
       <Curves />
     </div>
@@ -102,7 +102,7 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">Trust</h2>
+    <h2 class="section-title" id="trust">Trust</h2>
     <div class="cat-explainer figure-pair">
       <Trust />
     </div>
@@ -110,18 +110,18 @@ import Failure from '../../figures/13-failure.astro';
   </section>
 
   <section class="section">
-    <h2 class="section-title">Alerts</h2>
+    <h2 class="section-title" id="alerts">Alerts</h2>
     <div class="cat-explainer figure-pair">
       <Alerts />
     </div>
-    <p class="section-prose">When alerts are set up, each successful rec asks whether its source, a /24 or /48 network plus ASN and country, is new for the set. The first new source in an hour sends one alert; up to five more wait in KV for the hourly digest, and the host never waits on the mail. The kid is public, so an alert flags a request, not an unlock; the Workers log stays the full record.</p>
+    <p class="section-prose">When alerts are set up, each successful rec asks whether its source, a /24 or /48 network plus ASN and country, is new for the set. The first new source in an hour sends one alert; up to five more wait in KV for the hourly digest, and the host never waits on the mail. The kid is public, so an alert shows a request was made; it does not prove an unlock. The Workers log stays the full record.</p>
   </section>
 
   <section class="section">
-    <h2 class="section-title">Failure</h2>
+    <h2 class="section-title" id="failure">Failure</h2>
     <div class="cat-explainer figure-pair">
       <Failure />
     </div>
-    <p class="section-prose">If keystone is unreachable or the day's request quota is spent, clevis gets no key and LUKS asks for the passphrase, so losing keystone costs a typed passphrase per disk, never data, as long as each disk keeps its passphrase slot. If a disk is stolen, revoking its set makes rec answer 404, and the disk stays locked from then on.</p>
+    <p class="section-prose">If keystone is unreachable or the day's request quota is spent, clevis gets no key and LUKS asks for the passphrase, so losing keystone costs a typed passphrase per disk; the data is untouched as long as each disk keeps its passphrase slot. If a disk is stolen, revoking its set makes rec answer 404, and the disk stays locked from then on.</p>
   </section>
 </Layout>
