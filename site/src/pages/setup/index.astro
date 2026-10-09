@@ -12,9 +12,9 @@ const html = setup.rendered.html
   .replace(/<h1[^>]*>.*?<\/h1>/s, '')
   .replace(/href="(?![a-z]+:|#|\/)([^"]*)"/gi, (_, url) => `href="${new URL(url, DOCS).href}"`);
 ---
-<Layout title="Setup" description="Install keystone, bind a first disk, rotate, revoke and set up alerts.">
+<Layout title="Install" description="Install keystone, bind a first disk, rotate, revoke and set up alerts.">
   <header class="page-header">
-    <h1 class="page-title">Setup</h1>
+    <h1 class="page-title">Install</h1>
   </header>
   <div class="cat-explainer figure-pair">
     <Quickstart />

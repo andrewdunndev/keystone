@@ -12,7 +12,7 @@ Shared as-is: no roadmap, no support promise. Report security problems as [SECUR
 
 A `tangd` on your LAN suits hosts that can reach one. keystone is for hosts that cannot.
 
-The design, in figures, is at [keystone.dunn.dev](https://keystone.dunn.dev).
+The design, in figures, is at [keystone.dunn.dev/architecture/](https://keystone.dunn.dev/architecture/).
 
 ## Security model
 
