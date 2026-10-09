@@ -12,3 +12,4 @@ html { color-scheme: light; }
 .cat-explainer { width: 100%; }
 .cat-explainer svg.figure-wide { width: 100%; }
 .footer-inner { padding: 0 var(--space-5); }
+.section-prose { max-width: none; }
