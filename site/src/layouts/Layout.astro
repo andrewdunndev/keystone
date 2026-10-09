@@ -9,8 +9,9 @@ const { title, description } = Astro.props;
 
 const pageTitle = title === 'keystone' ? 'keystone' : `${title} · keystone`;
 const nav = [
-  { href: '/', label: 'Design' },
-  { href: '/setup/', label: 'Setup' },
+  { href: '/', label: 'Home' },
+  { href: '/architecture/', label: 'Architecture' },
+  { href: '/setup/', label: 'Install' },
   { href: 'https://gitlab.com/dunn.dev/keystone', label: 'Source' },
 ];
 const path = Astro.url.pathname;
