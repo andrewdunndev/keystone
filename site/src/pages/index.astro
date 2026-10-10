@@ -40,7 +40,7 @@ import mark from '../../public/favicon.svg?raw';
       <div class="tile">
         <p class="tile-eyebrow">3 · delete</p>
         <h3 class="tile-headline">Delete a stolen disk's key set</h3>
-        <p class="tile-prose">If a computer or disk is stolen, delete its key set. keystone stops answering for that set, so the disk stays locked to whoever took it.</p>
+        <p class="tile-prose">If a computer or disk is stolen, delete its key set before it next starts. keystone then stops answering for that set, and the disk stays locked to whoever took it.</p>
       </div>
     </div>
     <div class="cat-explainer figure-pair">
@@ -52,7 +52,7 @@ import mark from '../../public/favicon.svg?raw';
   <section class="section">
     <h2 class="section-title" id="secrets">Where the secrets are</h2>
     <p class="section-prose">keystone never receives the disk's passphrase or its second key. The LUKS header keeps a value that gives the second key only with keystone's private key.</p>
-    <p class="section-prose">keystone keeps each key set's private keys as one secret in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by the set's exchange key, and the computer removes the random number to get the second key. keystone alone holds nothing that opens a disk. It answers anyone who asks, so deleting the key set stops a thief.</p>
+    <p class="section-prose">keystone keeps each key set's private keys as one secret in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by the set's exchange key, and the computer removes the random number to get the second key. keystone alone holds nothing that opens a disk. It answers anyone who asks, and its alert comes after an unlock, so a thief who starts the computer before you delete the key set gets in.</p>
     <p class="section-prose">Cloudflare, and anyone who can deploy keystone in your account, can read the key sets. With the disk or a copy of its header, a copied key set opens it even after a delete. <a href="/architecture/#rollback">Rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
   </section>
 
