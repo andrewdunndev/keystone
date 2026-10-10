@@ -20,7 +20,7 @@ import mark from '../../public/favicon.svg?raw';
   <section class="section">
     <h2 class="section-title" id="what-it-is">What it is</h2>
     <p class="section-prose">An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
-    <p class="section-prose">keystone supplies the missing half of a second key the computer keeps on the disk, so the disk opens without the passphrase. It never sees the passphrase or anything that opens the disk by itself. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
+    <p class="section-prose">keystone supplies the <a href="#secrets">missing half</a> of a second key the computer keeps on the disk, so the disk opens without the passphrase. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
     <p class="section-prose">You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If a computer is stolen, delete its key set. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk.</p>
   </section>
 
@@ -40,7 +40,7 @@ import mark from '../../public/favicon.svg?raw';
       <div class="tile">
         <p class="tile-eyebrow">3 · delete</p>
         <h3 class="tile-headline">Delete a stolen disk's key set</h3>
-        <p class="tile-prose">If a computer or disk is stolen, delete its key set. keystone stops answering for that set, so the disk stays locked to whoever took it.</p>
+        <p class="tile-prose">If a computer or disk is stolen, delete its key set before it next starts. keystone then stops answering for that set, and the disk stays locked to whoever took it.</p>
       </div>
     </div>
     <div class="cat-explainer figure-pair">
@@ -50,15 +50,21 @@ import mark from '../../public/favicon.svg?raw';
   </section>
 
   <section class="section">
+    <h2 class="section-title" id="secrets">Where the secrets are</h2>
+    <p class="section-prose">keystone never receives the disk's passphrase or its second key. The LUKS header keeps a value that gives the second key only with keystone's private key.</p>
+    <p class="section-prose">keystone keeps each key set's private keys as one secret in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by the set's exchange key, and the computer removes the random number to get the second key. keystone alone holds nothing that opens a disk. It answers anyone who asks, and its alert comes after an unlock, so a thief who starts the computer before you delete the key set gets in.</p>
+    <p class="section-prose">Cloudflare, and anyone who can deploy keystone in your account, can read the key sets. With the disk or a copy of its header, a copied key set opens it even after a delete. <a href="/architecture/#rollback">Rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
+  </section>
+
+  <section class="section">
     <h2 class="section-title" id="what-you-need">What you need</h2>
     <ul class="section-prose">
       <li>A Linux computer with a LUKS disk and clevis installed.</li>
       <li>A Cloudflare account and a domain managed there. keystone runs as a Cloudflare Worker, Cloudflare's name for such a program. The free plan works with the smaller key type (<code>--curve P-256</code>); the default key type needs the paid Workers plan.</li>
       <li>A computer with Node.js, git, jq and jose to create and deploy key sets.</li>
-      <li>An offline place to keep key sets, such as pass on a machine you control; they are as sensitive as the disks.</li>
+      <li>An offline place to keep key sets, such as pass on a machine you control.</li>
       <li>Each disk's passphrase, kept for the day keystone cannot answer.</li>
     </ul>
-    <p class="section-prose">Cloudflare, and anyone who can change the keystone program in your account, can read the key sets. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
   </section>
 
   <section class="section">
