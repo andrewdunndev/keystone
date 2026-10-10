@@ -20,7 +20,7 @@ import mark from '../../public/favicon.svg?raw';
   <section class="section">
     <h2 class="section-title" id="what-it-is">What it is</h2>
     <p class="section-prose">An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
-    <p class="section-prose">keystone supplies the missing half of a second key the computer keeps on the disk, so the disk opens without the passphrase. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
+    <p class="section-prose">keystone supplies the <a href="#secrets">missing half</a> of a second key the computer keeps on the disk, so the disk opens without the passphrase. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
     <p class="section-prose">You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If a computer is stolen, delete its key set. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk.</p>
   </section>
 
@@ -51,10 +51,9 @@ import mark from '../../public/favicon.svg?raw';
 
   <section class="section">
     <h2 class="section-title" id="secrets">Where the secrets are</h2>
-    <p class="section-prose">The disk's passphrase and key never leave the computer. The LUKS header, the start of the disk where its unlock slots live, keeps a value that opens the clevis slot only with keystone's private key.</p>
-    <p class="section-prose">keystone holds two private keys per key set, as secrets in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by its private key, and the computer removes the random number to get the key. keystone alone holds nothing that opens a disk.</p>
-    <p class="section-prose">Each program version keeps its own copy of the secrets, so <a href="/architecture/#rollback">rolling back</a> past a delete serves the deleted key set again.</p>
-    <p class="section-prose">Cloudflare, and anyone who can deploy keystone in your account, can read the key sets. To open a disk they would also need the disk. Treat your offline copy of the key sets like the disks. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
+    <p class="section-prose">keystone never receives the disk's passphrase or its second key. The LUKS header keeps a value that gives the second key only with keystone's private key.</p>
+    <p class="section-prose">keystone keeps each key set's private keys as one secret in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by the set's exchange key, and the computer removes the random number to get the second key. keystone alone holds nothing that opens a disk. It answers anyone who asks, so deleting the key set stops a thief.</p>
+    <p class="section-prose">Cloudflare, and anyone who can deploy keystone in your account, can read the key sets. With the disk or a copy of its header, a copied key set opens it even after a delete. <a href="/architecture/#rollback">Rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
   </section>
 
   <section class="section">
