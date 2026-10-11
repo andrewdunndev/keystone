@@ -9,15 +9,12 @@ import { getEntry } from 'astro:content';
 const raw = (files: Record<string, unknown>) => Object.values(files) as string[];
 const count = (text: string, re: RegExp) => (text.match(re) ?? []).length;
 const figures = Object.keys(import.meta.glob('../figures/*.astro')).length;
-const tests = raw(import.meta.glob('../../../test/*.test.js', { query: '?raw', import: 'default', eager: true }))
-  .reduce((n, text) => n + count(text, /^\s*(?:test|it)\(/gm), 0);
 const releases = raw(import.meta.glob('../../../CHANGELOG.md', { query: '?raw', import: 'default', eager: true }))
   .reduce((n, text) => n + count(text, /^## v/gm), 0);
 const setup = await getEntry('docs', 'setup');
 const stats = [
   { num: figures, label: 'figures' },
   { num: count(setup?.body ?? '', /^## /gm), label: 'install sections' },
-  { num: tests, label: 'tests' },
   { num: releases, label: 'releases' },
 ];
 ---
