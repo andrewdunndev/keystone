@@ -41,7 +41,7 @@ import Failure from '../figures/13-failure.astro';
         <p class="tile-prose">If a computer or disk is stolen, delete its key set before it next starts. keystone then stops answering for that set, and the disk stays locked to whoever took it.</p>
       </div>
     </div>
-    <div class="cat-explainer figure-pair figure-full">
+    <div class="cat-explainer figure-pair">
       <Failure />
       <p>If keystone is offline or past its daily request limit, the disk asks for its passphrase; once a stolen disk's key set is deleted, keystone refuses it and the disk stays locked.</p>
     </div>
@@ -49,9 +49,11 @@ import Failure from '../figures/13-failure.astro';
 
   <section class="section" id="secrets">
     <SectionLabel label="Where the secrets are" />
-    <p class="section-prose">keystone never receives the disk's passphrase or its second key. The LUKS header keeps a value that gives the second key only with keystone's private key.</p>
-    <p class="section-prose">keystone keeps each key set's private keys as one secret in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by the set's exchange key, and the computer removes the random number to get the second key. keystone alone holds nothing that opens a disk. It answers anyone who asks, and its alert comes after an unlock, so a thief who starts the computer before you delete the key set gets in.</p>
-    <p class="section-prose">Cloudflare, and anyone who can deploy keystone in your account, can read the key sets. With the disk or a copy of its header, a copied key set opens it even after a delete. <a href="/architecture/#rollback">Rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
+    <div class="flow">
+      <p class="section-prose">keystone never receives the disk's passphrase or its second key. The LUKS header keeps a value that gives the second key only with keystone's private key.</p>
+      <p class="section-prose">keystone keeps each key set's private keys as one secret in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by the set's exchange key, and the computer removes the random number to get the second key. keystone alone holds nothing that opens a disk. It answers anyone who asks, and its alert comes after an unlock, so a thief who starts the computer before you delete the key set gets in.</p>
+      <p class="section-prose">Cloudflare, and anyone who can deploy keystone in your account, can read the key sets. With the disk or a copy of its header, a copied key set opens it even after a delete. <a href="/architecture/#rollback">Rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
+    </div>
   </section>
 
   <section class="section" id="what-you-need">
