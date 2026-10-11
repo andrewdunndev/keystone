@@ -155,6 +155,12 @@ mutant "a grant refused" "s/  if (why === 'served') return null;/  if (false) re
 mutant "token expiry not enforced" 's/  if (t.e <= Date.now()) return page(410/  if (false) return page(410/'
 mutant "token live at its expiry" 's/if (t.e <= Date.now())/if (t.e < Date.now())/'
 mutant "a POST from anywhere decides" "s/  if (request.headers.get('Origin') !== new URL(request.url).origin) return page(403/  if (false) return page(403/"
+mutant "any method decides" "s/if (request.method !== 'GET' \&\& request.method !== 'POST') return reply(405/if (false) return reply(405/"
+mutant "the approval page over http" "s|  if (new URL(request.url).protocol !== 'https:') return reply(403|  if (false) return reply(403|"
+mutant "links follow the request scheme and port" 's|base: `https://${new URL(request.url).hostname}`,|base: new URL(request.url).origin,|'
+mutant "a removed approver's link works" 's/if (!t || !set.approvers.includes(t.a)) return/if (!t) return/'
+mutant "an unexpected Gate answer admits" "/  if (!\['held', 'denied', 'capped'\].includes(why)) return closed/d"
+mutant "an origin refusal advises allow" "s/(refused === 'origin'/(false/"
 mutant "approve without the typed name" "s/ || (decision === 'approve' \&\& form.get('confirm') !== name)//"
 mutant "any content type read as a form" 's/ ? await readBody(request, 256) : null;/ \&\& false ? 0 : await readBody(request, 256);/'
 mutant "form body capped at 4 KiB" 's/await readBody(request, 256)/await readBody(request)/'
@@ -167,6 +173,7 @@ g=src/gate.js
 mutant "a denied origin reopened" "s/      if (p.state === 'denied') return 'denied';//" $g
 mutant "a held origin reopened" "s/      if (p.state === 'open') {/      if (false) {/" $g
 mutant "a grant never ends" "s/      if (p.grantUntil > now) return 'served';/      if (p.grantUntil) return 'served';/" $g
+mutant "a grant live at its end" 's/if (p.grantUntil > now)/if (p.grantUntil >= now)/' $g
 mutant "a grant of 11 minutes" 's/export const GRANT = 10 \* 60 \* 1000;/export const GRANT = 11 * 60 * 1000;/' $g
 mutant "a pending lives 13 hours" 's/export const PENDING_TTL = 12 \* 3600 \* 1000;/export const PENDING_TTL = 13 * 3600 * 1000;/' $g
 mutant "an expired pending kept" 's/    if (p?.expires > now) {/    if (p) {/' $g
@@ -174,30 +181,46 @@ mutant "4 open pendings per set" 's/const OPEN_MAX = 3;/const OPEN_MAX = 4;/' $g
 mutant "decided pendings count toward the cap" "s/.filter((\[, p\]) => p.state === 'open' \&\& p.expires > now)/.filter(([, p]) => p.expires > now)/" $g
 mutant "expired entries never pruned" 's/    await this.prune(now);//' $g
 mutant "a replaced pending decided" 's/const live = p?.pid === pid \&\& p.expires > now;/const live = !!p \&\& p.expires > now;/' $g
+mutant "an expired pending decided" 's/const live = p?.pid === pid \&\& p.expires > now;/const live = p?.pid === pid;/' $g
 mutant "deny on a denied pending" "s/!(p.state === 'open' || (decision === 'approve' \&\& p.state === 'denied'))/!(p.state === 'open' || p.state === 'denied')/" $g
 mutant "approve on an approved pending" "s/(decision === 'approve' \&\& p.state === 'denied')/(decision === 'approve')/" $g
 mutant "a replaced pending shown" 's/return { p: p?.pid === pid \&\& p.expires > now ? p : null, others };/return { p, others };/' $g
+mutant "an expired pending shown" 's/p?.pid === pid \&\& p.expires > now ? p : null/p?.pid === pid ? p : null/' $g
+mutant "the approve key is the policy key" "s/'keystone-approve-v1'/'keystone-policy-v1'/" $g
 mutant "other origins include this one" 's/.filter((o) => o.origin !== origin)/.filter(() => true)/' $g
 mutant "the token MAC ignores the set name" 's/enc.encode(`${name}.${payload}`)/enc.encode(payload)/' $g
 mutant "the token MAC unchecked" 's/if (!m || !(await crypto.subtle.verify(/if (!m || false \&\& !(await crypto.subtle.verify(/' $g
-mutant "held mail resent on every miss" 's/if (p.mail.sent.includes(false) \&\& p.mail.at + RETRY <= now)/if (true)/' $g
+mutant "held mail resent on every miss" 's/if (set.approvers.some((to) => due(p, to)) \&\& p.mail.at + RETRY <= now)/if (true)/' $g
+mutant "a fully mailed pending rewritten on a held miss" 's/if (set.approvers.some((to) => due(p, to)) \&\& /if (true \&\& /' $g
+mutant "an added approver never mailed" 's/set.approvers.some((to) => due(p, to))/Object.values(p.mail.sent).includes(false)/' $g
 mutant "a failed send retried after a minute" 's/const RETRY = 5 \* 60 \* 1000;/const RETRY = 60 * 1000;/' $g
 mutant "a retry does not restart the clock" '/          p.mail.at = now;/d' $g
-mutant "a delivered message never recorded" '/          q.mail.sent\[a\] = true;/d' $g
-mutant "a failed send escapes the Gate" 's/} catch (e) { console.error(`approval mail/} catch (e) { throw e; console.error(`approval mail/' $g
-mutant "one link for every approver" 's/{ o: origin, p: p.pid, e: p.expires, a })/{ o: origin, p: p.pid, e: p.expires, a: 0 })/' $g
+mutant "a delivered message never recorded" 's/if (ok) q.mail.sent\[to\] = true;/if (ok) ;/' $g
+mutant "a stale send marks the new pending" 's/if (q?.pid !== p.pid) continue;/if (!q) continue;/' $g
+mutant "failed sends retried forever" 's/ \&\& (p.mail.failed\[to\] ?? 0) < TRIES//' $g
+mutant "4 tries per approver" 's/^const TRIES = 3;/const TRIES = 4;/' $g
+mutant "a failed send keeps its unit" '/approval mail to ${to} for ${name} failed/{n;d;}' $g
+mutant "a failed notice keeps its unit" '/capped notice to ${to} for ${name} failed/{n;d;}' $g
+mutant "a refund refused at the cap" 's/if (d > 0 \&\& m.n >= MAIL_MAX)/if (m.n >= MAIL_MAX)/' $g
+mutant "a notice marker kept when none went out" 's/    else await s.delete(key);//' $g
+mutant "a failed send escapes the Gate" 's/console.error(`approval mail to/throw e; console.error(`approval mail to/' $g
+mutant "one link for every approver" 's/{ o: origin, p: p.pid, e: p.expires, a: to }/{ o: origin, p: p.pid, e: p.expires, a: set.approvers[0] }/' $g
+mutant "a mail link outlives its pending" 's/{ o: origin, p: p.pid, e: p.expires, a: to }/{ o: origin, p: p.pid, e: p.expires + 1e9, a: to }/' $g
+mutant "a notice link outlives its pending" 's/{ o: o.origin, p: o.pid, e: o.expires, a: to }/{ o: o.origin, p: o.pid, e: o.expires + 1e9, a: to }/' $g
 mutant "mail values not folded to ASCII" 's/^const ascii = (s) => String(s).replace(.*/const ascii = (s) => String(s);/' $g
 mutant "other origins left out of the mail" 's/(others.length ? /(false ? /' $g
 mutant "a notice on every capped miss" 's/      if (!((await s.get(`c:${name}`))?.expires > now)) await this.notice/      await this.notice/' $g
-mutant "notice links signed for approver 0" 's/{ o: o.origin, p: o.pid, e: o.expires, a })/{ o: o.origin, p: o.pid, e: o.expires, a: 0 })/' $g
+mutant "notice links signed for approver 0" 's/{ o: o.origin, p: o.pid, e: o.expires, a: to }/{ o: o.origin, p: o.pid, e: o.expires, a: set.approvers[0] }/' $g
 mutant "21 messages an hour" 's/const MAIL_MAX = 20;/const MAIL_MAX = 21;/' $g
 mutant "notices outside the cap" 's/      if (!(await this.budget(now))) break;//' $g
-mutant "approval mail outside the cap" 's/      if (p.mail.sent\[a\] || !(await this.budget(now))) continue;/      if (p.mail.sent[a]) continue;/' $g
+mutant "approval mail outside the cap" 's/      if (!due(p, to) || !(await this.budget(now))) continue;/      if (!due(p, to)) continue;/' $g
 o=src/origin.js
 mutant "allow match ignores the prefix length" 's/a.n >> BigInt(BITS\[c.v\] - c.len) === c.n >> BigInt(BITS\[c.v\] - c.len)/a.n === c.n/' $o
 mutant "allow matches across families" 's/(a, c) => a.v === c.v \&\& /(a, c) => /' $o
 mutant "AS13335 admitted" 's/ || asn === 13335//' $o
 mutant "240.0.0.0/4 address admitted" 's/ || (a.v === 4 \&\& a.n >= CLASS_E)//' $o
+mutant "240.0.0.0 admitted" 's/(a.v === 4 \&\& a.n >= CLASS_E) || !Number/(a.v === 4 \&\& a.n > CLASS_E) || !Number/' $o
+mutant "a missing ASN admitted" 's/ || !Number.isInteger(asn)//' $o
 mutant "no address admitted" 's/=> !a || /=> /' $o
 
 k=bin/keyset.mjs

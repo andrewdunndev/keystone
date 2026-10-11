@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import worker, { resetAlertState } from '../src/index.js';
 import { derivedKey, parseSet, policyTag } from '../src/jwk.js';
-import { format, parseCidr, parseIp } from '../src/origin.js';
+import { format, parseCidr, parseIp, unadmittable } from '../src/origin.js';
 import { Gate, approveKey, sign } from '../src/gate.js';
 
 const FX = JSON.parse(readFileSync(new URL('./tangd-fixture.json', import.meta.url)));
@@ -29,9 +29,9 @@ const alerting = () => ({ UNLOCKS: kv(), ALERT: { send: async (m) => { sent.push
 // A fresh isolate: alert state, logs and mail cleared.
 const fresh = (e) => { resetAlertState(); logged.length = 0; errors.length = 0; sent = []; return e; };
 
-async function rec(e, name, { ip, asn = 64500, headers = {}, body = fx.client, cf = {} } = {}) {
+async function rec(e, name, { ip, asn = 64500, headers = {}, body = fx.client, cf = {}, base = 'https://tang.example.org' } = {}) {
   const pending = [];
-  const req = new Request(`https://tang.example.org/${name}/rec/${fx.kid}`, {
+  const req = new Request(`${base}/${name}/rec/${fx.kid}`, {
     method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body),
     headers: { 'content-type': 'application/jwk+json', ...(ip && { 'CF-Connecting-IP': ip }), ...headers },
   });
@@ -248,7 +248,7 @@ const withClock = (fn) => async () => {
   try { await fn(); } finally { mock.timers.reset(); }
 };
 const pending = (e, origin, name = 'ask') => e.store.m.get(`p:${name}:${origin}`);
-const link = async (e, origin, { a = 0, name = 'ask', key = approveKey(fx.exch), p = pending(e, origin, name) } = {}) =>
+const link = async (e, origin, { a = APPROVERS[0], name = 'ask', key = approveKey(fx.exch), p = pending(e, origin, name) } = {}) =>
   `/${name}/approve/${await sign(key, name, { o: origin, p: p.pid, e: p.expires, a })}`;
 const open = (e, path, init = {}) => worker.fetch(new Request(`https://tang.example.org${path}`, init), e, { waitUntil() {} });
 const post = (e, path, form, headers = {}) => open(e, path, {
@@ -287,7 +287,7 @@ test('a miss on a set with approvers is held: one pending, a cached answer, and 
 test('approve needs the page\'s Origin, a small form body and the typed name; then rec is served for 10 minutes', withClock(async () => {
   const e = gateEnv();
   await rec(e, 'ask', { ip: HOME });
-  const url = await link(e, NET, { a: 1 });
+  const url = await link(e, NET, { a: APPROVERS[1] });
   for (const [form, headers, status] of [
     [{ decision: 'approve' }, {}, 400], [{ decision: 'approve', confirm: 'other' }, {}, 400], [{ decision: 'maybe' }, {}, 400],
     [{ decision: 'approve', confirm: 'ask' }, { origin: 'https://evil.example' }, 403], [{ decision: 'approve', confirm: 'ask' }, { origin: 'null' }, 403],
@@ -300,12 +300,12 @@ test('approve needs the page\'s Origin, a small form body and the typed name; th
   const r = await post(e, url, { decision: 'approve', confirm: 'ask' });
   assert.equal(r.status, 200);
   assert.match(await r.text(), /oncall@example\.org/);
-  assert.deepEqual(logged.at(-1), { event: 'approved', name: 'ask', origin: NET, approver: 1, ip: '203.0.113.50', asn: null });
+  assert.deepEqual(logged.at(-1), { event: 'approved', name: 'ask', origin: NET, approver: APPROVERS[1], ip: '203.0.113.50', asn: null });
   assert.equal((await rec(e, 'ask', { ip: '198.51.100.200' })).status, 200);
   mock.timers.tick(10 * 60e3 - 1);
   assert.equal((await rec(e, 'ask', { ip: HOME })).status, 200);
   const pid = pending(e, NET).pid;
-  mock.timers.tick(2);
+  mock.timers.tick(1);
   await refusedReply(await rec(e, 'ask', { ip: HOME }));
   assert.equal(pending(e, NET).state, 'open');
   assert.notEqual(pending(e, NET).pid, pid);
@@ -402,6 +402,7 @@ test('a probed miss never reaches the Gate, a throwing Gate fails closed, and a 
 
 const linkIn = (m) => m.raw.match(/^https:\/\/tang\.example\.org(\/[a-z0-9-]+\/approve\/\S+)\r$/m)?.[1];
 const mailTo = (e, fn) => { e.ALERT = { send: fn }; return e; };
+const payload = (path) => JSON.parse(Buffer.from(path.split('.')[1], 'base64url'));
 
 test('a held origin mails each approver once, in ASCII, with their own link, and no unlock alert', withClock(async () => {
   const e = gateEnv();
@@ -426,7 +427,7 @@ test('a held origin mails each approver once, in ASCII, with their own link, and
   await rec(e, 'ask', { ip: '203.0.113.9' });
   assert.match(sent.at(-1).raw, /1 other origin\(s\) are asking for this set:\r\n  198\.51\.100\.0\/24  AS64500 Ex\?mple\?\?Bcc/);
   assert.equal((await post(e, l1, { decision: 'approve', confirm: 'ask' })).status, 200);
-  assert.equal(logged.at(-1).approver, 1);
+  assert.equal(logged.at(-1).approver, APPROVERS[1]);
 }));
 
 test('concurrent misses send one message per approver; a failed send is logged and retried by a miss after 5 minutes', withClock(async () => {
@@ -440,7 +441,7 @@ test('concurrent misses send one message per approver; a failed send is logged a
   });
   await rec(f, 'ask', { ip: HOME });
   assert.deepEqual(tries, APPROVERS);
-  assert.deepEqual(errors, ['approval mail 0 for ask failed: E_DESTINATION_NOT_VERIFIED', 'approval mail 1 for ask failed: E_DESTINATION_NOT_VERIFIED']);
+  assert.deepEqual(errors, APPROVERS.map((to) => `approval mail to ${to} for ask failed: E_DESTINATION_NOT_VERIFIED`));
   mock.timers.tick(5 * 60e3 - 1);
   await rec(f, 'ask', { ip: HOME });
   assert.equal(tries.length, 2);
@@ -455,10 +456,13 @@ test('concurrent misses send one message per approver; a failed send is logged a
   mock.timers.tick(5 * 60e3);
   await rec(f, 'ask', { ip: HOME });
   assert.deepEqual(tries.slice(4), [APPROVERS[1]]);
+  const puts = [], put = f.store.put;
+  f.store.put = async (k, v) => { puts.push(k); return put(k, v); };
   mock.timers.tick(5 * 60e3);
   await rec(f, 'ask', { ip: HOME });
   assert.equal(tries.length, 5);
-  assert.deepEqual(pending(f, NET).mail.sent, [true, true]);
+  assert.deepEqual(puts, []);
+  assert.deepEqual(pending(f, NET).mail.sent, { [APPROVERS[0]]: true, [APPROVERS[1]]: true });
 }));
 
 test('a capped set mails each approver one notice listing the open origins with their own links', withClock(async () => {
@@ -476,9 +480,10 @@ test('a capped set mails each approver one notice listing the open origins with 
   for (const [a, m] of sent.entries()) {
     const links = [...m.raw.matchAll(/https:\/\/tang\.example\.org(\/ask\/approve\/\S+)\r/g)].map((x) => x[1]);
     assert.equal(links.length, 3);
+    for (const t of links.map(payload)) assert.deepEqual([t.e, t.a], [pending(e, t.o).expires, APPROVERS[a]]);
     assert.match(m.raw, /deny them all and revoke the set/);
     assert.equal((await post(e, links[a], { decision: 'deny' })).status, 200);
-    assert.equal(logged.at(-1).approver, a);
+    assert.equal(logged.at(-1).approver, APPROVERS[a]);
   }
 }));
 
@@ -491,9 +496,156 @@ test('at most 20 messages an hour across all sets, notices included; held mail g
   await rec(e, 'other', { ip: '203.0.113.1' });
   await rec(e, 'ask', { ip: '2001:db8::1' });
   assert.equal(sent.length, 20);
-  assert.ok(e.store.m.get('c:ask'));
+  assert.equal(e.store.m.get('c:ask'), undefined);
   mock.timers.tick(3600e3);
   await rec(e, 'other', { ip: '203.0.113.1' });
   assert.equal(sent.length, 25);
   assert.deepEqual(sent.slice(20).map((m) => m.to), five);
+  await rec(e, 'ask', { ip: '2001:db8::1' });
+  assert.deepEqual(subjects().slice(25), Array(5).fill('keystone: ask has 3 origins waiting; new ones are refused'));
+  assert.ok(e.store.m.get('c:ask'));
+}));
+
+test('a failed send is refunded to the hourly cap and tried 3 times per approver; a notice that never went out is retried', withClock(async () => {
+  const e = mailTo(gateEnv(), async () => { throw new Error('E_DESTINATION_NOT_VERIFIED'); });
+  await rec(e, 'ask', { ip: HOME });
+  for (let i = 0; i < 3; i++) {
+    mock.timers.tick(5 * 60e3);
+    await rec(e, 'ask', { ip: HOME });
+  }
+  assert.deepEqual(pending(e, NET).mail.failed, { [APPROVERS[0]]: 3, [APPROVERS[1]]: 3 });
+  assert.equal(errors.length, 8);
+  assert.deepEqual(errors.filter((x) => x.endsWith('given up')), APPROVERS.map((to) => `approval mail to ${to} for ask given up`));
+  assert.equal(e.store.m.get(`m:${T0 / 3600e3}`).n, 0);
+  for (const ip of ['203.0.113.1', '192.0.2.1']) await rec(e, 'ask', { ip });
+  errors.length = 0;
+  await rec(e, 'ask', { ip: '2001:db8::1' });
+  assert.equal(errors.length, 2);
+  assert.equal(e.store.m.get('c:ask'), undefined);
+  assert.equal(logged.filter((l) => l.event === 'capped').length, 0);
+  e.ALERT = { send: async (m) => { sent.push(m); } };
+  mock.timers.tick(5001);
+  await rec(e, 'ask', { ip: '2001:db8::1' });
+  assert.deepEqual(sent.map((m) => m.to), APPROVERS);
+  assert.equal(e.store.m.get(`m:${T0 / 3600e3}`).n, 2);
+  assert.ok(e.store.m.get('c:ask'));
+  const g = e.GATE.get();
+  for (let i = 2; i < 20; i++) assert.ok(await g.budget(T0));
+  assert.equal(await g.budget(T0), false);
+  await g.budget(T0, -1);
+  assert.ok(await g.budget(T0));
+}));
+
+test('240.0.0.0/4 is refused from its first address, as is AS13335 or a missing ASN; the alert says the origin is never admitted', async () => {
+  assert.equal(unadmittable(parseIp('240.0.0.0'), 64500), true);
+  assert.equal(unadmittable(parseIp('239.255.255.255'), 64500), false);
+  for (const asn of [13335, undefined, null, '64500', NaN]) assert.equal(unadmittable(parseIp('192.0.2.9'), asn), true, String(asn));
+  const e = fresh({ ...alerting(), TANG_KEY_PIN: setText({ allow: ['192.0.2.0/24'] }), TANG_KEY_PIN2: setText({ allow: ['192.0.2.0/24'] }) });
+  await refusedReply(await rec(e, 'pin', { ip: '240.0.0.0' }));
+  await refusedReply(await rec(e, 'pin', { ip: '192.0.2.9', cf: { asn: undefined } }));
+  assert.equal((await rec(e, 'pin', { ip: '192.0.2.9' })).status, 200);
+  await rec(e, 'pin2', { ip: '198.51.100.9' });
+  const [never, moved] = sent.map((m) => m.raw);
+  assert.match(never, /never admitted\. If this is the host, it must egress elsewhere\. If it is not the host/);
+  assert.doesNotMatch(never, /allow list/);
+  assert.match(moved, /If the host moved, add its prefix to the set's allow list\. If it is not the host/);
+});
+
+test('an approve token signed under the policy key is 404, and a policy tag is no approve-key MAC', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  assert.equal((await open(e, await link(e, NET, { key: derivedKey(fx.exch, 'keystone-policy-v1') }))).status, 404);
+  assert.equal((await open(e, await link(e, NET))).status, 200);
+  const bytes = new TextEncoder().encode(JSON.stringify([null, APPROVERS]));
+  const mac = Buffer.from(await crypto.subtle.sign('HMAC', await approveKey(fx.exch), bytes)).toString('base64url');
+  assert.notEqual(await policyTag(parseSet(setText({ approvers: APPROVERS }))), mac);
+}));
+
+test('an approve link takes GET and POST alone: PUT, DELETE, PATCH and HEAD are 405 and change nothing', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  const url = await link(e, NET), before = JSON.stringify([...e.store.m]);
+  const form = { body: 'decision=approve&confirm=ask', headers: { origin: 'https://tang.example.org', 'content-type': 'application/x-www-form-urlencoded' } };
+  for (const method of ['PUT', 'DELETE', 'PATCH']) assert.equal((await open(e, url, { method, ...form })).status, 405, method);
+  assert.equal((await open(e, url, { method: 'HEAD' })).status, 405);
+  assert.equal(JSON.stringify([...e.store.m]), before);
+}));
+
+test('the Gate holds a pending to its own expiry whatever a token says, and a mailed link expires with its pending', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  const p = pending(e, NET);
+  assert.deepEqual(sent.map((m) => payload(linkIn(m)).e), [p.expires, p.expires]);
+  const late = await link(e, NET, { p: { pid: p.pid, expires: p.expires + 3600e3 } });
+  assert.equal((await open(e, late)).status, 200);
+  mock.timers.tick(12 * 3600e3);
+  assert.equal((await open(e, late)).status, 409);
+  assert.equal((await post(e, late, { decision: 'approve', confirm: 'ask' })).status, 409);
+  assert.equal(pending(e, NET).state, 'open');
+}));
+
+test('a send that returns after its pending was replaced leaves the new pending unmarked', withClock(async () => {
+  let entered, finish, n = 0;
+  const inSend = new Promise((r) => { entered = r; }), hold = new Promise((r) => { finish = r; });
+  const e = mailTo(gateEnv(), async () => {
+    if (n++) throw new Error('E_DESTINATION_NOT_VERIFIED');
+    entered();
+    await hold;
+  });
+  const first = rec(e, 'ask', { ip: HOME });
+  await inSend;
+  const old = pending(e, NET).pid;
+  mock.timers.tick(12 * 3600e3);
+  await rec(e, 'ask', { ip: HOME });
+  assert.notEqual(pending(e, NET).pid, old);
+  finish();
+  await first;
+  assert.deepEqual(pending(e, NET).mail.sent, {});
+}));
+
+test('approval links are https on the bare host whatever scheme and port the held rec used, and the page refuses http', withClock(async () => {
+  const e = gateEnv();
+  await refusedReply(await rec(e, 'ask', { ip: HOME, base: 'http://tang.example.org:8080' }));
+  assert.equal(pending(e, NET).info.base, 'https://tang.example.org');
+  const path = linkIn(sent[0]);
+  assert.ok(path);
+  const http = (init) => worker.fetch(new Request(`http://tang.example.org${path}`, init), e, { waitUntil() {} });
+  assert.equal((await http()).status, 403);
+  const form = { method: 'POST', body: 'decision=approve&confirm=ask', headers: { origin: 'http://tang.example.org', 'content-type': 'application/x-www-form-urlencoded' } };
+  assert.equal((await http(form)).status, 403);
+  assert.equal(pending(e, NET).state, 'open');
+}));
+
+test('a Gate answer other than served, held, denied or capped fails closed and is never cached', withClock(async () => {
+  for (const answer of [undefined, '', 'admitted']) {
+    const e = gateEnv();
+    let n = 0;
+    e.GATE = { idFromName: () => 'gate', get: () => ({ miss: async () => { n++; return answer; } }) };
+    const spy = spyDerive();
+    try {
+      await refusedReply(await rec(e, 'ask', { ip: HOME }));
+      await refusedReply(await rec(e, 'ask', { ip: HOME }));
+      assert.equal(spy.n, 0);
+    } finally { spy.restore(); }
+    assert.equal(n, 2, String(answer));
+    assert.match(errors[0], /^ask: approvals unavailable, refusing new origins: unexpected Gate answer/);
+  }
+}));
+
+test('a link names its approver: removing them kills it, reordering keeps attribution, and an added approver is mailed', withClock(async () => {
+  const e = gateEnv();
+  const oncall = APPROVERS[1];
+  await rec(e, 'ask', { ip: HOME });
+  const [l0, l1] = sent.map(linkIn);
+  e.TANG_KEY_ASK = setText({ approvers: [oncall] });
+  assert.equal((await open(e, l0)).status, 404);
+  assert.equal((await post(e, l0, { decision: 'deny' })).status, 404);
+  e.TANG_KEY_ASK = setText({ approvers: ['new@example.org', oncall] });
+  mock.timers.tick(5 * 60e3);
+  sent = [];
+  await rec(e, 'ask', { ip: HOME });
+  assert.deepEqual(sent.map((m) => m.to), ['new@example.org']);
+  const r = await post(e, l1, { decision: 'approve', confirm: 'ask' });
+  assert.match(await r.text(), new RegExp(`by ${oncall.replace('.', '\\.')}\\.`));
+  assert.equal(logged.at(-1).approver, oncall);
 }));

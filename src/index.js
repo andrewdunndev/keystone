@@ -199,8 +199,11 @@ async function alertNewSource(request, env, name, refused = false) {
     const facts = `source: ${net}\nASN: ${asn}\ncountry: ${country}\ntime: ${new Date().toISOString()}\n\n`;
     const [subject, text] = refused ? [`keystone: refused a recovery request from a new source for ${name}`,
       `Key set ${name} refused a recovery request from a source not seen before: the origin is not admitted, so no key ` +
-      `was released.\n\n${facts}If the host moved, add its prefix to the set's allow list. If it did not, someone who knows ` +
-      `the set's name is asking for it.\n`] : [`keystone: recovery request from a new source for ${name}`,
+      `was released.\n\n${facts}` + (refused === 'origin'
+        ? 'Origins on Cloudflare\'s own network (WARP, Worker egress), with no ASN, or in 240.0.0.0/4 (Pseudo IPv4) are never ' +
+          'admitted. If this is the host, it must egress elsewhere.'
+        : 'If the host moved, add its prefix to the set\'s allow list.') +
+      ` If it is not the host, someone who knows the set's name is asking for it.\n`] : [`keystone: recovery request from a new source for ${name}`,
       `Key set ${name} received a recovery request from a source not seen before.\n\n${facts}` +
       `The key id is public, so this does not prove an unlock happened. If you did not expect it, ` +
       `check the host before deleting ${secretName(name)}: deleting it blocks the next boot.\n`];
@@ -257,15 +260,16 @@ function facts(name, origin, p) {
     `<dt>First seen</dt><dd>${when(p.created)}</dd><dt>Expires</dt><dd>${when(p.expires)}</dd></dl>`;
 }
 
-// /<name>/approve/<token>. A GET only shows; a POST from the page itself decides. A token is 404 unless its MAC holds.
+// /<name>/approve/<token>, over https only. A GET shows; a POST from the page itself decides. A token is 404 unless its
+// MAC holds and it names a current approver.
 async function approval(request, env, name, set, token) {
+  if (new URL(request.url).protocol !== 'https:') return reply(403, 'https only\n');
   const t = await verify(set.approveKey ??= approveKey(set.exch.jwk), name, token);
-  if (!t) return reply(404, 'not found\n');
+  if (!t || !set.approvers.includes(t.a)) return reply(404, 'not found\n');
   if (request.method !== 'GET' && request.method !== 'POST') return reply(405, 'method not allowed\n');
   if (t.e <= Date.now()) return page(410, 'This request has expired', '<p>Nothing changed. A host still asking gets a new request.</p>');
   if (!env.GATE) return page(503, 'Approvals are unavailable', '<p>The Gate is not bound.</p>');
-  const who = (p) => esc(set.approvers[p.decided.a] ?? `approver ${p.decided.a + 1}`);
-  const decided = (p) => `<p>${p.state === 'approved' ? 'Approved' : 'Denied'} at ${when(p.decided.at)} by ${who(p)}.` +
+  const decided = (p) => `<p>${p.state === 'approved' ? 'Approved' : 'Denied'} at ${when(p.decided.at)} by ${esc(p.decided.a)}.` +
     `${p.state === 'approved' ? ` Any machine in ${esc(t.o)} can recover ${esc(name)} until ${when(p.grantUntil)}.` : ''}</p>`;
   if (request.method === 'GET') {
     const { p, others } = await gate(env).view(name, t.o, t.p);
@@ -318,12 +322,14 @@ async function admit(set, name, ip, request, env) {
   const cf = request.cf ?? {};
   let why;
   try {
+    // The rec that opens a pending is usually a stranger's: its scheme and port never reach a link.
     why = await gate(env).miss(name, origin, {
       asn: clip(cf.asn), org: clip(cf.asOrganization), country: clip(cf.country), city: clip(cf.city), colo: clip(cf.colo),
-      base: new URL(request.url).origin,
+      base: `https://${new URL(request.url).hostname}`,
     });
   } catch (e) { return closed(name, e.message); }
   if (why === 'served') return null;
+  if (!['held', 'denied', 'capped'].includes(why)) return closed(name, `unexpected Gate answer ${clip(why)}`);
   if (answered.size >= SEEN_MAX) answered.clear();
   answered.set(why === 'capped' ? name : at, { why, until: now + ANSWER_TTL });
   return why;
@@ -337,8 +343,7 @@ function closed(name, why) {
   return 'unavailable';
 }
 
-// Unserved recoveries all look alike to the client. A refusal alerts only for a set without approvers (or an origin
-// never admitted); its log line comes once a minute per set and origin. A held origin is logged by the Gate instead.
+// Unserved recoveries all look alike to the client. A held origin is logged by the Gate instead.
 function refuse(request, env, ctx, name, why) {
   const ip = request.headers.get('CF-Connecting-IP');
   const key = `${name}:${sourceNet(ip) ?? ip}`;
@@ -349,7 +354,7 @@ function refuse(request, env, ctx, name, why) {
     console.log(JSON.stringify({ event: 'refused', name, ip, asn, country, why }));
   }
   if ((why === 'allow' || why === 'origin') && !probed(request) && alertsOn(env)) {
-    ctx.waitUntil(alertNewSource(request, env, name, true).catch((e) => console.error('refusal alert failed:', e.message)));
+    ctx.waitUntil(alertNewSource(request, env, name, why).catch((e) => console.error('refusal alert failed:', e.message)));
   }
   return reply(403, 'origin not admitted\n');
 }

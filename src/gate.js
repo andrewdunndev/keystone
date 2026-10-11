@@ -12,6 +12,7 @@ export const GRANT = 10 * 60 * 1000;
 const OPEN_MAX = 3;
 const MAIL_MAX = 20;
 const RETRY = 5 * 60 * 1000;
+const TRIES = 3;
 const SEND_TIMEOUT = 10000;
 
 // A plain-text message built by hand: the binding takes raw MIME and every value is ASCII by construction, so CR and
@@ -59,7 +60,7 @@ function gated(env, name) {
 
 export const approveKey = (exch) => derivedKey(exch, 'keystone-approve-v1');
 
-// v1.<payload>.<mac>: the payload is {o: origin, p: pid, e: expiry, a: approver index}, and the MAC, under the set's
+// v1.<payload>.<mac>: the payload is {o: origin, p: pid, e: expiry, a: approver address}, and the MAC, under the set's
 // approve key, covers "<name>.<payload>" so a token names one set.
 export async function sign(key, name, body) {
   const payload = b64u.enc(enc.encode(JSON.stringify(body)));
@@ -73,6 +74,8 @@ export async function verify(key, name, token) {
   return JSON.parse(new TextDecoder().decode(b64u.dec(m[1])));
 }
 
+const due = (p, to) => !p.mail.sent[to] && (p.mail.failed[to] ?? 0) < TRIES;
+
 export class Gate extends DurableObject {
   // For an origin outside the set's allow list: 'served' while a grant runs, 'denied', 'capped', or 'held' with a
   // pending opened if none is live.
@@ -83,7 +86,7 @@ export class Gate extends DurableObject {
     if (p?.expires > now) {
       if (p.state === 'denied') return 'denied';
       if (p.state === 'open') {
-        if (p.mail.sent.includes(false) && p.mail.at + RETRY <= now) {
+        if (set.approvers.some((to) => due(p, to)) && p.mail.at + RETRY <= now) {
           p.mail.at = now;
           await s.put(key, p);
           await this.mail(name, origin, set, now);
@@ -98,7 +101,7 @@ export class Gate extends DurableObject {
       if (!((await s.get(`c:${name}`))?.expires > now)) await this.notice(name, set, open, now);
       return 'capped';
     }
-    const mail = { at: now, sent: set.approvers.map(() => false) };
+    const mail = { at: now, sent: {}, failed: {} };
     await s.put(key, { pid: crypto.randomUUID(), state: 'open', created: now, expires: now + PENDING_TTL, info, mail });
     console.log(JSON.stringify({ event: 'held', name, origin, asn: info.asn, country: info.country }));
     await this.mail(name, origin, set, now);
@@ -106,14 +109,14 @@ export class Gate extends DurableObject {
   }
 
   // One message per approver not yet reached, each with its own link. State is written before each send is awaited,
-  // so concurrent misses send once; a failed send is retried by a miss after RETRY.
+  // so concurrent misses send once; a failed send is retried by a miss after RETRY, TRIES times in all.
   async mail(name, origin, set, now) {
     const s = this.ctx.storage, key = `p:${name}:${origin}`, p = await s.get(key);
     const others = (await this.open(name, now)).filter((o) => o.origin !== origin);
     const i = Object.fromEntries(Object.entries(p.info).map(([k, v]) => [k, ascii(v)])), where = `${origin} (${i.org}, ${i.city})`;
-    for (const [a, to] of set.approvers.entries()) {
-      if (p.mail.sent[a] || !(await this.budget(now))) continue;
-      const link = `${i.base}/${name}/approve/${await sign(set.key, name, { o: origin, p: p.pid, e: p.expires, a })}`;
+    for (const to of set.approvers) {
+      if (!due(p, to) || !(await this.budget(now))) continue;
+      const link = `${i.base}/${name}/approve/${await sign(set.key, name, { o: origin, p: p.pid, e: p.expires, a: to })}`;
       const text = `Key set ${name} was asked for from an origin it does not admit. The host is held: nothing changes ` +
         `until an approver presses a button on the page below.\n\nset: ${name}\norigin: ${origin}\nnetwork: AS${i.asn} ` +
         `${i.org}\nlocation: ${i.city}, ${i.country} (approximate)\ncolo: ${i.colo}\nfirst seen: ${when(p.created)}\n` +
@@ -121,37 +124,49 @@ export class Gate extends DurableObject {
         (others.length ? `${others.length} other origin(s) are asking for this set:\n${others.map((o) => `  ${about(o)}`).join('\n')}\n\n` : '') +
         `Approving lets any machine in ${origin} recover ${name} for ${GRANT / 60000} minutes. If the host was not just ` +
         'moved, deny, and revoke the set.\n';
-      try {
-        await send(this.env, to, `keystone: unlock ${name} from ${where}?`, text);
-        const q = await s.get(key);
-        if (q?.pid === p.pid) {
-          q.mail.sent[a] = true;
-          await s.put(key, q);
-        }
-      } catch (e) { console.error(`approval mail ${a} for ${name} failed: ${e.message}`); }
+      const ok = await send(this.env, to, `keystone: unlock ${name} from ${where}?`, text).then(() => true, async (e) => {
+        console.error(`approval mail to ${to} for ${name} failed: ${e.message}`);
+        await this.budget(now, -1);
+        return false;
+      });
+      const q = await s.get(key);
+      if (q?.pid !== p.pid) continue;
+      if (ok) q.mail.sent[to] = true;
+      else if ((q.mail.failed[to] = (q.mail.failed[to] ?? 0) + 1) === TRIES) console.error(`approval mail to ${to} for ${name} given up`);
+      await s.put(key, q);
     }
   }
 
-  // Once per PENDING_TTL per set while capped: each approver gets the open pendings with their own links.
+  // Once per PENDING_TTL per set while capped: each approver gets the open pendings with their own links. The marker is
+  // claimed before the sends so concurrent misses send once, and dropped if nothing went out.
   async notice(name, set, open, now) {
-    await this.ctx.storage.put(`c:${name}`, { expires: now + PENDING_TTL });
-    console.log(JSON.stringify({ event: 'capped', name, open: open.length }));
-    for (const [a, to] of set.approvers.entries()) {
+    const s = this.ctx.storage, key = `c:${name}`;
+    await s.put(key, { expires: now + PENDING_TTL });
+    let any = false;
+    for (const to of set.approvers) {
       if (!(await this.budget(now))) break;
       const items = await Promise.all(open.map(async (o) =>
-        `  ${about(o)}\n  ${o.info.base}/${name}/approve/${await sign(set.key, name, { o: o.origin, p: o.pid, e: o.expires, a })}`));
-      await send(this.env, to, `keystone: ${name} has ${open.length} origins waiting; new ones are refused`,
-        `Key set ${name} already holds ${open.length} origins awaiting a decision, so a host asking from any other origin ` +
-        `is refused until one is decided:\n\n${items.join('\n\n')}\n\nIf you did not move the host, deny them all and ` +
-        'revoke the set.\n').catch((e) => console.error(`capped notice ${a} for ${name} failed: ${e.message}`));
+        `  ${about(o)}\n  ${o.info.base}/${name}/approve/${await sign(set.key, name, { o: o.origin, p: o.pid, e: o.expires, a: to })}`));
+      try {
+        await send(this.env, to, `keystone: ${name} has ${open.length} origins waiting; new ones are refused`,
+          `Key set ${name} already holds ${open.length} origins awaiting a decision, so a host asking from any other origin ` +
+          `is refused until one is decided:\n\n${items.join('\n\n')}\n\nIf you did not move the host, deny them all and ` +
+          'revoke the set.\n');
+        any = true;
+      } catch (e) {
+        console.error(`capped notice to ${to} for ${name} failed: ${e.message}`);
+        await this.budget(now, -1);
+      }
     }
+    if (any) console.log(JSON.stringify({ event: 'capped', name, open: open.length }));
+    else await s.delete(key);
   }
 
-  // MAIL_MAX messages an hour across every set, counted before the send.
-  async budget(now) {
+  // MAIL_MAX messages an hour across every set, counted before the send and refunded (d = -1) when it fails.
+  async budget(now, d = 1) {
     const hour = Math.floor(now / 3600000), key = `m:${hour}`, m = (await this.ctx.storage.get(key)) ?? { n: 0, expires: (hour + 1) * 3600000 };
-    if (m.n >= MAIL_MAX) return false;
-    m.n++;
+    if (d > 0 && m.n >= MAIL_MAX) return false;
+    m.n += d;
     await this.ctx.storage.put(key, m);
     return true;
   }

@@ -76,5 +76,6 @@ export function sourceNet(ip) {
   return a.v === 4 ? `${format({ v: 4, n: (a.n >> 8n) << 8n })}/24` : `${groups(a.n).slice(0, 3).join(':')}::/48`;
 }
 
-// AS13335 is Cloudflare's own egress (WARP, Workers): an origin there, in 240.0.0.0/4 or with no address is never admitted.
-export const unadmittable = (a, asn) => !a || (a.v === 4 && a.n >= CLASS_E) || asn === 13335;
+// AS13335 is Cloudflare's own egress (WARP, Workers): an origin there, in 240.0.0.0/4, or with no address or ASN is never
+// admitted.
+export const unadmittable = (a, asn) => !a || (a.v === 4 && a.n >= CLASS_E) || !Number.isInteger(asn) || asn === 13335;
