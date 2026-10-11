@@ -139,7 +139,8 @@ mutant "origin check skipped" 's/      if (set.gated \&\& unadmittable(ip, reque
 mutant "admission skipped" 's/        const why = await admit(set, name, ip, request, env);/        const why = null;/'
 mutant "allow miss served" "s/if (!set.approvers) return 'allow';/if (!set.approvers) return null;/"
 mutant "fail-closed error on every request" 's/  if (!failed.has(name)) {/  if (true) {/'
-mutant "refusal logged on every request" 's/  if ((loggedAt.get(key) ?? 0) <= Date.now()) {/  if (true) {/'
+mutant "refusal logged on every request" "s/  if (why !== 'held' \&\& (loggedAt.get(key) ?? 0) <= Date.now()) {/  if (why !== 'held') {/"
+mutant "a held origin logged as refused" "s/  if (why !== 'held' \&\& (loggedAt/  if ((loggedAt/"
 mutant "refusal never alerts" "s/if ((why === 'allow' || why === 'origin') \&\& /if (false \&\& /"
 mutant "held and failed-closed requests alert" "s/(why === 'allow' || why === 'origin')/(why !== 'probe')/"
 mutant "a probed refusal alerts" 's/ \&\& !probed(request) \&\& alertsOn(env)/ \&\& alertsOn(env)/'

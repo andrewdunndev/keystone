@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Mint, check, deploy and revoke write-once key sets. deploy and revoke only plan unless given --apply, and nothing is
-// ever deleted except the one set `revoke <name> --apply` names. Private keys reach stdout only from `new`.
+// Mint, check, deploy and revoke key sets, whose keys are write-once. deploy and revoke only plan unless given --apply,
+// and nothing is ever deleted except the one set `revoke <name> --apply` names. Private keys reach stdout only from `new`.
 import { spawn } from 'node:child_process';
 import { realpathSync, rmSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -163,7 +163,7 @@ async function deploy(argv, io) {
       else say('new', name, `absent; will be created, signing key ${set.thp.sign}`);
     } else if (res?.status !== 200) say('REFUSE', name, res ? `adv answered HTTP ${res.status}` : 'adv unreachable');
     else if (isNew) say('REFUSE', name, 'live; --new names only absent sets');
-    else if (await res.json().then(advertised).catch(() => null) !== set.roles) say('REFUSE', name, 'live with other keys; a live set is never rewritten, rotate to a new name');
+    else if (await res.json().then(advertised).catch(() => null) !== set.roles) say('REFUSE', name, 'live with other keys; keys are never rewritten, rotate to a new name');
     else if (listed && !held) say('REFUSE', name, `live at --url, yet the wrangler target lacks ${secret}`);
     else if (res.headers.get('keystone-policy') !== set.tag) {
       Object.assign(s, { policy: true, version: res.headers.get('keystone-version') });

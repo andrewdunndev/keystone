@@ -338,11 +338,11 @@ function closed(name, why) {
 }
 
 // Unserved recoveries all look alike to the client. A refusal alerts only for a set without approvers (or an origin
-// never admitted); the log line comes once a minute per set and origin.
+// never admitted); its log line comes once a minute per set and origin. A held origin is logged by the Gate instead.
 function refuse(request, env, ctx, name, why) {
   const ip = request.headers.get('CF-Connecting-IP');
   const key = `${name}:${sourceNet(ip) ?? ip}`;
-  if ((loggedAt.get(key) ?? 0) <= Date.now()) {
+  if (why !== 'held' && (loggedAt.get(key) ?? 0) <= Date.now()) {
     if (loggedAt.size >= SEEN_MAX) loggedAt.clear();
     loggedAt.set(key, Date.now() + 60000);
     const { asn = null, country = null } = request.cf ?? {};

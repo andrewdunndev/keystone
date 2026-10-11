@@ -264,7 +264,7 @@ test('a miss on a set with approvers is held: one pending, a cached answer, and 
   assert.equal(e.misses, 1);
   const p = pending(e, NET);
   assert.deepEqual([p.state, p.created, p.expires, p.info.org, p.info.base], ['open', T0, T0 + 12 * 3600e3, 'Example <ISP>', 'https://tang.example.org']);
-  assert.deepEqual(logged.filter((l) => l.event === 'held'), [{ event: 'held', name: 'ask', origin: NET, asn: '64500', country: 'US' }]);
+  assert.deepEqual(logged, [{ event: 'held', name: 'ask', origin: NET, asn: '64500', country: 'US' }]);
   mock.timers.tick(5001);
   await refusedReply(await rec(e, 'ask', { ip: HOME }));
   assert.equal(e.misses, 2);
@@ -323,6 +323,7 @@ test('a decided or replaced pending answers 409, an expired token 410; deny hold
   await refusedReply(await rec(e, 'ask', { ip: HOME }));
   await refusedReply(await rec(e, 'ask', { ip: HOME }));
   assert.equal(e.misses, misses + 1);
+  assert.deepEqual(logged.filter((l) => l.event === 'refused').map((l) => l.why), ['denied']);
   assert.match(await (await open(e, url)).text(), /Denied at .*value="approve"/s);
   assert.equal((await post(e, url, { decision: 'approve', confirm: 'ask' })).status, 200);
   assert.equal((await rec(e, 'ask', { ip: HOME })).status, 200);
