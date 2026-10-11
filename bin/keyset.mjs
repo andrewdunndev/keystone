@@ -8,7 +8,7 @@ import { constants, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { b64u, thumbprint, parseSet, secretName, NAME, CURVES } from '../src/jwk.js';
+import { b64u, thumbprint, parseSet, policyTag, secretName, NAME, CURVES } from '../src/jwk.js';
 
 const WRANGLER = fileURLToPath(new URL('../node_modules/.bin/wrangler', import.meta.url));
 const USAGE = `usage: keyset new [--curve P-256|P-521, default P-521] > set
@@ -49,6 +49,7 @@ async function loadSet(text) {
   }
   set.thp = { sign: await thumbprint(set.sign), exch: await thumbprint(set.exch) };
   set.roles = `ECMR ${set.thp.exch},${set.curve.signAlg} ${set.thp.sign}`;
+  set.tag = await policyTag(set);
   return set;
 }
 
@@ -60,11 +61,14 @@ async function advertised(jws) {
 }
 
 const base = (url) => url.replace(/\/+$/, '');
+const PROBE = { 'keystone-probe': '1' };
+const probe = (url, name, { fetch }) => fetch(`${base(url)}/${name}/adv`, { headers: PROBE });
 
-// One set against the live Worker: its adv is signed by the set's signing key and advertises exactly the set's public
-// keys, and a recovery of a fresh point R = rG answers with x(rS), S the set's exchange key. Throws on any mismatch.
+// One set against the live Worker: its adv is signed by the set's signing key, advertises exactly the set's public
+// keys under the set's policy, and a recovery of a fresh point R = rG answers with x(rS), S the set's exchange key; a
+// gated set may refuse this origin instead. Throws on any mismatch.
 async function check(url, name, set, { fetch }) {
-  const res = await fetch(`${base(url)}/${name}/adv`);
+  const res = await probe(url, name, { fetch });
   if (res.status !== 200) throw new Error(`adv ${name}: HTTP ${res.status}`);
   const jws = await res.json();
   const { crv, coord, signHash } = set.curve;
@@ -73,19 +77,22 @@ async function check(url, name, set, { fetch }) {
     throw new Error(`adv ${name}: the signature does not verify with the set's signing key`);
   }
   if (await advertised(jws) !== set.roles) throw new Error(`adv ${name}: the advertised keys are not the set's`);
+  if (res.headers.get('keystone-policy') !== set.tag) throw new Error(`adv ${name}: the live policy is not the set's`);
 
   const r = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: crv }, true, ['deriveBits']);
   const { x, y } = await crypto.subtle.exportKey('jwk', r.publicKey);
   const rep = await fetch(`${base(url)}/${name}/rec/${set.thp.exch}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/jwk+json' },
+    headers: { 'content-type': 'application/jwk+json', ...PROBE },
     body: JSON.stringify({ alg: 'ECMR', crv, key_ops: ['deriveKey'], kty: 'EC', x, y }),
   });
+  const ok = `OK  adv ${name}: signed by ${set.thp.sign}, advertising the set's keys`;
+  if (rep.status === 403 && set.tag) return [ok, `SKIP rec ${name}: 403, this origin is not admitted`];
   if (rep.status !== 200) throw new Error(`rec ${name}: HTTP ${rep.status}`);
   const got = (await rep.json())?.x;
   const want = b64u.enc(new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: await publicKey(set.exch, 'ECDH') }, r.privateKey, coord * 8)));
   if (got !== want) throw new Error(`rec ${name}: the reply is not the set's exchange key applied to the request`);
-  return [`OK  adv ${name}: signed by ${set.thp.sign}, advertising the set's keys`, `OK  rec ${name}: exchange key ${set.thp.exch} answers`];
+  return [ok, `OK  rec ${name}: exchange key ${set.thp.exch} answers`];
 }
 
 const args = (argv, options) => {
@@ -104,6 +111,15 @@ const nameOf = (secret) => {
 async function secrets(io, extra) {
   const { code, stdout } = await io.wrangler(['secret', 'list', '--format', 'json', ...extra], { capture: true });
   try { return code === 0 ? new Set(JSON.parse(stdout).map((s) => s.name)) : null; } catch { return null; }
+}
+
+// The version id serving all of the target's traffic, or null when the deployment is split or unreadable.
+async function serving(io, extra) {
+  const { code, stdout } = await io.wrangler(['deployments', 'status', '--json', ...extra], { capture: true });
+  try {
+    const { versions } = code === 0 ? JSON.parse(stdout) : {};
+    return versions?.length === 1 && versions[0].percentage === 100 && typeof versions[0].version_id === 'string' ? versions[0].version_id : null;
+  } catch { return null; }
 }
 
 async function deploy(argv, io) {
@@ -137,8 +153,9 @@ async function deploy(argv, io) {
 
   // --url and the wrangler target are named apart, so the target's secrets must agree with what --url serves.
   const listed = o.apply || io.env.CLOUDFLARE_API_TOKEN ? await secrets(io, extra) : null;
-  for (const { name, secret, set, isNew } of sets) {
-    const res = await io.fetch(`${base(o.url)}/${name}/adv`).catch(() => null);
+  for (const s of sets) {
+    const { name, secret, set, isNew } = s;
+    const res = await probe(o.url, name, io).catch(() => null);
     const held = listed?.has(secret);
     if (res?.status === 404) {
       if (!isNew) say('REFUSE', name, 'absent (never deployed, or revoked); --new only for a freshly minted set');
@@ -148,7 +165,19 @@ async function deploy(argv, io) {
     else if (isNew) say('REFUSE', name, 'live; --new names only absent sets');
     else if (await res.json().then(advertised).catch(() => null) !== set.roles) say('REFUSE', name, 'live with other keys; a live set is never rewritten, rotate to a new name');
     else if (listed && !held) say('REFUSE', name, `live at --url, yet the wrangler target lacks ${secret}`);
-    else say('ok', name, 'live and unchanged');
+    else if (res.headers.get('keystone-policy') !== set.tag) {
+      Object.assign(s, { policy: true, version: res.headers.get('keystone-version') });
+      say('policy', name, 'keys unchanged, policy will be written');
+    } else say('ok', name, 'live and unchanged');
+  }
+  // A policy write redeploys the Worker; it goes ahead only over the one version --url is seen serving.
+  const writes = sets.filter((s) => s.policy);
+  if (writes.length && (o.apply || io.env.CLOUDFLARE_API_TOKEN)) {
+    const live = await serving(io, extra);
+    for (const { name, version } of writes) {
+      if (!live) say('REFUSE', name, 'wrangler deployments status shows no single version serving all traffic');
+      else if (version !== live) say('REFUSE', name, `--url serves version ${version ?? 'unknown'}, the wrangler target ${live}`);
+    }
   }
   // A null value is a tombstone: the set was revoked, and a Worker version rolled back past the revoke serves it again
   // while the target's secret list no longer shows it. A deploy from the current secrets drops it.
@@ -184,7 +213,7 @@ async function deploy(argv, io) {
   for (const sig of SIGNALS) io.process.on(sig, onSignal);
   try {
     const file = join(dir, 'secrets.json');
-    await writeFile(file, JSON.stringify(Object.fromEntries(sets.filter((s) => s.isNew).map((s) => [s.secret, s.text]))), { mode: 0o600, flag: 'wx' });
+    await writeFile(file, JSON.stringify(Object.fromEntries(sets.filter((s) => s.isNew || s.policy).map((s) => [s.secret, s.text]))), { mode: 0o600, flag: 'wx' });
     ({ code } = await io.wrangler(['deploy', '--secrets-file', file, ...extra], { onSpawn: (p) => { child = p; } }));
   } finally {
     for (const sig of SIGNALS) io.process.off(sig, onSignal);

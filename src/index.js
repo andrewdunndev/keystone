@@ -1,7 +1,7 @@
 // Tang server (McCallum-Relyea exchange, P-256 or P-521 per key set) as a Cloudflare Worker.
 // One write-once key set per name: /<name>/adv, /<name>/adv/<thp>, /<name>/rec/<kid>.
 import { EmailMessage } from 'cloudflare:email';
-import { b64u, kidMatches, parseSet, secretName, NAME } from './jwk.js';
+import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
 
 const enc = new TextEncoder();
 // tangd (OpenSSL) accepts zero-padded coordinates and reduces them mod p; padding is capped at twice the field size.
@@ -35,8 +35,8 @@ const prepared = new Map();
 function load(raw, secret) {
   if (!prepared.has(raw)) {
     try {
-      const { sign, exch, curve } = parseSet(raw);
-      prepared.set(raw, { curve, sign: { jwk: sign, kids: {} }, exch: { jwk: exch, kids: {} } });
+      const { sign, exch, ...gate } = parseSet(raw);
+      prepared.set(raw, { ...gate, gated: !!(gate.allow || gate.approvers), sign: { jwk: sign, kids: {} }, exch: { jwk: exch, kids: {} } });
     } catch (e) {
       console.error(`${secret} is not a key set: ${e.message}`);
       return null;
@@ -44,6 +44,9 @@ function load(raw, secret) {
   }
   return prepared.get(raw);
 }
+
+// keyset's header: only then does an adv carry the version and policy headers, and a gated rec refuses a miss quietly.
+const probed = (request) => request.headers.get('keystone-probe') === '1';
 
 const reply = (status, body, type = 'text/plain') =>
   new Response(body, { status, headers: { 'content-type': type, 'cache-control': 'no-store' } });
@@ -275,7 +278,14 @@ export default {
     if (!set) return reply(500, 'unreadable key set\n');
     if (op === 'adv') {
       if (request.method !== 'GET') return reply(405, 'method not allowed\n');
-      return (await advert(set, arg)) ?? reply(404, 'no such key\n');
+      const res = await advert(set, arg);
+      if (!res) return reply(404, 'no such key\n');
+      if (probed(request)) {
+        if (env.CF_VERSION_METADATA?.id) res.headers.set('keystone-version', env.CF_VERSION_METADATA.id);
+        const tag = await (set.tag ??= policyTag({ ...set, exch: set.exch.jwk }));
+        if (tag) res.headers.set('keystone-policy', tag);
+      }
+      return res;
     }
     if (op === 'rec' && arg) {
       if (request.method !== 'POST') return reply(405, 'method not allowed\n');

@@ -43,7 +43,8 @@ async function run(argv, { live = {}, stdin = '', fetch = toWorker(live), wrangl
 }
 // A wrangler stand-in for the Worker whose secrets are `target`: lists them, deletes one, or takes a
 // `deploy --secrets-file`, recording the file as it saw it in `seen` and, with `install`, adding its sets.
-const cf = (target, { seen = [], install = true, deployCode = 0 } = {}) => async (args) => {
+const cf = (target, { seen = [], install = true, deployCode = 0, versions = [{ version_id: 'v1', percentage: 100 }] } = {}) => async (args) => {
+  if (args[0] === 'deployments') return { code: 0, stdout: JSON.stringify({ id: 'd1', versions }) };
   if (args[0] === 'secret' && args[1] === 'list') {
     return { code: 0, stdout: JSON.stringify(Object.keys(target).map((name) => ({ name, type: 'secret_text' }))) };
   }
@@ -454,4 +455,87 @@ test('deploy refuses a tombstone the wrangler target still holds, one served wit
   assert.equal(r.code, 1);
   assert.match(r.out, /^REFUSE +c-1: null marks a revoked set; --new names only freshly minted sets$/m);
   assert.doesNotMatch(r.out, /absent from stdin/);
+});
+
+const withPolicy = (set, policy) => JSON.stringify({ ...JSON.parse(set.text), ...policy });
+const VERSION = { CF_VERSION_METADATA: { id: 'v1' } };
+
+test('a policy edit is planned as policy and written with the keys exactly as stdin has them', async () => {
+  const live = { ...VERSION, TANG_KEY_A_1: A.text }, seen = [];
+  const edited = withPolicy(A, { allow: ['192.0.2.0/24'], approvers: ['ops@example.org'] });
+  let r = await deploy({ TANG_KEY_A_1: edited }, [], { live });
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /^policy +a-1: keys unchanged, policy will be written$/m);
+  r = await deploy({ TANG_KEY_A_1: edited }, ['--apply'], { live, wrangler: cf(live, { seen }) });
+  assert.equal(r.code, 0, r.err);
+  assert.deepEqual(r.calls.map((c) => c.slice(0, 2)), [['secret', 'list'], ['deployments', 'status'], ['deploy', '--secrets-file']]);
+  assert.deepEqual(seen[0].body, { TANG_KEY_A_1: edited });
+  assert.deepEqual(JSON.parse(edited).keys, JSON.parse(A.text).keys);
+  assert.match(r.out, /^OK +adv a-1:.*\n(OK|SKIP) +rec a-1:/m);
+  r = await deploy({ TANG_KEY_A_1: edited }, [], { live });
+  assert.match(r.out, /^ok +a-1: live and unchanged$/m);
+});
+
+test('a live policy other than stdin\'s, a rolled-back one included, is reported as policy; other keys still refuse', async () => {
+  const live = { ...VERSION, TANG_KEY_A_1: withPolicy(A, { approvers: ['old@example.org'] }) };
+  for (const stdin of [withPolicy(A, { approvers: ['new@example.org'] }), withPolicy(A, { allow: ['198.51.100.0/24'] }), A.text]) {
+    const r = await deploy({ TANG_KEY_A_1: stdin }, [], { live });
+    assert.match(r.out, /^policy +a-1:/m, stdin);
+  }
+  const r = await deploy({ TANG_KEY_A_1: withPolicy(B, { approvers: ['old@example.org'] }) }, [], { live });
+  assert.equal(r.code, 1);
+  assert.match(r.out, /^REFUSE +a-1: live with other keys/m);
+});
+
+test('a policy write refuses a split deployment, a version other than --url serves, and a Worker without the version header', async () => {
+  const edited = withPolicy(A, { approvers: ['ops@example.org'] });
+  const cases = [
+    [{ ...VERSION }, [{ version_id: 'v1', percentage: 50 }, { version_id: 'v2', percentage: 50 }], /no single version serving all traffic/],
+    [{ ...VERSION }, [{ version_id: 'v2', percentage: 100 }], /--url serves version v1, the wrangler target v2/],
+    [{}, [{ version_id: 'v1', percentage: 100 }], /--url serves version unknown/],
+  ];
+  for (const [meta, versions, why] of cases) {
+    const live = { ...meta, TANG_KEY_A_1: A.text }, seen = [];
+    const r = await deploy({ TANG_KEY_A_1: edited }, ['--apply'], { live, wrangler: cf(live, { seen, versions }) });
+    assert.equal(r.code, 1);
+    assert.match(r.out, new RegExp(`^REFUSE +a-1: .*${why.source}`, 'm'));
+    assert.equal(seen.length, 0);
+  }
+  const r = await deploy({ TANG_KEY_A_1: edited }, [], { live: { TANG_KEY_A_1: A.text }, env: { CLOUDFLARE_API_TOKEN: 't' },
+    wrangler: cf({ TANG_KEY_A_1: A.text }, { versions: 'nope' }) });
+  assert.match(r.out, /^REFUSE +a-1: wrangler deployments status shows no single version/m);
+});
+
+test('deploy --apply fails when the written policy never shows; check fails on a live policy other than the set\'s', async () => {
+  const live = { ...VERSION, TANG_KEY_A_1: A.text };
+  let r = await deploy({ TANG_KEY_A_1: withPolicy(A, { approvers: ['ops@example.org'] }) }, ['--apply'], { live, wrangler: cf(live, { install: false }) });
+  assert.equal(r.code, 1);
+  assert.match(r.err, /^FAIL adv a-1: the live policy is not the set's$/m);
+  r = await run(['check', URL, 'a-1'], { live, stdin: withPolicy(A, { approvers: ['ops@example.org'] }) });
+  assert.equal(r.code, 1);
+  assert.match(r.err, /^FAIL adv a-1: the live policy is not the set's$/m);
+});
+
+test('deploy refuses a set parseSet rejects for an unknown member or an empty field', async () => {
+  for (const extra of [{ note: 'x' }, { allow: [] }, { approvers: [] }, { allow: ['192.0.2.1/24'] }]) {
+    const r = await deploy({ TANG_KEY_A_1: withPolicy(A, extra) }, [], { live: { TANG_KEY_A_1: A.text } });
+    assert.equal(r.code, 1, JSON.stringify(extra));
+    assert.match(r.out, /^REFUSE +a-1: /m);
+  }
+});
+
+test('check skips rec on a 403 only from a gated set, and sends the probe header on adv and rec', async () => {
+  const live = { TANG_KEY_A_1: A.text }, probes = [];
+  const deny = (url, init) => {
+    probes.push(new Headers(init?.headers).get('keystone-probe'));
+    return url.includes('/rec/') ? new Response('origin not admitted\n', { status: 403 }) : toWorker(live)(url, init);
+  };
+  let r = await run(['check', URL, 'a-1'], { stdin: A.text, fetch: deny });
+  assert.equal(r.code, 1);
+  assert.match(r.err, /^FAIL rec a-1: HTTP 403$/m);
+  live.TANG_KEY_A_1 = withPolicy(A, { approvers: ['ops@example.org'] });
+  r = await run(['check', URL, 'a-1'], { stdin: live.TANG_KEY_A_1, fetch: deny });
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.out, /^OK +adv a-1: .*\nSKIP rec a-1: 403, this origin is not admitted\n$/);
+  assert.deepEqual(probes, ['1', '1', '1', '1']);
 });

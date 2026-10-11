@@ -57,7 +57,7 @@ mutant "kid length names the wrong hash" "s/43: 'SHA-256'/43: 'SHA-384'/" src/jw
 mutant "kid cache ignores the hash" 's/cache\[h\] ??=/cache.any ??=/' src/jwk.js
 mutant "kid cache shared across keys" 's/cache\[h\] ??=/kidMatches[h] ??=/' src/jwk.js
 mutant "inverted thumbprint comparison" 's/=== kid;/!== kid;/' src/jwk.js
-mutant "bare array accepted" 's/keys = JSON.parse(text)?.keys;/keys = JSON.parse(text); keys = Array.isArray(keys) ? keys : keys?.keys;/' src/jwk.js
+mutant "bare array accepted" 's/const keys = obj?.keys;/const keys = Array.isArray(obj) ? obj : obj?.keys; if (Array.isArray(obj)) obj = { keys };/' src/jwk.js
 mutant "a second signing key accepted" "s/if (set\[role\]) throw/if (set[role] \&\& role !== 'sign') throw/" src/jwk.js
 mutant "wrong curve accepted" 's/if (k.crv !== curve.crv) throw/if (false) throw/' src/jwk.js
 mutant "mixed-curve set accepted" 's/for (const k of \[set.sign, set.exch\])/for (const k of [set.sign])/' src/jwk.js
@@ -71,6 +71,27 @@ mutant "missing x accepted" "s/\['x', 'y', 'd'\]/['y', 'd']/" src/jwk.js
 mutant "wrong kty accepted" "s/k.kty !== 'EC' || //" src/jwk.js
 mutant "inherited alg names a role" 's/__proto__: null, //' src/jwk.js
 mutant "JSON error quotes the set" "s/catch { throw new Error('not JSON'); }/catch (e) { throw e; }/" src/jwk.js
+mutant "unknown member accepted" 's/if (Object.keys(obj).some((m) => !MEMBERS.includes(m))) throw/if (false) throw/' src/jwk.js
+mutant "empty list accepted" 's/!Array.isArray(v) || !v.length || /!Array.isArray(v) || /' src/jwk.js
+mutant "33 allow entries accepted" 's/const ALLOW_MAX = 32;/const ALLOW_MAX = 33;/' src/jwk.js
+mutant "6 approvers accepted" 's/const APPROVERS_MAX = 5;/const APPROVERS_MAX = 6;/' src/jwk.js
+mutant "approver pattern unchecked" 's/ \&\& APPROVER.test(x)//' src/jwk.js
+mutant "non-ASCII approver accepted" 's/ \&\& \/^\[\\x21-\\x7e\]+\$\/.test(x)//' src/jwk.js
+mutant "repeated approver accepted" 's/if (new Set(a.map((x) => x.toLowerCase())).size !== a.length) throw/if (false) throw/' src/jwk.js
+mutant "approver repeat case-sensitive" 's/new Set(a.map((x) => x.toLowerCase()))/new Set(a)/' src/jwk.js
+mutant "allow entries unparsed" 's/\.map(parseCidr);/;/' src/jwk.js
+mutant "policy tag ignores approvers" 's/JSON.stringify(\[set.allow ?? null, set.approvers ?? null\])/JSON.stringify([set.allow ?? null])/' src/jwk.js
+mutant "derived keys ignore their purpose" "s/info: enc.encode(info)/info: enc.encode('keystone')/" src/jwk.js
+o=src/origin.js
+mutant "IPv4 prefix floor /7" 's/4: \[8, 32\]/4: [7, 32]/' $o
+mutant "IPv6 prefix floor /15" 's/6: \[16, 128\]/6: [15, 128]/' $o
+mutant "v4-mapped prefix accepted" 's/if (a.v === 6 \&\& len >= 96 \&\& a.n >> 32n === MAPPED) throw/if (false) throw/' $o
+mutant "240.0.0.0/4 prefix accepted" 's/if (a.v === 4 \&\& a.n >= CLASS_E) throw/if (false) throw/' $o
+mutant "host bits accepted" 's/if (net !== a.n) throw/if (false) throw/' $o
+mutant "v4-mapped address not folded" 's/a?.v === 6 \&\& a.n >> 32n === MAPPED ?/false ?/' $o
+mutant "dotted IPv6 tail unparsed" 's/^  if (tail) {$/  if (false) {/' $o
+mutant "a single zero group compressed" 's/run\[1\] - run\[0\] < 2 ?/run[1] - run[0] < 1 ?/' $o
+mutant "the last longest zero run compressed" 's/if (j - i > run\[1\] - run\[0\])/if (j - i >= run[1] - run[0])/' $o
 mutant "imported key shared across keys" 's/(e.key ??= /(privateKey.key ??= /'
 mutant "adv/<thp> unchecked" 's/if (thp \&\& !(await kidMatches/if (false \&\& !(await kidMatches/'
 mutant "rec accepts the signing key's kid" 's/(await kidMatches(exch.jwk, kid, exch.kids))/(await kidMatches(exch.jwk, kid, exch.kids) || await kidMatches(set.sign.jwk, kid, set.sign.kids))/'
@@ -110,6 +131,9 @@ mutant "body keeps bare LF line ends" 's/    text.replace(.*/    text,/'
 mutant "no Message-ID header" 's/Message-ID: <[^>]*>/X-Id: 1/'
 mutant "no MIME-Version header" "s/'MIME-Version: 1.0'/'X-V: 1'/"
 mutant "alerts on without the binding" 's/env.UNLOCKS \&\& env.ALERT \&\& /env.UNLOCKS \&\& /'
+mutant "adv headers without the probe" 's/      if (probed(request)) {/      if (true) {/'
+mutant "no version header" "/res.headers.set('keystone-version'/d"
+mutant "no policy header" "/if (tag) res.headers.set('keystone-policy', tag);/d"
 
 k=bin/keyset.mjs
 mutant "deploy rewrites a live set" 's/\.catch(() => null) !== set\.roles)/.catch(() => null) === null)/' $k
@@ -131,9 +155,17 @@ mutant "a signal exits 1, not 128+signo" 's/exit(128 + constants.signals\[sig\])
 mutant "no SIGHUP handler" "s/, 'SIGHUP'\]/]/" $k
 mutant "signal handlers left installed" '/io.process.off(sig, onSignal)/d' $k
 mutant "secrets file mode not 0600" 's/mode: 0o600/mode: 0o644/' $k
-mutant "secrets file rewrites live sets" 's/sets.filter((s) => s.isNew).map((s) => \[s.secret, s.text\])/sets.map((s) => [s.secret, s.text])/' $k
+mutant "secrets file rewrites live sets" 's/sets.filter((s) => s.isNew || s.policy).map((s) => \[s.secret, s.text\])/sets.map((s) => [s.secret, s.text])/' $k
+mutant "secrets file omits a policy edit" 's/sets.filter((s) => s.isNew || s.policy)/sets.filter((s) => s.isNew)/' $k
+mutant "policy edit planned as ok" "s/else if (res.headers.get('keystone-policy') !== set.tag) {/else if (false) {/" $k
+mutant "policy write skips the version gate" 's/if (writes.length \&\& (o.apply || io.env.CLOUDFLARE_API_TOKEN))/if (false)/' $k
+mutant "split deployment taken as one version" 's/versions?.length === 1 \&\& versions\[0\].percentage === 100 \&\& //' $k
+mutant "version mismatch accepted" 's/else if (version !== live) say/else if (false) say/' $k
+mutant "check ignores the live policy" "/the live policy is not the set's/d" $k
+mutant "a 403 skipped for an ungated set" 's/if (rep.status === 403 \&\& set.tag)/if (rep.status === 403)/' $k
+mutant "keyset sends no probe header" 's/{ headers: PROBE }/{}/' $k
 mutant "apply skips the check after deploy" 's/^  for (const { name, set } of sets) {$/  for (const { name, set } of []) {/' $k
-mutant "tombstone written to the secrets file" 's/sets.filter((s) => s.isNew).map((s) => \[s.secret, s.text\])/[...sets.filter((s) => s.isNew), ...tombs].map((s) => [s.secret, s.text ?? null])/' $k
+mutant "tombstone written to the secrets file" 's/sets.filter((s) => s.isNew || s.policy).map((s) => \[s.secret, s.text\])/[...sets.filter((s) => s.isNew), ...tombs].map((s) => [s.secret, s.text ?? null])/' $k
 mutant "apply skips the tombstone 404 check" 's/^  for (const { name } of tombs) {$/  for (const { name } of []) {/' $k
 mutant "deploy over a tombstone the target holds" 's/    else if (kept) say/    else if (false) say/' $k
 mutant "served tombstone passes without a secret list" 's/    else if (!listed) say/    else if (false) say/' $k
