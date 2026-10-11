@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import worker, { resetAlertState } from '../src/index.js';
 import { derivedKey, parseSet, policyTag } from '../src/jwk.js';
 import { format, parseCidr, parseIp } from '../src/origin.js';
+import { Gate, approveKey, sign } from '../src/gate.js';
 
 const FX = JSON.parse(readFileSync(new URL('./tangd-fixture.json', import.meta.url)));
 const fx = FX['P-256'];
@@ -203,14 +204,190 @@ test('a refusal mails a refused alert under the alert caps, logs once a minute, 
 });
 
 test('approvers without GATE, ALERT or ALERT_FROM fail closed: 403, one error per set per isolate; allow still admits', async () => {
-  const full = { ...alerting(), GATE: {}, TANG_KEY_ASK: setText({ allow: ['192.0.2.0/24'], approvers: APPROVERS }) };
   for (const missing of ['GATE', 'ALERT', 'ALERT_FROM']) {
+    const full = gateEnv({ TANG_KEY_ASK: setText({ allow: ['192.0.2.0/24'], approvers: APPROVERS }) });
     const e = fresh({ ...full, [missing]: undefined });
     await refusedReply(await rec(e, 'ask', { ip: '198.51.100.9' }));
     await refusedReply(await rec(e, 'ask', { ip: '203.0.113.9' }));
     assert.equal(errors.length, 1, missing);
     assert.match(errors[0], /^ask: approvals unavailable/);
     assert.equal(sent.length, 0);
+    assert.equal(full.misses, 0);
     assert.equal((await rec(e, 'ask', { ip: '192.0.2.9' })).status, 200);
   }
 });
+
+// The Gate on a Map-backed storage that clones like the real one; e.store is that storage, e.misses counts calls.
+function store() {
+  const m = new Map(), c = structuredClone;
+  return {
+    m, get: async (k) => c(m.get(k)), put: async (k, v) => void m.set(k, c(v)),
+    delete: async (k) => { for (const x of [].concat(k)) m.delete(x); },
+    list: async ({ prefix = '' } = {}) => new Map([...m].filter(([k]) => k.startsWith(prefix)).sort().map(([k, v]) => [k, c(v)])),
+  };
+}
+function gateEnv(extra = {}) {
+  const e = { ...alerting(), TANG_KEY_ASK: setText({ approvers: APPROVERS }), ...extra };
+  const storage = store(), g = new Gate({ storage }, e), miss = g.miss.bind(g);
+  e.misses = 0;
+  g.miss = (...a) => { e.misses++; return miss(...a); };
+  e.GATE = { idFromName: (n) => (assert.equal(n, 'gate'), n), get: () => g };
+  e.store = storage;
+  return fresh(e);
+}
+const T0 = Date.parse('2026-10-01T00:00:00Z');
+const withClock = (fn) => async () => {
+  mock.timers.enable({ apis: ['Date'], now: T0 });
+  try { await fn(); } finally { mock.timers.reset(); }
+};
+const pending = (e, origin, name = 'ask') => e.store.m.get(`p:${name}:${origin}`);
+const link = async (e, origin, { a = 0, name = 'ask', key = approveKey(fx.exch), p = pending(e, origin, name) } = {}) =>
+  `/${name}/approve/${await sign(key, name, { o: origin, p: p.pid, e: p.expires, a })}`;
+const open = (e, path, init = {}) => worker.fetch(new Request(`https://tang.example.org${path}`, init), e, { waitUntil() {} });
+const post = (e, path, form, headers = {}) => open(e, path, {
+  method: 'POST', body: typeof form === 'string' ? form : new URLSearchParams(form).toString(),
+  headers: { origin: 'https://tang.example.org', 'content-type': 'application/x-www-form-urlencoded', 'CF-Connecting-IP': '203.0.113.50', ...headers },
+});
+const HOME = '198.51.100.9', NET = '198.51.100.0/24';
+
+test('a miss on a set with approvers is held: one pending, a cached answer, and a GET that shows it and changes nothing', withClock(async () => {
+  const e = gateEnv();
+  await refusedReply(await rec(e, 'ask', { ip: HOME, cf: { asOrganization: 'Example <ISP>', city: 'Springfield', colo: 'ORD' } }));
+  await refusedReply(await rec(e, 'ask', { ip: '198.51.100.77' }));
+  assert.equal(e.misses, 1);
+  const p = pending(e, NET);
+  assert.deepEqual([p.state, p.created, p.expires, p.info.org, p.info.base], ['open', T0, T0 + 12 * 3600e3, 'Example <ISP>', 'https://tang.example.org']);
+  assert.deepEqual(logged.filter((l) => l.event === 'held'), [{ event: 'held', name: 'ask', origin: NET, asn: '64500', country: 'US' }]);
+  mock.timers.tick(5001);
+  await refusedReply(await rec(e, 'ask', { ip: HOME }));
+  assert.equal(e.misses, 2);
+  assert.equal(pending(e, NET).pid, p.pid);
+  const before = JSON.stringify([...e.store.m]);
+  const r = await open(e, await link(e, NET));
+  assert.equal(r.status, 200);
+  assert.equal(JSON.stringify([...e.store.m]), before);
+  assert.equal(r.headers.get('content-security-policy'), "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+  for (const [h, v] of [['cache-control', 'no-store'], ['x-content-type-options', 'nosniff'], ['referrer-policy', 'same-origin']]) assert.equal(r.headers.get(h), v);
+  assert.equal(r.headers.get('set-cookie'), null);
+  const html = await r.text();
+  assert.match(html, /Example &#60;ISP&#62;/);
+  assert.match(html, /Springfield/);
+  assert.match(html, /name="confirm"/);
+  assert.match(html, /value="deny"/);
+  assert.doesNotMatch(html, /<script/i);
+}));
+
+test('approve needs the page\'s Origin, a small form body and the typed name; then rec is served for 10 minutes', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  const url = await link(e, NET, { a: 1 });
+  for (const [form, headers, status] of [
+    [{ decision: 'approve' }, {}, 400], [{ decision: 'approve', confirm: 'other' }, {}, 400], [{ decision: 'maybe' }, {}, 400],
+    [{ decision: 'approve', confirm: 'ask' }, { origin: 'https://evil.example' }, 403], [{ decision: 'approve', confirm: 'ask' }, { origin: 'null' }, 403],
+    [{ decision: 'approve', confirm: 'ask' }, { 'content-type': 'text/plain' }, 400],
+    [{ decision: 'approve', confirm: 'ask', pad: 'x'.repeat(256) }, {}, 400],
+  ]) assert.equal((await post(e, url, form, headers)).status, status, JSON.stringify([form, headers]));
+  const bare = await open(e, url, { method: 'POST', body: 'decision=approve&confirm=ask', headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+  assert.equal(bare.status, 403);
+  assert.equal(pending(e, NET).state, 'open');
+  const r = await post(e, url, { decision: 'approve', confirm: 'ask' });
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /oncall@example\.org/);
+  assert.deepEqual(logged.at(-1), { event: 'approved', name: 'ask', origin: NET, approver: 1, ip: '203.0.113.50', asn: null });
+  assert.equal((await rec(e, 'ask', { ip: '198.51.100.200' })).status, 200);
+  mock.timers.tick(10 * 60e3 - 1);
+  assert.equal((await rec(e, 'ask', { ip: HOME })).status, 200);
+  const pid = pending(e, NET).pid;
+  mock.timers.tick(2);
+  await refusedReply(await rec(e, 'ask', { ip: HOME }));
+  assert.equal(pending(e, NET).state, 'open');
+  assert.notEqual(pending(e, NET).pid, pid);
+}));
+
+test('a decided or replaced pending answers 409, an expired token 410; deny holds, and approve still works after it', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  const url = await link(e, NET);
+  assert.equal((await post(e, url, { decision: 'deny' })).status, 200);
+  assert.equal(pending(e, NET).state, 'denied');
+  assert.equal((await post(e, url, { decision: 'deny' })).status, 409);
+  mock.timers.tick(5001);
+  const misses = e.misses;
+  await refusedReply(await rec(e, 'ask', { ip: HOME }));
+  await refusedReply(await rec(e, 'ask', { ip: HOME }));
+  assert.equal(e.misses, misses + 1);
+  assert.match(await (await open(e, url)).text(), /Denied at .*value="approve"/s);
+  assert.equal((await post(e, url, { decision: 'approve', confirm: 'ask' })).status, 200);
+  assert.equal((await rec(e, 'ask', { ip: HOME })).status, 200);
+  assert.equal((await post(e, url, { decision: 'approve', confirm: 'ask' })).status, 409);
+  assert.equal((await post(e, url, { decision: 'deny' })).status, 409);
+  mock.timers.tick(10 * 60e3 + 1);
+  await rec(e, 'ask', { ip: HOME });
+  assert.equal((await open(e, url)).status, 409);
+  assert.equal((await post(e, url, { decision: 'approve', confirm: 'ask' })).status, 409);
+  const current = await link(e, NET);
+  mock.timers.tick(12 * 3600e3 - 1);
+  assert.equal((await open(e, current)).status, 200);
+  mock.timers.tick(1);
+  assert.equal((await open(e, current)).status, 410);
+  assert.equal((await post(e, current, { decision: 'approve', confirm: 'ask' })).status, 410);
+  const pid = pending(e, NET).pid;
+  await rec(e, 'ask', { ip: HOME });
+  assert.notEqual(pending(e, NET).pid, pid);
+}));
+
+test('a token tampered in any part, signed for another set, or naming a revoked set or one without approvers is 404', withClock(async () => {
+  const e = gateEnv({ TANG_KEY_OTHER: setText({ approvers: APPROVERS }), TANG_KEY_PIN: setText({ allow: ['192.0.2.0/24'] }), TANG_KEY_OPEN: setText() });
+  await rec(e, 'ask', { ip: HOME });
+  const url = await link(e, NET);
+  const [v, payload, mac] = url.split('/').pop().split('.');
+  const flip = (x) => x.slice(0, -2) + (x.at(-2) === 'A' ? 'B' : 'A') + x.at(-1);
+  for (const t of [`v2.${payload}.${mac}`, `v1.${flip(payload)}.${mac}`, `v1.${payload}.${flip(mac)}`, `v1.${payload}`, 'x', `${v}.${payload}.${mac}.x`]) {
+    assert.equal((await open(e, `/ask/approve/${t}`)).status, 404, t);
+  }
+  assert.equal((await open(e, await link(e, NET, { key: approveKey(FX['P-521'].exch) }))).status, 404);
+  for (const name of ['other', 'pin', 'open']) {
+    assert.equal((await open(e, url.replace('/ask/', `/${name}/`))).status, 404, name);
+    assert.equal((await open(e, await link(e, NET, { name, p: pending(e, NET) }))).status, name === 'other' ? 409 : 404, name);
+  }
+  assert.equal((await open(e, url)).status, 200);
+  delete e.TANG_KEY_ASK;
+  assert.equal((await open(e, url)).status, 404);
+}));
+
+test('a set takes 3 open pendings; further origins are capped, per set, until one is decided', withClock(async () => {
+  const e = gateEnv({ TANG_KEY_OTHER: setText({ approvers: APPROVERS }) });
+  for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1']) await rec(e, 'ask', { ip });
+  await refusedReply(await rec(e, 'ask', { ip: '2001:db8::1' }));
+  assert.equal(pending(e, '2001:db8:0::/48'), undefined);
+  const misses = e.misses;
+  await refusedReply(await rec(e, 'ask', { ip: '2001:db8:5::1' }));
+  assert.equal(e.misses, misses);
+  await rec(e, 'other', { ip: '2001:db8::1' });
+  assert.equal(pending(e, '2001:db8:0::/48', 'other').state, 'open');
+  assert.equal((await post(e, await link(e, '203.0.113.0/24'), { decision: 'deny' })).status, 200);
+  await rec(e, 'ask', { ip: '2001:db8::1' });
+  assert.equal(pending(e, '2001:db8:0::/48').state, 'open');
+  const html = await (await open(e, await link(e, '2001:db8:0::/48'))).text();
+  assert.match(html, /2 other origin\(s\) are asking for this set.*deny them all/s);
+  mock.timers.tick(12 * 3600e3);
+  await rec(e, 'ask', { ip: '203.0.113.200' });
+  assert.deepEqual([...e.store.m.keys()], ['p:ask:203.0.113.0/24']);
+}));
+
+test('a probed miss never reaches the Gate, a throwing Gate fails closed, and a grant raises the served alert', withClock(async () => {
+  const e = gateEnv();
+  await refusedReply(await rec(e, 'ask', { ip: HOME, headers: { 'keystone-probe': '1' } }));
+  assert.equal(e.misses, 0);
+  e.store.get = async () => { throw new Error('storage down'); };
+  await refusedReply(await rec(e, 'ask', { ip: HOME }));
+  await refusedReply(await rec(e, 'ask', { ip: '203.0.113.9' }));
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /^ask: approvals unavailable, refusing new origins: storage down$/);
+  const g = gateEnv();
+  await rec(g, 'ask', { ip: HOME });
+  await post(g, await link(g, NET), { decision: 'approve', confirm: 'ask' });
+  sent = [];
+  assert.equal((await rec(g, 'ask', { ip: HOME })).status, 200);
+  assert.deepEqual(subjects(), ['keystone: recovery request from a new source for ask']);
+}));

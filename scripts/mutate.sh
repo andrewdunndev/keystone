@@ -96,10 +96,10 @@ mutant "imported key shared across keys" 's/(e.key ??= /(privateKey.key ??= /'
 mutant "adv/<thp> unchecked" 's/if (thp \&\& !(await kidMatches/if (false \&\& !(await kidMatches/'
 mutant "rec accepts the signing key's kid" 's/(await kidMatches(set.exch.jwk, arg, set.exch.kids))/(await kidMatches(set.exch.jwk, arg, set.exch.kids) || await kidMatches(set.sign.jwk, arg, set.sign.kids))/'
 mutant "no 1-mod-4 coordinate reject" 's/ \&\& s.length % 4 !== 1//'
-mutant "no body cap on read length" 's/if ((n += value.byteLength) > MAX_BODY) return/n += value.byteLength; if (false) return/'
-mutant "body cap checked after the full read" 's/if ((n += value.byteLength) > MAX_BODY) return reader.cancel().then(() => null, () => null);/n += value.byteLength;/; s/if (done) break;/if (done) { if (n > MAX_BODY) return null; break; }/'
+mutant "no body cap on read length" 's/if ((n += value.byteLength) > cap) return/n += value.byteLength; if (false) return/'
+mutant "body cap checked after the full read" 's/if ((n += value.byteLength) > cap) return reader.cancel().then(() => null, () => null);/n += value.byteLength;/; s/if (done) break;/if (done) { if (n > cap) return null; break; }/'
 mutant "no Content-Length cap" 's/if (Number(request.headers.get(.content-length.)) > MAX_BODY)/if (false)/'
-mutant "read-length cap rejects exactly 4 KiB" 's/byteLength) > MAX_BODY) return/byteLength) >= MAX_BODY) return/'
+mutant "read-length cap rejects exactly 4 KiB" 's/byteLength) > cap) return/byteLength) >= cap) return/'
 mutant "Content-Length cap rejects exactly 4 KiB" 's/)) > MAX_BODY) return reply(413/)) >= MAX_BODY) return reply(413/'
 mutant "client alg not checked" 's/(jwk.alg !== undefined \&\& jwk.alg !== .ECMR.) || //'
 mutant "adv imports the exchange key" "s/^  if (thp \&\& .* return null;\$/&\n  await privateKey(set.exch, 'ECDH', 'deriveBits');/"
@@ -143,6 +143,41 @@ mutant "refusal never alerts" "s/if ((why === 'allow' || why === 'origin') \&\& 
 mutant "held and failed-closed requests alert" "s/(why === 'allow' || why === 'origin')/(why !== 'probe')/"
 mutant "a probed refusal alerts" 's/ \&\& !probed(request) \&\& alertsOn(env)/ \&\& alertsOn(env)/'
 mutant "a refusal marks the source seen" "s/\${refused ? ':refused' : ''}//"
+mutant "a probed miss reaches the Gate" "s/  if (probed(request)) return 'probe';//"
+mutant "fail-closed checks GATE alone" 's/  if (!env.GATE || !env.ALERT || !env.ALERT_FROM) return closed/  if (!env.GATE) return closed/'
+mutant "Gate answers not cached" 's/  for (const k of \[at, name\]) if/  for (const k of []) if/'
+mutant "capped answers cached per origin" "s/answered.set(why === 'capped' ? name : at,/answered.set(at,/"
+mutant "answers cached for a minute" 's/const ANSWER_TTL = 5000;/const ANSWER_TTL = 60000;/'
+mutant "a decision leaves the cached answer" '/  answered.delete(`${name} ${t.o}`);/d'
+mutant "a grant refused" "s/  if (why === 'served') return null;/  if (false) return null;/"
+mutant "token expiry not enforced" 's/  if (t.e <= Date.now()) return page(410/  if (false) return page(410/'
+mutant "token live at its expiry" 's/if (t.e <= Date.now())/if (t.e < Date.now())/'
+mutant "a POST from anywhere decides" "s/  if (request.headers.get('Origin') !== new URL(request.url).origin) return page(403/  if (false) return page(403/"
+mutant "approve without the typed name" "s/ || (decision === 'approve' \&\& form.get('confirm') !== name)//"
+mutant "any content type read as a form" 's/ ? await readBody(request, 256) : null;/ \&\& false ? 0 : await readBody(request, 256);/'
+mutant "form body capped at 4 KiB" 's/await readBody(request, 256)/await readBody(request)/'
+mutant "a GET decides" "s/    const { p, others } = await gate(env).view(name, t.o, t.p);/    await gate(env).decide(name, t.o, t.p, 'approve', { a: t.a }); const { p, others } = await gate(env).view(name, t.o, t.p);/"
+mutant "approve route on a set without approvers" 's/if (op === .approve. \&\& arg \&\& set.approvers)/if (op === "approve" \&\& arg)/'
+mutant "no CSP on the page" "/'content-security-policy': /d"
+mutant "page sends the referrer anywhere" "s/'referrer-policy': 'same-origin'/'referrer-policy': 'unsafe-url'/"
+mutant "page values unescaped" 's/^const esc = (s) => String(s).replace(.*/const esc = (s) => String(s);/'
+g=src/gate.js
+mutant "a denied origin reopened" "s/      if (p.state === 'denied') return 'denied';//" $g
+mutant "a held origin reopened" "s/      if (p.state === 'open') return 'held';//" $g
+mutant "a grant never ends" "s/      if (p.grantUntil > now) return 'served';/      if (p.grantUntil) return 'served';/" $g
+mutant "a grant of 11 minutes" 's/export const GRANT = 10 \* 60 \* 1000;/export const GRANT = 11 * 60 * 1000;/' $g
+mutant "a pending lives 13 hours" 's/export const PENDING_TTL = 12 \* 3600 \* 1000;/export const PENDING_TTL = 13 * 3600 * 1000;/' $g
+mutant "an expired pending kept" 's/    if (p?.expires > now) {/    if (p) {/' $g
+mutant "4 open pendings per set" 's/const OPEN_MAX = 3;/const OPEN_MAX = 4;/' $g
+mutant "decided pendings count toward the cap" "s/.filter((\[, p\]) => p.state === 'open' \&\& p.expires > now)/.filter(([, p]) => p.expires > now)/" $g
+mutant "expired entries never pruned" 's/    await this.prune(now);//' $g
+mutant "a replaced pending decided" 's/const live = p?.pid === pid \&\& p.expires > now;/const live = !!p \&\& p.expires > now;/' $g
+mutant "deny on a denied pending" "s/!(p.state === 'open' || (decision === 'approve' \&\& p.state === 'denied'))/!(p.state === 'open' || p.state === 'denied')/" $g
+mutant "approve on an approved pending" "s/(decision === 'approve' \&\& p.state === 'denied')/(decision === 'approve')/" $g
+mutant "a replaced pending shown" 's/return { p: p?.pid === pid \&\& p.expires > now ? p : null, others };/return { p, others };/' $g
+mutant "other origins include this one" 's/.filter((o) => o.origin !== origin)/.filter(() => true)/' $g
+mutant "the token MAC ignores the set name" 's/enc.encode(`${name}.${payload}`)/enc.encode(payload)/' $g
+mutant "the token MAC unchecked" 's/if (!m || !(await crypto.subtle.verify(/if (!m || false \&\& !(await crypto.subtle.verify(/' $g
 o=src/origin.js
 mutant "allow match ignores the prefix length" 's/a.n >> BigInt(BITS\[c.v\] - c.len) === c.n >> BigInt(BITS\[c.v\] - c.len)/a.n === c.n/' $o
 mutant "allow matches across families" 's/(a, c) => a.v === c.v \&\& /(a, c) => /' $o

@@ -3,6 +3,9 @@
 import { EmailMessage } from 'cloudflare:email';
 import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
 import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
+import { approveKey, verify, GRANT } from './gate.js';
+
+export { Gate } from './gate.js';
 
 const enc = new TextEncoder();
 // tangd (OpenSSL) accepts zero-padded coordinates and reduces them mod p; padding is capped at twice the field size.
@@ -75,15 +78,15 @@ const ecdhX = async (c, d, u, v) => toBig(new Uint8Array(await crypto.subtle.der
     { name: 'ECDH', namedCurve: c.crv }, false, []),
 }, d, c.coord * 8)));
 
-// The body as text, or null past MAX_BODY bytes; reading stops at the cap, whatever Content-Length says.
-async function readBody(request) {
+// The body as text, or null past `cap` bytes; reading stops at the cap, whatever Content-Length says.
+async function readBody(request, cap = MAX_BODY) {
   const reader = request.body?.getReader(), chunks = [];
   let n = 0;
   while (reader) {
     const { done, value } = await reader.read();
     if (done) break;
     chunks.push(value);
-    if ((n += value.byteLength) > MAX_BODY) return reader.cancel().then(() => null, () => null);
+    if ((n += value.byteLength) > cap) return reader.cancel().then(() => null, () => null);
   }
   const out = new Uint8Array(n);
   n = 0;
@@ -151,8 +154,7 @@ const heldCount = new Map();
 
 export function resetAlertState() {
   for (const s of [seen, held, inflight, failed]) s.clear();
-  coolUntil.clear();
-  loggedAt.clear();
+  for (const m of [coolUntil, loggedAt, answered]) m.clear();
   heldCount.clear();
 }
 
@@ -263,10 +265,71 @@ async function sendDigest(env) {
   }
 }
 
+const PAGE_HEADERS = {
+  'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin',
+  'x-content-type-options': 'nosniff',
+  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
+const page = (status, title, body) => new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">' +
+  `<title>${esc(title)}</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem}` +
+  `dt{font-weight:600}input,button{font:inherit}</style><h1>${esc(title)}</h1>${body}`, { status, headers: PAGE_HEADERS });
+
+function facts(name, origin, p) {
+  const i = p.info;
+  return `<dl><dt>Key set</dt><dd>${esc(name)}</dd><dt>Origin</dt><dd>${esc(origin)}</dd><dt>Network</dt><dd>AS${esc(i.asn)} ${esc(i.org)}</dd>` +
+    `<dt>Location</dt><dd>${esc(i.city)}, ${esc(i.country)} (approximate)</dd><dt>Cloudflare colo</dt><dd>${esc(i.colo)}</dd>` +
+    `<dt>First seen</dt><dd>${when(p.created)}</dd><dt>Expires</dt><dd>${when(p.expires)}</dd></dl>`;
+}
+
+// /<name>/approve/<token>. A GET only shows; a POST from the page itself decides. A token is 404 unless its MAC holds.
+async function approval(request, env, name, set, token) {
+  const t = await verify(set.approveKey ??= approveKey(set.exch.jwk), name, token);
+  if (!t) return reply(404, 'not found\n');
+  if (request.method !== 'GET' && request.method !== 'POST') return reply(405, 'method not allowed\n');
+  if (t.e <= Date.now()) return page(410, 'This request has expired', '<p>Nothing changed. A host still asking gets a new request.</p>');
+  if (!env.GATE) return page(503, 'Approvals are unavailable', '<p>The Gate is not bound.</p>');
+  const who = (p) => esc(set.approvers[p.decided.a] ?? `approver ${p.decided.a + 1}`);
+  const decided = (p) => `<p>${p.state === 'approved' ? 'Approved' : 'Denied'} at ${when(p.decided.at)} by ${who(p)}.` +
+    `${p.state === 'approved' ? ` Any machine in ${esc(t.o)} can recover ${esc(name)} until ${when(p.grantUntil)}.` : ''}</p>`;
+  if (request.method === 'GET') {
+    const { p, others } = await gate(env).view(name, t.o, t.p);
+    if (!p) return page(409, 'This request is no longer current', '<p>Nothing changed. A host still asking gets a new request.</p>');
+    const rest = others.length ? `<p><strong>${others.length} other origin(s) are asking for this set.</strong> If you did not move ` +
+      `the host, deny them all.</p><ul>${others.map((o) => `<li>${esc(o.origin)}: AS${esc(o.info.asn)} ${esc(o.info.org)}, ` +
+      `${esc(o.info.city)}, ${esc(o.info.country)}, since ${when(o.created)}</li>`).join('')}</ul>` : '';
+    const approve = `<form method="post"><p>Approving lets any machine in ${esc(t.o)} recover ${esc(name)} for ${GRANT / 60000} minutes.</p>` +
+      `<label>Type <b>${esc(name)}</b> to approve: <input name="confirm" autocomplete="off" required></label> ` +
+      '<button name="decision" value="approve">Approve</button></form>';
+    const deny = '<form method="post"><button name="decision" value="deny">Deny</button></form>';
+    const actions = p.state === 'open' ? approve + deny : p.state === 'denied' ? decided(p) + approve : decided(p);
+    return page(200, `Unlock ${name} from ${t.o}?`, facts(name, t.o, p) + rest + actions);
+  }
+  if (request.headers.get('Origin') !== new URL(request.url).origin) return page(403, 'Refused', '<p>Decide from the approval page.</p>');
+  const body = /^application\/x-www-form-urlencoded(;|$)/.test(request.headers.get('content-type') ?? '') ? await readBody(request, 256) : null;
+  const form = new URLSearchParams(body ?? '');
+  const decision = form.get('decision');
+  if (body === null || !['approve', 'deny'].includes(decision) || (decision === 'approve' && form.get('confirm') !== name)) {
+    return page(400, 'Nothing changed', `<p>To approve, type ${esc(name)} exactly.</p>`);
+  }
+  const ip = request.headers.get('CF-Connecting-IP'), asn = request.cf?.asn ?? null;
+  const { status, p } = await gate(env).decide(name, t.o, t.p, decision, { a: t.a, ip, asn });
+  if (status !== 200) return page(409, 'Nothing changed', p ? decided(p) : '<p>This request is no longer current.</p>');
+  console.log(JSON.stringify({ event: p.state, name, origin: t.o, approver: t.a, ip, asn }));
+  answered.delete(`${name} ${t.o}`);
+  answered.delete(name);
+  return page(200, p.state === 'approved' ? 'Approved' : 'Denied', decided(p));
+}
+
 const alertsOn = (env) => env.UNLOCKS && env.ALERT && env.ALERT_FROM && env.ALERT_TO;
 
 const failed = new Set();
 const loggedAt = new Map();
+const answered = new Map();
+const ANSWER_TTL = 5000;
+const gate = (env) => env.GATE.get(env.GATE.idFromName('gate'));
+const clip = (v) => String(v ?? '?').slice(0, 64);
 
 // null when the origin is admitted, else why not. A refused origin never reaches a private key or the Gate.
 async function admit(set, name, ip, request, env) {
@@ -274,7 +337,22 @@ async function admit(set, name, ip, request, env) {
   if (!set.approvers) return 'allow';
   if (probed(request)) return 'probe';
   if (!env.GATE || !env.ALERT || !env.ALERT_FROM) return closed(name, 'GATE, ALERT and ALERT_FROM are not all bound');
-  return closed(name, 'no Gate');
+  // Held and denied answers are kept per set and origin, capped ones per set, so a box retrying twice a second asks the
+  // Gate once per ANSWER_TTL.
+  const origin = sourceNet(request.headers.get('CF-Connecting-IP')), at = `${name} ${origin}`, now = Date.now();
+  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;
+  const cf = request.cf ?? {};
+  let why;
+  try {
+    why = await gate(env).miss(name, origin, {
+      asn: clip(cf.asn), org: clip(cf.asOrganization), country: clip(cf.country), city: clip(cf.city), colo: clip(cf.colo),
+      base: new URL(request.url).origin,
+    });
+  } catch (e) { return closed(name, e.message); }
+  if (why === 'served') return null;
+  if (answered.size >= SEEN_MAX) answered.clear();
+  answered.set(why === 'capped' ? name : at, { why, until: now + ANSWER_TTL });
+  return why;
 }
 
 function closed(name, why) {
@@ -343,6 +421,7 @@ export default {
       }
       return res;
     }
+    if (op === 'approve' && arg && set.approvers) return approval(request, env, name, set, arg);
     return reply(404, 'not found\n');
   },
   async scheduled(event, env) {
