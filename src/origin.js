@@ -66,3 +66,15 @@ export function parseCidr(s) {
   if (net !== a.n) throw new Error(`allow entry ${s} has host bits set; write ${format({ v: a.v, n: net })}/${len}`);
   return { v: a.v, n: net, len };
 }
+
+export const inCidr = (a, c) => a.v === c.v && a.n >> BigInt(BITS[c.v] - c.len) === c.n >> BigInt(BITS[c.v] - c.len);
+
+// The /24 (IPv4) or /48 (IPv6) an address sits in; null when it is neither.
+export function sourceNet(ip) {
+  const a = parseIp(ip);
+  if (!a) return null;
+  return a.v === 4 ? `${format({ v: 4, n: (a.n >> 8n) << 8n })}/24` : `${groups(a.n).slice(0, 3).join(':')}::/48`;
+}
+
+// AS13335 is Cloudflare's own egress (WARP, Workers): an origin there, in 240.0.0.0/4 or with no address is never admitted.
+export const unadmittable = (a, asn) => !a || (a.v === 4 && a.n >= CLASS_E) || asn === 13335;

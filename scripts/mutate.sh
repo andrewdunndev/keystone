@@ -94,7 +94,7 @@ mutant "a single zero group compressed" 's/run\[1\] - run\[0\] < 2 ?/run[1] - ru
 mutant "the last longest zero run compressed" 's/if (j - i > run\[1\] - run\[0\])/if (j - i >= run[1] - run[0])/' $o
 mutant "imported key shared across keys" 's/(e.key ??= /(privateKey.key ??= /'
 mutant "adv/<thp> unchecked" 's/if (thp \&\& !(await kidMatches/if (false \&\& !(await kidMatches/'
-mutant "rec accepts the signing key's kid" 's/(await kidMatches(exch.jwk, kid, exch.kids))/(await kidMatches(exch.jwk, kid, exch.kids) || await kidMatches(set.sign.jwk, kid, set.sign.kids))/'
+mutant "rec accepts the signing key's kid" 's/(await kidMatches(set.exch.jwk, arg, set.exch.kids))/(await kidMatches(set.exch.jwk, arg, set.exch.kids) || await kidMatches(set.sign.jwk, arg, set.sign.kids))/'
 mutant "no 1-mod-4 coordinate reject" 's/ \&\& s.length % 4 !== 1//'
 mutant "no body cap on read length" 's/if ((n += value.byteLength) > MAX_BODY) return/n += value.byteLength; if (false) return/'
 mutant "body cap checked after the full read" 's/if ((n += value.byteLength) > MAX_BODY) return reader.cancel().then(() => null, () => null);/n += value.byteLength;/; s/if (done) break;/if (done) { if (n > MAX_BODY) return null; break; }/'
@@ -105,7 +105,7 @@ mutant "client alg not checked" 's/(jwk.alg !== undefined \&\& jwk.alg !== .ECMR
 mutant "adv imports the exchange key" "s/^  if (thp \&\& .* return null;\$/&\n  await privateKey(set.exch, 'ECDH', 'deriveBits');/"
 mutant "rec imports the signing key" "s/^  const { exch, curve: c } = set;\$/&\n  await privateKey(set.sign, 'ECDSA', 'sign');/"
 
-mutant "refused recovery logged and alerted" 's/      if (res.status !== 200) return res;//'
+mutant "malformed body reaches the exchange" 's/      if (point instanceof Response) return point;//'
 mutant "seen source mailed again" 's/if (await env.UNLOCKS.get(key) !== null) return add(seen, key);//'
 mutant "KV cooldown ignored" 's/    if (until > Date.now()) {.*//'
 mutant "in-isolate cooldown ignored" 's/ || (coolUntil.get(name) ?? 0) > Date.now()//'
@@ -120,9 +120,9 @@ mutant "digest list unbounded" 's/, limit: DIGEST_MAX//'
 mutant "held writes uncapped" 's/    if (c.n >= HELD_CAP) return;//'
 mutant "mail claims an unlock" 's/received a recovery request/was unlocked/'
 mutant "alert failure escapes to the response path" 's/\.catch((e) => console.error(.unlock alert failed:., e.message))//'
-mutant "source key drops the ASN" 's/`${name}:${net}:${asn}:${country}`/`${name}:${net}:${country}`/'
-mutant "source is the full IPv4 address" "s|\${v4.slice(0, 3).join('.')}.0/24|\${ip}|"
-mutant "IPv6 source is a /64" 's/groups.slice(0, 3)/groups.slice(0, 4)/'
+mutant "source key drops the ASN" 's/${name}:${net}:${asn}:${country}${refused/${name}:${net}:${country}${refused/'
+mutant "source is the full IPv4 address" 's|format({ v: 4, n: (a.n >> 8n) << 8n })}/24|format(a)}/24|' src/origin.js
+mutant "IPv6 source is a /64" 's/groups(a.n).slice(0, 3)/groups(a.n).slice(0, 4)/' src/origin.js
 mutant "send has no timeout" 's/Promise.race(\[env.ALERT.send(msg), limit\])/env.ALERT.send(msg)/'
 mutant "message addressed to the sender" 's/new EmailMessage(env.ALERT_FROM, env.ALERT_TO,/new EmailMessage(env.ALERT_FROM, env.ALERT_FROM,/'
 mutant "envelope sender is the recipient" 's/new EmailMessage(env.ALERT_FROM, env.ALERT_TO,/new EmailMessage(env.ALERT_TO, env.ALERT_TO,/'
@@ -134,6 +134,21 @@ mutant "alerts on without the binding" 's/env.UNLOCKS \&\& env.ALERT \&\& /env.U
 mutant "adv headers without the probe" 's/      if (probed(request)) {/      if (true) {/'
 mutant "no version header" "/res.headers.set('keystone-version'/d"
 mutant "no policy header" "/if (tag) res.headers.set('keystone-policy', tag);/d"
+mutant "origin check skipped" 's/      if (set.gated \&\& unadmittable(ip, request.cf?.asn)) return refuse/      if (false) return refuse/'
+mutant "admission skipped" 's/        const why = await admit(set, name, ip, request, env);/        const why = null;/'
+mutant "allow miss served" "s/if (!set.approvers) return 'allow';/if (!set.approvers) return null;/"
+mutant "fail-closed error on every request" 's/  if (!failed.has(name)) {/  if (true) {/'
+mutant "refusal logged on every request" 's/  if ((loggedAt.get(key) ?? 0) <= Date.now()) {/  if (true) {/'
+mutant "refusal never alerts" "s/if ((why === 'allow' || why === 'origin') \&\& /if (false \&\& /"
+mutant "held and failed-closed requests alert" "s/(why === 'allow' || why === 'origin')/(why !== 'probe')/"
+mutant "a probed refusal alerts" 's/ \&\& !probed(request) \&\& alertsOn(env)/ \&\& alertsOn(env)/'
+mutant "a refusal marks the source seen" "s/\${refused ? ':refused' : ''}//"
+o=src/origin.js
+mutant "allow match ignores the prefix length" 's/a.n >> BigInt(BITS\[c.v\] - c.len) === c.n >> BigInt(BITS\[c.v\] - c.len)/a.n === c.n/' $o
+mutant "allow matches across families" 's/(a, c) => a.v === c.v \&\& /(a, c) => /' $o
+mutant "AS13335 admitted" 's/ || asn === 13335//' $o
+mutant "240.0.0.0/4 address admitted" 's/ || (a.v === 4 \&\& a.n >= CLASS_E)//' $o
+mutant "no address admitted" 's/=> !a || /=> /' $o
 
 k=bin/keyset.mjs
 mutant "deploy rewrites a live set" 's/\.catch(() => null) !== set\.roles)/.catch(() => null) === null)/' $k

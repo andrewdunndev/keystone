@@ -471,7 +471,7 @@ test('a policy edit is planned as policy and written with the keys exactly as st
   assert.deepEqual(r.calls.map((c) => c.slice(0, 2)), [['secret', 'list'], ['deployments', 'status'], ['deploy', '--secrets-file']]);
   assert.deepEqual(seen[0].body, { TANG_KEY_A_1: edited });
   assert.deepEqual(JSON.parse(edited).keys, JSON.parse(A.text).keys);
-  assert.match(r.out, /^OK +adv a-1:.*\n(OK|SKIP) +rec a-1:/m);
+  assert.match(r.out, /^OK +adv a-1:.*\nSKIP rec a-1: 403/m);
   r = await deploy({ TANG_KEY_A_1: edited }, [], { live });
   assert.match(r.out, /^ok +a-1: live and unchanged$/m);
 });

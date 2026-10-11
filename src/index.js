@@ -2,6 +2,7 @@
 // One write-once key set per name: /<name>/adv, /<name>/adv/<thp>, /<name>/rec/<kid>.
 import { EmailMessage } from 'cloudflare:email';
 import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
+import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
 
 const enc = new TextEncoder();
 // tangd (OpenSSL) accepts zero-padded coordinates and reduces them mod p; padding is capped at twice the field size.
@@ -90,12 +91,9 @@ async function readBody(request) {
   return new TextDecoder().decode(out);
 }
 
-// ECDH yields only x(dX). With S = dG the exchange public key (its JWK import checks S against d), x(d(X+G)) = x(dX + S)
-// fixes y(dX) through the x-only addition law: x(Q+S)(xS-xQ)^2 = (xS*xQ + a)(xS + xQ) + 2b - 2*yS*yQ, with a = -3.
-// X = +-G gives dX = +-S directly. The client point must be on the set's curve, as tangd requires.
-async function recover(set, kid, request) {
-  const { exch, curve: c } = set;
-  if (!(await kidMatches(exch.jwk, kid, exch.kids))) return reply(404, 'unknown kid\n');
+// The client point of a rec body, on the set's curve and reduced mod p, or the error reply. It reads public data only.
+async function parseRec(set, request) {
+  const c = set.curve;
   if (Number(request.headers.get('content-length')) > MAX_BODY) return reply(413, 'body too large\n');
   let jwk;
   try {
@@ -107,9 +105,18 @@ async function recover(set, kid, request) {
   if (!jwk || (jwk.alg !== undefined && jwk.alg !== 'ECMR') || jwk.kty !== 'EC' || jwk.crv !== c.crv || x === null || y === null) {
     return reply(400, 'bad point\n');
   }
-  const { p: P, b: B, gx: GX, gy: GY } = c, { mod, inv } = field(P);
+  const { p: P, b: B } = c, { mod } = field(P);
   x %= P; y %= P;
   if (mod(y * y - x * x * x + 3n * x - B) !== 0n) return reply(400, 'point not on curve\n');
+  return { x, y };
+}
+
+// ECDH yields only x(dX). With S = dG the exchange public key (its JWK import checks S against d), x(d(X+G)) = x(dX + S)
+// fixes y(dX) through the x-only addition law: x(Q+S)(xS-xQ)^2 = (xS*xQ + a)(xS + xQ) + 2b - 2*yS*yQ, with a = -3.
+// X = +-G gives dX = +-S directly. The client point must be on the set's curve, as tangd requires.
+async function exchange(set, { x, y }) {
+  const { exch, curve: c } = set;
+  const { p: P, b: B, gx: GX, gy: GY } = c, { mod, inv } = field(P);
   const d = await privateKey(exch, 'ECDH', 'deriveBits');
   const xs = toBig(b64u.dec(exch.jwk.x)), ys = toBig(b64u.dec(exch.jwk.y));
   let xq, yq;
@@ -125,21 +132,6 @@ async function recover(set, kid, request) {
     alg: 'ECMR', crv: c.crv, key_ops: ['deriveKey'], kty: 'EC',
     x: b64u.enc(fromHex(hex(xq, c.coord))), y: b64u.enc(fromHex(hex(yq, c.coord))),
   }), 'application/jwk+json');
-}
-
-// The /24 (IPv4) or /48 (IPv6) an address sits in; null when it is neither.
-export function sourceNet(ip) {
-  ip = ip?.trim().toLowerCase();
-  if (!ip) return null;
-  const v4 = ip.split('.');
-  if (v4.length === 4 && v4.every((x) => /^\d{1,3}$/.test(x) && +x <= 255)) return `${v4.slice(0, 3).join('.')}.0/24`;
-  const halves = ip.split('::');
-  if (halves.length > 2) return null;
-  const [a, b] = halves.map((h) => (h ? h.split(':') : []));
-  if (b && a.length + b.length > 7) return null;
-  const groups = b ? [...a, ...Array(8 - a.length - b.length).fill('0'), ...b] : a;
-  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return null;
-  return `${groups.slice(0, 3).map((g) => parseInt(g, 16).toString(16)).join(':')}::/48`;
 }
 
 // One alert per key set per hour bounds the mail a stream of new sources can cause; KV's minimum TTL is 60 s. Sources
@@ -158,8 +150,9 @@ const coolUntil = new Map();
 const heldCount = new Map();
 
 export function resetAlertState() {
-  for (const s of [seen, held, inflight]) s.clear();
+  for (const s of [seen, held, inflight, failed]) s.clear();
   coolUntil.clear();
+  loggedAt.clear();
   heldCount.clear();
 }
 
@@ -197,11 +190,12 @@ function add(set, k) {
 // A recovery request from a (/24 or /48, ASN, country) not seen before mails once per set per cooldown. The kid is
 // public, so a request proves nothing about an unlock. Sources met during the cooldown or while a mail is in flight are
 // held for the digest. The set name and source are claimed before the first await so concurrent requests send one mail.
-async function alertNewSource(request, env, name) {
+// A refused source is a source of its own, so a refusal never marks the source seen for a later recovery.
+async function alertNewSource(request, env, name, refused = false) {
   const net = sourceNet(request.headers.get('CF-Connecting-IP'));
   if (!net) return;
   const { asn = '?', country = '?' } = request.cf ?? {};
-  const id = `${name}:${net}:${asn}:${country}`;
+  const id = `${name}:${net}:${asn}:${country}${refused ? ':refused' : ''}`;
   const key = `seen:${id}`;
   if (seen.has(key) || held.has(id) || inflight.has(key)) return;
   const hold = async () => {
@@ -213,7 +207,7 @@ async function alertNewSource(request, env, name) {
     }
     if (c.n >= HELD_CAP) return;
     c.n++;
-    await env.UNLOCKS.put(`held:${id}`, JSON.stringify({ host: name, net, asn, country, time: new Date().toISOString() }), { expirationTtl: HELD_TTL });
+    await env.UNLOCKS.put(`held:${id}`, JSON.stringify({ host: name, net, asn, country, refused, time: new Date().toISOString() }), { expirationTtl: HELD_TTL });
     add(held, id);
     await env.UNLOCKS.put(`heldn:${name}`, String(c.n), { expirationTtl: COOLDOWN });
   };
@@ -226,11 +220,16 @@ async function alertNewSource(request, env, name) {
     const next = Date.now() + COOLDOWN * 1000;
     coolUntil.set(name, next);
     await env.UNLOCKS.put(`cool:${name}`, String(next), { expirationTtl: COOLDOWN }).catch(() => {});
+    const facts = `source: ${net}\nASN: ${asn}\ncountry: ${country}\ntime: ${new Date().toISOString()}\n\n`;
+    const [subject, text] = refused ? [`keystone: refused a recovery request from a new source for ${name}`,
+      `Key set ${name} refused a recovery request from a source not seen before: the origin is not admitted, so no key ` +
+      `was released.\n\n${facts}If the host moved, add its prefix to the set's allow list. If it did not, someone who knows ` +
+      `the set's name is asking for it.\n`] : [`keystone: recovery request from a new source for ${name}`,
+      `Key set ${name} received a recovery request from a source not seen before.\n\n${facts}` +
+      `The key id is public, so this does not prove an unlock happened. If you did not expect it, ` +
+      `check the host before deleting ${secretName(name)}: deleting it blocks the next boot.\n`];
     try {
-      await sendMail(env, `keystone: recovery request from a new source for ${name}`,
-        `Key set ${name} received a recovery request from a source not seen before.\n\nsource: ${net}\nASN: ${asn}\ncountry: ${country}\n` +
-        `time: ${new Date().toISOString()}\n\nThe key id is public, so this does not prove an unlock happened. If you did not expect it, ` +
-        `check the host before deleting ${secretName(name)}: deleting it blocks the next boot.\n`);
+      await sendMail(env, subject, text);
     } catch (e) {
       await hold().catch(() => {});
       throw e;
@@ -254,7 +253,7 @@ async function sendDigest(env) {
     if (v) fresh.push({ name, seenKey, ...v });
   }
   if (!fresh.length) return;
-  const lines = fresh.map((v) => `${v.host}  ${v.net}  ASN ${v.asn}  ${v.country}  ${v.time}`).join('\n');
+  const lines = fresh.map((v) => `${v.host}  ${v.net}  ASN ${v.asn}  ${v.country}  ${v.time}${v.refused ? '  refused' : ''}`).join('\n');
   await sendMail(env, `keystone: ${fresh.length} held recovery request source(s)`,
     `Recovery requests from sources not seen before, held during an alert cooldown:\n\n${lines}\n\n` +
     `The key id is public, so a request does not prove an unlock. Delete ${[...new Set(fresh.map((v) => secretName(v.host)))].join(', ')} only after checking the host.\n`);
@@ -265,6 +264,43 @@ async function sendDigest(env) {
 }
 
 const alertsOn = (env) => env.UNLOCKS && env.ALERT && env.ALERT_FROM && env.ALERT_TO;
+
+const failed = new Set();
+const loggedAt = new Map();
+
+// null when the origin is admitted, else why not. A refused origin never reaches a private key or the Gate.
+async function admit(set, name, ip, request, env) {
+  if (set.nets?.some((c) => inCidr(ip, c))) return null;
+  if (!set.approvers) return 'allow';
+  if (probed(request)) return 'probe';
+  if (!env.GATE || !env.ALERT || !env.ALERT_FROM) return closed(name, 'GATE, ALERT and ALERT_FROM are not all bound');
+  return closed(name, 'no Gate');
+}
+
+function closed(name, why) {
+  if (!failed.has(name)) {
+    failed.add(name);
+    console.error(`${name}: approvals unavailable, refusing new origins: ${why}`);
+  }
+  return 'unavailable';
+}
+
+// Unserved recoveries all look alike to the client. A refusal alerts only for a set without approvers (or an origin
+// never admitted); the log line comes once a minute per set and origin.
+function refuse(request, env, ctx, name, why) {
+  const ip = request.headers.get('CF-Connecting-IP');
+  const key = `${name}:${sourceNet(ip) ?? ip}`;
+  if ((loggedAt.get(key) ?? 0) <= Date.now()) {
+    if (loggedAt.size >= SEEN_MAX) loggedAt.clear();
+    loggedAt.set(key, Date.now() + 60000);
+    const { asn = null, country = null } = request.cf ?? {};
+    console.log(JSON.stringify({ event: 'refused', name, ip, asn, country, why }));
+  }
+  if ((why === 'allow' || why === 'origin') && !probed(request) && alertsOn(env)) {
+    ctx.waitUntil(alertNewSource(request, env, name, true).catch((e) => console.error('refusal alert failed:', e.message)));
+  }
+  return reply(403, 'origin not admitted\n');
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -289,8 +325,16 @@ export default {
     }
     if (op === 'rec' && arg) {
       if (request.method !== 'POST') return reply(405, 'method not allowed\n');
-      const res = await recover(set, arg, request);
-      if (res.status !== 200) return res;
+      if (!(await kidMatches(set.exch.jwk, arg, set.exch.kids))) return reply(404, 'unknown kid\n');
+      const ip = set.gated && parseIp(request.headers.get('CF-Connecting-IP'));
+      if (set.gated && unadmittable(ip, request.cf?.asn)) return refuse(request, env, ctx, name, 'origin');
+      const point = await parseRec(set, request);
+      if (point instanceof Response) return point;
+      if (set.gated) {
+        const why = await admit(set, name, ip, request, env);
+        if (why) return refuse(request, env, ctx, name, why);
+      }
+      const res = await exchange(set, point);
       // One line per recovery for the Workers logs: the source, never key material or the body.
       const { asn = null, country = null } = request.cf ?? {};
       console.log(JSON.stringify({ event: 'rec', name, ip: request.headers.get('CF-Connecting-IP'), asn, country }));

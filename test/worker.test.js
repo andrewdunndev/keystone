@@ -2,7 +2,8 @@ import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { p256, p521 } from '@noble/curves/nist.js';
-import worker, { sourceNet, resetAlertState } from '../src/index.js';
+import worker, { resetAlertState } from '../src/index.js';
+import { sourceNet } from '../src/origin.js';
 import { b64u, thumbprint, parseSet, CURVES } from '../src/jwk.js';
 import { EmailMessage } from 'cloudflare:email';
 
@@ -343,7 +344,8 @@ test('sourceNet: /24 for IPv4, /48 for IPv6, null otherwise', () => {
   assert.equal(sourceNet('2001:db8:1:2:3:4:5:6'), '2001:db8:1::/48');
   assert.equal(sourceNet('2001:db8:ffff::1'), '2001:db8:ffff::/48');
   assert.equal(sourceNet('2001:DB8::'), '2001:db8:0::/48');
-  for (const bad of ['nope', '1.2.3.256', '1.2.3', '1::2::3', '1:2:3:4::5:6:7:8', '1:2:3:4:5:6:7', '::ffff:1.2.3.4']) assert.equal(sourceNet(bad), null, bad);
+  assert.equal(sourceNet('::ffff:203.0.113.77'), '203.0.113.0/24');
+  for (const bad of ['nope', '1.2.3.256', '1.2.3', '1::2::3', '1:2:3:4::5:6:7:8', '1:2:3:4:5:6:7']) assert.equal(sourceNet(bad), null, bad);
   assert.equal(sourceNet(null), null);
 });
 
