@@ -2,25 +2,24 @@
 import Layout from '../layouts/Layout.astro';
 import Hero from '@dunn.dev/reference/chrome/Hero.astro';
 import SectionLabel from '@dunn.dev/reference/chrome/SectionLabel.astro';
+import Ov1 from '../figures/15-ov1.astro';
 import Failure from '../figures/13-failure.astro';
 ---
 <Layout description="keystone unlocks an encrypted disk at startup with no typed passphrase. If the computer is stolen, delete its key set before it next starts, and the disk stays locked.">
   <Hero title="keystone" eyebrow="disk unlock server">
-    keystone lets a computer with an encrypted disk unlock it at startup with no one typing a passphrase. At boot the computer gets its part of the key from keystone over the internet. If the computer is stolen, delete its key set before it next starts, and the disk stays locked.
+    <p>An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
+    <p>keystone lets a computer with an encrypted disk unlock it at startup with no one typing a passphrase. At boot the computer gets its part of the key from keystone over the internet. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
+    <p>You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If the computer is stolen, delete its key set before it next starts, and the disk stays locked. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk.</p>
     <Fragment slot="actions">
       <a class="cta-primary" href="/setup/">Install</a>
       <a class="cta-secondary" href="/architecture/">Architecture</a>
     </Fragment>
   </Hero>
 
-  <section class="section" id="what-it-is">
-    <SectionLabel label="What it is" />
-    <div class="flow">
-      <p class="section-prose">An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
-      <p class="section-prose">keystone supplies the <a href="#secrets">missing half</a> of a second key the computer keeps on the disk, so the disk opens without the passphrase. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
-      <p class="section-prose">You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If a computer is stolen, delete its key set. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk.</p>
-    </div>
-  </section>
+  <figure class="cat-explainer figure-pair figure-full">
+    <Ov1 />
+    <p>At boot the computer asks keystone for the missing half of its disk key. Delete a stolen computer's key set and the disk stays locked.</p>
+  </figure>
 
   <section class="section" id="how-it-works">
     <SectionLabel label="How it works" />
