@@ -123,13 +123,14 @@ mutant "alert failure escapes to the response path" 's/\.catch((e) => console.er
 mutant "source key drops the ASN" 's/${name}:${net}:${asn}:${country}${refused/${name}:${net}:${country}${refused/'
 mutant "source is the full IPv4 address" 's|format({ v: 4, n: (a.n >> 8n) << 8n })}/24|format(a)}/24|' src/origin.js
 mutant "IPv6 source is a /64" 's/groups(a.n).slice(0, 3)/groups(a.n).slice(0, 4)/' src/origin.js
-mutant "send has no timeout" 's/Promise.race(\[env.ALERT.send(msg), limit\])/env.ALERT.send(msg)/'
-mutant "message addressed to the sender" 's/new EmailMessage(env.ALERT_FROM, env.ALERT_TO,/new EmailMessage(env.ALERT_FROM, env.ALERT_FROM,/'
-mutant "envelope sender is the recipient" 's/new EmailMessage(env.ALERT_FROM, env.ALERT_TO,/new EmailMessage(env.ALERT_TO, env.ALERT_TO,/'
-mutant "header values not stripped of CR and LF" 's/const line = (s) => String(s).replace(.*/const line = (s) => String(s);/'
-mutant "body keeps bare LF line ends" 's/    text.replace(.*/    text,/'
-mutant "no Message-ID header" 's/Message-ID: <[^>]*>/X-Id: 1/'
-mutant "no MIME-Version header" "s/'MIME-Version: 1.0'/'X-V: 1'/"
+mutant "send has no timeout" 's/Promise.race(\[env.ALERT.send(msg), limit\])/env.ALERT.send(msg)/' src/gate.js
+mutant "message addressed to the sender" 's/new EmailMessage(env.ALERT_FROM, to,/new EmailMessage(env.ALERT_FROM, env.ALERT_FROM,/' src/gate.js
+mutant "envelope sender is the recipient" 's/new EmailMessage(env.ALERT_FROM, to,/new EmailMessage(to, to,/' src/gate.js
+mutant "alert addressed to the sender" 's/=> send(env, env.ALERT_TO,/=> send(env, env.ALERT_FROM,/'
+mutant "header values not stripped of CR and LF" 's/const line = (s) => String(s).replace(.*/const line = (s) => String(s);/' src/gate.js
+mutant "body keeps bare LF line ends" 's/    text.replace(.*/    text,/' src/gate.js
+mutant "no Message-ID header" 's/Message-ID: <[^>]*>/X-Id: 1/' src/gate.js
+mutant "no MIME-Version header" "s/'MIME-Version: 1.0'/'X-V: 1'/" src/gate.js
 mutant "alerts on without the binding" 's/env.UNLOCKS \&\& env.ALERT \&\& /env.UNLOCKS \&\& /'
 mutant "adv headers without the probe" 's/      if (probed(request)) {/      if (true) {/'
 mutant "no version header" "/res.headers.set('keystone-version'/d"
@@ -163,7 +164,7 @@ mutant "page sends the referrer anywhere" "s/'referrer-policy': 'same-origin'/'r
 mutant "page values unescaped" 's/^const esc = (s) => String(s).replace(.*/const esc = (s) => String(s);/'
 g=src/gate.js
 mutant "a denied origin reopened" "s/      if (p.state === 'denied') return 'denied';//" $g
-mutant "a held origin reopened" "s/      if (p.state === 'open') return 'held';//" $g
+mutant "a held origin reopened" "s/      if (p.state === 'open') {/      if (false) {/" $g
 mutant "a grant never ends" "s/      if (p.grantUntil > now) return 'served';/      if (p.grantUntil) return 'served';/" $g
 mutant "a grant of 11 minutes" 's/export const GRANT = 10 \* 60 \* 1000;/export const GRANT = 11 * 60 * 1000;/' $g
 mutant "a pending lives 13 hours" 's/export const PENDING_TTL = 12 \* 3600 \* 1000;/export const PENDING_TTL = 13 * 3600 * 1000;/' $g
@@ -178,6 +179,19 @@ mutant "a replaced pending shown" 's/return { p: p?.pid === pid \&\& p.expires >
 mutant "other origins include this one" 's/.filter((o) => o.origin !== origin)/.filter(() => true)/' $g
 mutant "the token MAC ignores the set name" 's/enc.encode(`${name}.${payload}`)/enc.encode(payload)/' $g
 mutant "the token MAC unchecked" 's/if (!m || !(await crypto.subtle.verify(/if (!m || false \&\& !(await crypto.subtle.verify(/' $g
+mutant "held mail resent on every miss" 's/if (p.mail.sent.includes(false) \&\& p.mail.at + RETRY <= now)/if (true)/' $g
+mutant "a failed send retried after a minute" 's/const RETRY = 5 \* 60 \* 1000;/const RETRY = 60 * 1000;/' $g
+mutant "a retry does not restart the clock" '/          p.mail.at = now;/d' $g
+mutant "a delivered message never recorded" '/          q.mail.sent\[a\] = true;/d' $g
+mutant "a failed send escapes the Gate" 's/} catch (e) { console.error(`approval mail/} catch (e) { throw e; console.error(`approval mail/' $g
+mutant "one link for every approver" 's/{ o: origin, p: p.pid, e: p.expires, a })/{ o: origin, p: p.pid, e: p.expires, a: 0 })/' $g
+mutant "mail values not folded to ASCII" 's/^const ascii = (s) => String(s).replace(.*/const ascii = (s) => String(s);/' $g
+mutant "other origins left out of the mail" 's/(others.length ? /(false ? /' $g
+mutant "a notice on every capped miss" 's/      if (!((await s.get(`c:${name}`))?.expires > now)) await this.notice/      await this.notice/' $g
+mutant "notice links signed for approver 0" 's/{ o: o.origin, p: o.pid, e: o.expires, a })/{ o: o.origin, p: o.pid, e: o.expires, a: 0 })/' $g
+mutant "21 messages an hour" 's/const MAIL_MAX = 20;/const MAIL_MAX = 21;/' $g
+mutant "notices outside the cap" 's/      if (!(await this.budget(now))) break;//' $g
+mutant "approval mail outside the cap" 's/      if (p.mail.sent\[a\] || !(await this.budget(now))) continue;/      if (p.mail.sent[a]) continue;/' $g
 o=src/origin.js
 mutant "allow match ignores the prefix length" 's/a.n >> BigInt(BITS\[c.v\] - c.len) === c.n >> BigInt(BITS\[c.v\] - c.len)/a.n === c.n/' $o
 mutant "allow matches across families" 's/(a, c) => a.v === c.v \&\& /(a, c) => /' $o

@@ -1,9 +1,8 @@
 // Tang server (McCallum-Relyea exchange, P-256 or P-521 per key set) as a Cloudflare Worker.
-// One write-once key set per name: /<name>/adv, /<name>/adv/<thp>, /<name>/rec/<kid>.
-import { EmailMessage } from 'cloudflare:email';
+// One write-once key set per name: /<name>/adv, /<name>/adv/<thp>, /<name>/rec/<kid>, /<name>/approve/<token>.
 import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
 import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
-import { approveKey, verify, GRANT } from './gate.js';
+import { approveKey, send, verify, GRANT } from './gate.js';
 
 export { Gate } from './gate.js';
 
@@ -142,7 +141,6 @@ async function exchange(set, { x, y }) {
 // second per key and, on the Free plan, 1,000 writes a day per account; HELD_CAP keeps a set's worst day near 400.
 const COOLDOWN = 3600;
 const HELD_TTL = 7 * 86400;
-const SEND_TIMEOUT = 10000;
 const SEEN_MAX = 1000;
 const HELD_CAP = 5;
 const DIGEST_MAX = 200;
@@ -158,31 +156,7 @@ export function resetAlertState() {
   heldCount.clear();
 }
 
-// A plain-text message built by hand: the binding takes raw MIME, and the values are ASCII by construction (set
-// names are [a-z0-9-], the rest is numeric or a country code), so CR and LF are the only characters to strip.
-function mime(from, to, subject, text) {
-  const line = (s) => String(s).replace(/[\r\n]+/g, ' ');
-  const domain = line(from).split('@').pop();
-  return [
-    `From: ${line(from)}`, `To: ${line(to)}`, `Subject: ${line(subject)}`, `Date: ${new Date().toUTCString()}`,
-    `Message-ID: <${crypto.randomUUID()}@${domain}>`, 'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=us-ascii', 'Content-Transfer-Encoding: 7bit', '',
-    text.replace(/\r?\n/g, '\r\n'),
-  ].join('\r\n');
-}
-
-// The send_email binding only delivers to its verified destination, from an address on a domain with Email Routing
-// enabled. It has no timeout of its own, so a stalled send is cut off here.
-async function sendMail(env, subject, text) {
-  const msg = new EmailMessage(env.ALERT_FROM, env.ALERT_TO, mime(env.ALERT_FROM, env.ALERT_TO, subject, text));
-  let timer;
-  const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('send timed out')), SEND_TIMEOUT); });
-  try {
-    await Promise.race([env.ALERT.send(msg), limit]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const sendMail = (env, subject, text) => send(env, env.ALERT_TO, subject, text);
 
 function add(set, k) {
   if (set.size >= SEEN_MAX) set.clear();
