@@ -15,7 +15,7 @@ const headings = (await render(setup)).headings
   .filter(h => h.depth === 2)
   .map(h => ({ slug: h.slug, text: h.text }));
 ---
-<Layout title="Install" description="Install keystone, bind a first disk, rotate, revoke and set up alerts." headings={headings} progress>
+<Layout title="Install" description="Install keystone, bind a first disk, rotate, revoke and set up alerts." headings={headings} progress section={{ label: 'Docs', pages: [{ href: '/setup/', label: 'Install' }, { href: '/architecture/', label: 'Architecture' }] }}>
   <header class="page-header">
     <h1 class="page-title">Install</h1>
   </header>
