@@ -83,7 +83,7 @@ Authenticate with `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN` (the "Edit
 
 ## Rotate and revoke
 
-Sets are write-once: `keyset` refuses different keys under a live name, so rotation uses a new name.
+Keys are write-once: `keyset` refuses different keys under a live name, so rotation uses a new name.
 
 1. Mint `server-2`; deploy it with `--new`.
 2. Bind a new slot: `clevis luks bind -d <dev> tang '{"url":"https://tang.example.org/server-2","thp":"<thp>"}'`.
@@ -107,7 +107,7 @@ jq -n --arg s2 "$(pass tang/server-2)" \
   keyset deploy --url https://tang.example.org --apply -- --config "$KEYSTONE/deploy/wrangler.toml"
 ```
 
-The plan labels each set `ok`, `new`, `revoked` or `REFUSE` and applies only when nothing is refused. A null entry that is still served shows as `REVOKED-LIVE`, and `--apply` redeploys from current secrets to drop it. The drift report lists live sets missing from the input; a plan runs it only when `CLOUDFLARE_API_TOKEN` is set.
+The plan labels each set `ok`, `new`, `policy`, `revoked` or `REFUSE` and applies only when nothing is refused. A null entry that is still served shows as `REVOKED-LIVE`, and `--apply` redeploys from current secrets to drop it. The drift report lists live sets missing from the input; a plan runs it only when `CLOUDFLARE_API_TOKEN` is set.
 
 `--apply` refuses when the wrangler target's secrets disagree with `--url`. `keyset` prints private keys only from `new` and deletes only the set `revoke` names. `deploy --apply` redeploys the Worker from the config given after `--`. Each check sends a real `rec`, which can raise an alert and marks its source seen.
 
@@ -122,17 +122,40 @@ When a `rec` succeeds from a new source, keystone mails one alert through a Clou
 3. Uncomment all four blocks in `deploy/wrangler.toml`: the `UNLOCKS` namespace id, the `ALERT` binding, `ALERT_FROM` and `ALERT_TO`, and the hourly cron. `ALERT_FROM` must be on the Email Routing zone.
 4. Redeploy.
 
+## Origin gate
+
+A set may name who can recover it. A set with neither field answers any client.
+
+- `allow`: 1 to 32 prefixes, IPv4 `/8` to `/32` or IPv6 `/16` to `/128`, host bits zero. An origin inside one is served unattended.
+- `approvers`: 1 to 5 addresses. Any other origin's `rec` is held and each approver is mailed a link to approve or deny it. Approval lets any machine in that /24 or /48 recover the set for 10 minutes; the held host is served within about 15 seconds.
+
+Both fields live in the set's secret beside its keys. Edit them in the key store, then deploy; the plan reads `policy`.
+
+```sh
+pass tang/server-1 | jq -c '.allow = ["198.51.100.7/32"] | .approvers = ["you@example.org"]' | pass insert -m -f tang/server-1
+pass tang/server-1 | jq -R '{TANG_KEY_SERVER_1: .}' |
+  keyset deploy --url https://tang.example.org --apply -- --config "$KEYSTONE/deploy/wrangler.toml"
+```
+
+- Pin a /32 for a fixed IPv4 address, or the IPv6 prefix your ISP delegates, and let approval cover a renumber or a visit.
+- A set with `approvers` alone holds every origin, so each unlock needs an approval.
+- Approvals need `GATE` (declared in the example config), `ALERT` and `ALERT_FROM`. Leave `destination_address` off the `ALERT` binding and verify every approver as an Email Routing destination. Without them, a set with approvers refuses every new origin.
+- A set holds 3 origins at a time; a fourth is refused and the approvers get one notice listing the three. At most 20 messages an hour go out across all sets.
+- Turn Pseudo IPv4 off for the zone. With it on, IPv6 clients arrive as 240.0.0.0/4 addresses, which are refused.
+- Keys are write-once; the policy fields are editable. `deploy` rewrites a live set only when its keys match stdin and one Worker version, the one `--url` serves, takes all traffic. `check` from outside `allow` prints `SKIP rec`.
+
 ## Reference
 
 | Route | Method | Answer |
 |---|---|---|
 | `/<name>/adv` | GET | the advertisement, a JWS over the set's public keys |
 | `/<name>/adv/<thp>` | GET | the same when `<thp>` is the signing key's thumbprint, else 404 |
-| `/<name>/rec/<kid>` | POST | key recovery when `<kid>` names the exchange key, else 404 |
+| `/<name>/rec/<kid>` | POST | key recovery when `<kid>` names the exchange key, else 404; 403 for an origin a gated set does not admit |
+| `/<name>/approve/<token>` | GET, POST | the approval page a held origin's mail links to; 404 for a set without approvers |
 
-A name is `[a-z0-9-]`, up to 63 characters. A set lives in the Worker secret `TANG_KEY_<NAME>`, with the name upper-cased and `-` becoming `_`. Its value is `{"keys":[<signing key>,<exchange key>]}`: exactly two private JWKs, each with `alg`, on one curve. A missing secret answers 404. A malformed one answers 500 and logs the secret's name, never its value.
+A name is `[a-z0-9-]`, up to 63 characters. A set lives in the Worker secret `TANG_KEY_<NAME>`, with the name upper-cased and `-` becoming `_`. Its value is `{"keys":[<signing key>,<exchange key>]}`: exactly two private JWKs, each with `alg`, on one curve, optionally with `allow` and `approvers`. Any other member or an empty list makes the set malformed. A missing secret answers 404. A malformed one answers 500 and logs the secret's name, never its value.
 
-Every successful `rec` logs one JSON line with the name, IP, ASN and country, and no key material.
+Every successful `rec` logs one JSON line with the name, IP, ASN and country, and no key material. A refused one logs a `refused` line at most once a minute per set and origin.
 
 ### Curves
 

@@ -7,19 +7,23 @@ revokes its key sets.
 
 - `src/jwk.js`: the key set format: base64url, thumbprints, kid matching, `parseSet`, the set name rule and its
   `TANG_KEY_<NAME>` secret. The format lives here alone; the Worker and keyset import it.
-- `src/index.js`: the Worker: `/<name>/adv`, `/<name>/rec/<kid>`, unlock alerts.
+- `src/index.js`: the Worker: `/<name>/adv`, `/<name>/rec/<kid>` and its admission, `/<name>/approve/<token>`, unlock
+  alerts.
+- `src/origin.js`: addresses, prefixes and the /24 or /48 an origin is keyed by.
+- `src/gate.js`: the `Gate` Durable Object holding pending approvals, approval tokens, and the mail.
 - `bin/keyset.mjs`: `new`, `check`, `deploy`, `revoke`. `main(argv, io)` takes fetch, the wrangler runner, stdio and process
   injected, so tests run it in-process.
 - `test/worker.test.js`: the Worker against a fixture `test/gen-fixture.mjs` builds from stock tangd before each run.
 - `test/keyset.test.js`: keyset against the real Worker through an injected fetch, wrangler faked.
+- `test/gate.test.js`: the origin gate, the Gate on a Map-backed storage, approval and mail.
 - `scripts/mutate.sh`: sed mutants of `src/` and `bin/`; each must apply and fail the suite.
 - `scripts/interop.sh`: keyset and stock clevis against `wrangler dev`, then revocation; `luks` adds, as root, a tangd
   cross-check and a LUKS2 bind and unlock.
 
 ## Rules
 
-- Sets are write-once and named: rotation is a new name, and nothing rewrites a live set. Every keyset verb plans
-  unless given `--apply`; only `keyset revoke <name> --apply` deletes, one set at a time.
+- Keys are write-once and named: rotation is a new name, and only a set's `allow` and `approvers` are rewritten live.
+  Every keyset verb plans unless given `--apply`; only `keyset revoke <name> --apply` deletes, one set at a time.
 - Private keys are never printed, logged or written, except by `keyset new` to stdout and in the 0600 secrets file
   `deploy --apply` hands wrangler and removes.
 - No real hostnames, domains or accounts anywhere: examples use reserved example domains and `server-1`.

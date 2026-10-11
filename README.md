@@ -16,19 +16,22 @@ The design, in figures, is at [keystone.dunn.dev/architecture/](https://keystone
 
 ## Security model
 
-An internet-facing Tang server unlocks a stolen disk from anywhere it can be reached. Revocation is the control.
+An internet-facing Tang server unlocks a stolen disk from anywhere it can be reached. Revocation is the control, and the origin gate narrows who reaches it.
 
-- `rec` (key recovery) answers any client, as in `tangd`. `adv` (the advertisement) is public by design and carries only public keys.
+- `rec` (key recovery) is gated per set. A set with neither `allow` nor `approvers` answers any client, as `tangd` does. A gated set serves origins inside `allow`, holds others until an approver approves by mail, and refuses the rest. `adv` (the advertisement) is public by design and carries only public keys.
+- A held host unlocks only because its client keeps retrying, as `clevis-luks-askpass` does. One-shot clients (udisks2, `clevis luks unlock`) just fail.
+- Whoever reads an approver's mailbox holds approval power. Anyone who knows a set's name can fill its approval slots and block approvals; an `allow` edit and the passphrase still work.
+- Hosts that egress through WARP or a Worker (AS13335) are always refused by a gated set.
 - A revoked set answers 404, and its disks stop unlocking from then on. A host that already unlocked keeps its disk key.
 - Private keys live in Worker secrets, which the API cannot read back once written. Any Worker version the account deploys can read them, so whoever controls the Cloudflare account controls the keys. Protect it like the disks.
-- Worker versions carry their secrets. A rollback past a revoke serves the revoked set again, and `wrangler secret list` does not show it. Never roll back across a revoke. A `null` entry for the set (a tombstone) in the deploy input makes `keyset deploy` detect and drop it.
+- Worker versions carry their secrets. A rollback past a revoke serves the revoked set again, and one past a policy edit serves the older policy; `wrangler secret list` shows neither. Never roll back across a revoke or a policy edit. A `null` entry for the set (a tombstone) in the deploy input makes `keyset deploy` detect and drop a revoked set, and `keyset deploy` reports a rolled-back policy as `policy`.
 - On the Free plan every request counts toward the daily Workers quota. A flood can exhaust it, and bound hosts fall back to their passphrase until it resets. A WAF rate limit mitigates.
 - The unlock alert is a tripwire, not an audit log. Workers Logs records every successful `rec`.
 - To split trust, bind with `clevis sss` across keystone and a second server.
 
 ## Setup
 
-[docs/setup.md](docs/setup.md) covers install, Cloudflare setup, a first bound disk, rotation, revocation, alerts and the route and key set reference.
+[docs/setup.md](docs/setup.md) covers install, Cloudflare setup, a first bound disk, rotation, revocation, alerts, the origin gate and the route and key set reference.
 
 ## Contributing
 
