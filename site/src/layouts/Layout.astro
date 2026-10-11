@@ -7,7 +7,6 @@ interface Props {
   title?: string;
   description?: string;
   headings?: { slug: string; text: string }[];
-  progress?: boolean;
   section?: { label: string; pages: { href: string; label: string }[] } | null;
 }
 ---
@@ -22,6 +21,7 @@ interface Props {
     { href: '/setup/', label: 'Install' },
   ]}
   repoUrl="https://gitlab.com/dunn.dev/keystone"
+  repoLabel="gitlab.com/dunn.dev/keystone"
 >
   <slot />
 </ProjectLayout>
