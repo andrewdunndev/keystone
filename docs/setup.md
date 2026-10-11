@@ -127,7 +127,7 @@ When a `rec` succeeds from a new source, keystone mails one alert through a Clou
 A set may name who can recover it. A set with neither field answers any client.
 
 - `allow`: 1 to 32 prefixes, IPv4 `/8` to `/32` or IPv6 `/16` to `/128`, host bits zero. An origin inside one is served unattended.
-- `approvers`: 1 to 5 addresses. Any other origin's `rec` is held and each approver is mailed a link to approve or deny it. Approval lets any machine in that /24 or /48 recover the set for 10 minutes; the held host is served within about 15 seconds.
+- `approvers`: 1 to 5 addresses. Any other origin's `rec` is held and each approver is mailed a link to approve or deny it. Approval lets any machine in that /24 or /48 recover the set for 10 minutes; the held host is served within about 15 seconds. Removing an approver retires their links.
 
 Both fields live in the set's secret beside its keys. Edit them in the key store, then deploy; the plan reads `policy`.
 
@@ -137,12 +137,12 @@ pass tang/server-1 | jq -R '{TANG_KEY_SERVER_1: .}' |
   keyset deploy --url https://tang.example.org --apply -- --config "$KEYSTONE/deploy/wrangler.toml"
 ```
 
-- Pin a /32 for a fixed IPv4 address, or the IPv6 prefix your ISP delegates, and let approval cover a renumber or a visit.
+- Pin every family the host can egress on, its IPv4 /32 and its delegated IPv6 prefix, since clevis may use either at boot. Approval covers a renumber or a visit.
 - A set with `approvers` alone holds every origin, so each unlock needs an approval.
 - Approvals need `GATE` (declared in the example config), `ALERT` and `ALERT_FROM`. Leave `destination_address` off the `ALERT` binding and verify every approver as an Email Routing destination. Without them, a set with approvers refuses every new origin.
 - A set holds 3 origins at a time; a fourth is refused and the approvers get one notice listing the three. At most 20 messages an hour go out across all sets.
 - Turn Pseudo IPv4 off for the zone. With it on, IPv6 clients arrive as 240.0.0.0/4 addresses, which are refused.
-- Keys are write-once; the policy fields are editable. `deploy` rewrites a live set only when its keys match stdin and one Worker version, the one `--url` serves, takes all traffic. `check` from outside `allow` prints `SKIP rec`.
+- `deploy` rewrites a live set only when its keys match stdin and one Worker version, the one `--url` serves, takes all traffic. `check` from outside `allow` prints `SKIP rec`.
 
 ## Reference
 
