@@ -10,10 +10,10 @@
     "pretest": "node --import ./test/register.mjs test/gen-fixture.mjs",
     "test": "node --disable-warning=ExperimentalWarning --import ./test/register.mjs --test test/*.test.js",
     "mutate": "bash scripts/mutate.sh",
-    "tokens": "node scripts/tokens.mjs"
+    "auth-css": "node scripts/auth-css.mjs"
   },
   "devDependencies": {
-    "@dunn.dev/reference": "0.8.3",
+    "@dunn.dev/reference": "0.9.0",
     "@noble/curves": "2.4.0",
     "wrangler": "4.149.0"
   },

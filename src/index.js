@@ -3,7 +3,7 @@
 import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
 import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
 import { approveKey, send, verify, GRANT } from './gate.js';
-import { TOKENS } from './tokens.js';
+import { AUTH_CSS } from './auth-css.js';
 
 export { Gate } from './gate.js';
 
@@ -250,35 +250,20 @@ const PAGE_HEADERS = {
 };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
-const MARK = '<svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><g stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+const MARK = '<svg viewBox="0 0 64 64" aria-hidden="true"><g stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
   '<path d="M8 45 A24 24 0 0 1 27.01 21.52" stroke-width="2"/><path d="M36.99 21.52 A24 24 0 0 1 56 45" stroke-width="2"/>' +
   '<path d="M18 45 A14 14 0 0 1 29.09 31.31" stroke-width="2"/><path d="M34.91 31.31 A14 14 0 0 1 46 45" stroke-width="2"/>' +
   '<line x1="23" y1="34.28" x2="16.57" y2="26.61" stroke-width="1.6"/><line x1="41" y1="34.28" x2="47.43" y2="26.61" stroke-width="1.6"/>' +
   '<path d="M8 45 V56 H18 V45 Z" stroke-width="2"/><path d="M46 45 V56 H56 V45 Z" stroke-width="2"/></g>' +
   '<polygon points="26.26,18 37.74,18 34.91,31.31 29.09,31.31" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
-const STYLE = TOKENS +
-  '*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font:var(--text-base)/var(--lh-base) var(--font-body)}' +
-  'header{border-bottom:1px solid var(--border)}footer{margin-top:auto;border-top:1px solid var(--border)}' +
-  '.in{max-width:1100px;margin:0 auto;padding:0 var(--space-5);display:flex;align-items:center;font:var(--text-sm) var(--font-mono)}' +
-  'header .in{min-height:var(--space-8);gap:var(--space-2);font-weight:700;letter-spacing:.02em}.mk{width:1.5rem;height:1.5rem;color:var(--accent)}' +
-  'footer .in{padding-block:var(--space-5);gap:var(--space-3);font-size:var(--text-xs);color:var(--text-muted)}footer a{color:inherit;text-decoration:none}footer a:hover{color:var(--text)}footer i{font-style:normal;color:var(--border-strong)}' +
-  'main{width:100%;max-width:32rem;margin:0 auto;padding:var(--space-6) var(--space-5) var(--space-8)}@media(max-width:640px){.in,main{padding-inline:var(--space-4)}}' +
-  'h1{margin:0 0 var(--space-5);font-size:var(--text-3xl);font-weight:800;letter-spacing:-.02em;line-height:var(--lh-hero);overflow-wrap:anywhere}' +
-  'p{margin:0 0 var(--space-5);color:var(--text-2)}ul{margin:0 0 var(--space-5);padding-left:1.25rem;color:var(--text-2);overflow-wrap:anywhere}li+li{margin-top:var(--space-2)}' +
-  'dl{margin:0 0 var(--space-5);padding:var(--space-5);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}' +
-  'dt{font:var(--text-xs) var(--font-mono);letter-spacing:.02em;color:var(--text-2)}dd{margin:0 0 var(--space-3);overflow-wrap:anywhere}dd:last-child{margin:0}' +
-  '.n{padding:var(--space-3) var(--space-4);background:var(--surface);border-left:3px solid var(--text-muted);border-radius:0 var(--radius) var(--radius) 0;font-size:var(--text-sm);color:var(--text);overflow-wrap:anywhere}' +
-  '.ok{border-color:var(--success);background:var(--success-subtle)}.bad{border-color:var(--danger);background:var(--danger-subtle)}.warn{border-color:var(--warning);background:var(--warning-subtle)}' +
-  'form{display:flex;flex-direction:column;gap:var(--space-4);margin:0 0 var(--space-5)}form p{margin:0;font-size:var(--text-sm)}' +
-  'label{display:block;font:var(--text-xs) var(--font-mono);letter-spacing:.02em;color:var(--text-2)}label b{color:var(--text)}' +
-  'input{display:block;margin-top:var(--space-2);width:100%;min-height:2.75rem;padding:var(--space-3);background:var(--bg);color:var(--text);border:1px solid var(--border-strong);border-radius:var(--radius);font:inherit}' +
-  'button{width:100%;min-height:48px;padding:0 var(--space-4);font:500 var(--text-sm) var(--font-mono);border-radius:var(--radius);border:1px solid var(--accent);background:var(--accent);color:var(--accent-contrast);cursor:pointer}button:hover{background:var(--accent-hover);border-color:var(--accent-hover)}' +
-  'button[value=deny]{background:var(--bg);color:var(--danger);border-color:var(--danger)}button[value=deny]:hover{background:var(--danger-subtle)}' +
-  ':focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}';
-const note = (text, tone = '') => `<p class="n ${tone}">${text}</p>`;
+const STYLE = AUTH_CSS +
+  'dl{margin:0}dt{font-size:.75rem;letter-spacing:.02em;opacity:.7}dd{margin:0 0 .75rem;overflow-wrap:anywhere}dd:last-child{margin:0}' +
+  'ul{margin:0;padding-left:1.25rem}li+li{margin-top:.5rem}.field input{margin-top:.5rem}.page.page-narrow .focus-card>.notice{margin:0}';
+const note = (text, tone = '') => `<p class="notice ${tone}">${text}</p>`;
 const page = (status, title, body) => new Response('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-  `<title>${esc(title)} - keystone</title><style>${STYLE}</style><header><div class="in">${MARK}keystone</div></header>` +
-  `<main><h1>${esc(title)}</h1>${body}</main><footer><div class="in">keystone<i>&middot;</i><a href="https://gitlab.com/dunn.dev/keystone">repo</a><i>&middot;</i><a href="https://keystone.dunn.dev">site</a></div></footer>`, { status, headers: PAGE_HEADERS });
+  `<title>${esc(title)} - keystone</title><style>${STYLE}</style><header class="site-header"><div class="header-inner"><span class="brand"><span class="brand-mark">${MARK}</span><span class="brand-name">keystone</span></span></div></header>` +
+  `<main class="page page-narrow"><header class="page-header"><h1 class="page-title">${esc(title)}</h1></header><section class="panel focus-card">${body}</section></main>` +
+  '<footer class="site-footer"><div class="footer-inner">keystone<span class="footer-sep">&middot;</span><a href="https://gitlab.com/dunn.dev/keystone">repo</a><span class="footer-sep">&middot;</span><a href="https://keystone.dunn.dev">site</a></div></footer>', { status, headers: PAGE_HEADERS });
 
 const notFound = () => page(404, 'Not found', '');
 
@@ -297,28 +282,28 @@ async function approval(request, env, name, set, token) {
   if (!t || !set.approvers.includes(t.a)) return notFound();
   if (request.method !== 'GET' && request.method !== 'POST') return reply(405, 'method not allowed\n');
   if (t.e <= Date.now()) return page(410, 'This request has expired', note('Nothing changed. A host still asking gets a new request.'));
-  if (!env.GATE) return page(503, 'Approvals are unavailable', note('The Gate is not bound.', 'bad'));
+  if (!env.GATE) return page(503, 'Approvals are unavailable', note('The Gate is not bound.', 'notice-danger'));
   const decided = (p) => note(`${p.state === 'approved' ? 'Approved' : 'Denied'} at ${when(p.decided.at)} by ${esc(p.decided.a)}.` +
-    `${p.state === 'approved' ? ` Any machine in ${esc(t.o)} can recover ${esc(name)} until ${when(p.grantUntil)}.` : ''}`, p.state === 'approved' ? 'ok' : 'bad');
+    `${p.state === 'approved' ? ` Any machine in ${esc(t.o)} can recover ${esc(name)} until ${when(p.grantUntil)}.` : ''}`, p.state === 'approved' ? 'notice-success' : 'notice-danger');
   if (request.method === 'GET') {
     const { p, others } = await gate(env).view(name, t.o, t.p);
     if (!p) return page(409, 'This request is no longer current', note('Nothing changed. A host still asking gets a new request.'));
     const rest = others.length ? note(`<strong>${others.length} other origin(s) are asking for this set.</strong> If you did not move ` +
-      'the host, deny them all.', 'warn') + `<ul>${others.map((o) => `<li>${esc(o.origin)}: AS${esc(o.info.asn)} ${esc(o.info.org)}, ` +
+      'the host, deny them all.', 'notice-warning') + `<ul>${others.map((o) => `<li>${esc(o.origin)}: AS${esc(o.info.asn)} ${esc(o.info.org)}, ` +
       `${esc(o.info.city)}, ${esc(o.info.country)}, since ${when(o.created)}</li>`).join('')}</ul>` : '';
-    const approve = `<form method="post"><p>Approving lets any machine in ${esc(t.o)} recover ${esc(name)} for ${GRANT / 60000} minutes.</p>` +
-      `<label>Type <b>${esc(name)}</b> to approve: <input name="confirm" autocomplete="off" required></label> ` +
-      '<button name="decision" value="approve">Approve</button></form>';
-    const deny = '<form method="post"><button name="decision" value="deny">Deny</button></form>';
+    const approve = `<form class="focus-form" method="post"><p class="focus-note">Approving lets any machine in ${esc(t.o)} recover ${esc(name)} for ${GRANT / 60000} minutes.</p>` +
+      `<div class="field"><label>Type <b>${esc(name)}</b> to approve: <input name="confirm" autocomplete="off" required></label></div> ` +
+      '<button class="button button-primary focus-btn" name="decision" value="approve">Approve</button></form>';
+    const deny = '<form class="focus-form" method="post"><button class="button button-danger focus-btn" name="decision" value="deny">Deny</button></form>';
     const actions = p.state === 'open' ? approve + deny : p.state === 'denied' ? decided(p) + approve : decided(p);
     return page(200, `Unlock ${name} from ${t.o}?`, facts(name, t.o, p) + rest + actions);
   }
-  if (request.headers.get('Origin') !== new URL(request.url).origin) return page(403, 'Refused', note('Decide from the approval page.', 'bad'));
+  if (request.headers.get('Origin') !== new URL(request.url).origin) return page(403, 'Refused', note('Decide from the approval page.', 'notice-danger'));
   const body = /^application\/x-www-form-urlencoded(;|$)/.test(request.headers.get('content-type') ?? '') ? await readBody(request, 256) : null;
   const form = new URLSearchParams(body ?? '');
   const decision = form.get('decision');
   if (body === null || !['approve', 'deny'].includes(decision) || (decision === 'approve' && form.get('confirm') !== name)) {
-    return page(400, 'Nothing changed', note(`To approve, type ${esc(name)} exactly.`, 'bad'));
+    return page(400, 'Nothing changed', note(`To approve, type ${esc(name)} exactly.`, 'notice-danger'));
   }
   const ip = request.headers.get('CF-Connecting-IP'), asn = request.cf?.asn ?? null;
   const { status, p } = await gate(env).decide(name, t.o, t.p, decision, { a: t.a, ip, asn });
