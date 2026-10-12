@@ -596,7 +596,7 @@ test('a send that times out keeps its unit of the hourly cap, since it may yet b
   const e = mailTo(gateEnv(), () => { calls++; return new Promise(() => {}); });
   const held = rec(e, 'ask', { ip: HOME });
   for (const n of [1, 2]) {
-    while (calls < n) await new Promise(setImmediate);
+    for (let i = 0; calls < n && i < 1000; i++) await new Promise(setImmediate);
     mock.timers.tick(10000);
   }
   await held;
