@@ -111,7 +111,7 @@ The plan labels each set `ok`, `new`, `policy`, `revoked` or `REFUSE` and applie
 
 `--apply` refuses when the wrangler target's secrets disagree with `--url`. `keyset` prints private keys only from `new` and deletes only the set `revoke` names. `deploy --apply` redeploys the Worker from the config given after `--`. Each check sends a real `rec`, which can raise an alert and marks its source seen.
 
-To upgrade, update the clone, run `npm ci` and copy new bindings and migrations from the example config. To move to a new hostname, change the route. Either way, redeploy with `npx wrangler deploy --config "$KEYSTONE/deploy/wrangler.toml"`; secrets persist. Then plan `keyset deploy` against the new `--url`: every set should read `ok`.
+To upgrade, update the clone, run `npm ci` and merge the example config's new bindings. To move to a new hostname, change the route. Either way, redeploy with `npx wrangler deploy --config "$KEYSTONE/deploy/wrangler.toml"`; secrets persist. Then plan `keyset deploy` against the new `--url`: every set should read `ok`.
 
 ## Alerts
 
@@ -139,9 +139,9 @@ pass tang/server-1 | jq -R '{TANG_KEY_SERVER_1: .}' |
 ```
 
 - Pin every family the host can egress on, its IPv4 /32 and its delegated IPv6 prefix, since clevis may use either at boot. Approval covers a renumber or a visit.
-- A set with `approvers` alone holds every origin, so each unlock needs an approval.
-- Approvals need `GATE` (declared in the example config), `ALERT` and `ALERT_FROM`. Leave `destination_address` off the `ALERT` binding and verify every approver as an Email Routing destination. Without them, a set with approvers refuses every new origin and `check` fails.
-- A set holds 3 origins at a time; a fourth is refused and the approvers get one notice naming it and listing the three. At most 20 messages an hour go out across all sets.
+- With `approvers` alone, every unlock needs an approval.
+- Approvals need `GATE`, `ALERT` and `ALERT_FROM`. Leave `destination_address` off `ALERT` and verify every approver in Email Routing. Without them, such a set refuses every new origin and `check` fails.
+- A set holds 3 origins at a time; a fourth is refused and approvers get one notice naming it and the three. At most 20 messages an hour go out across all sets.
 - Turn Pseudo IPv4 off for the zone. With it on, IPv6 clients arrive as 240.0.0.0/4 addresses, which are refused.
 - `deploy` rewrites a live set only when its keys match stdin and one Worker version, the one `--url` serves, takes all traffic. `check` from outside `allow` prints `SKIP rec`.
 
