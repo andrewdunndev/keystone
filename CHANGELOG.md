@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.2.0 - 2026-10-12
 
 - Origin gate: a set may carry `allow` (prefixes served unattended) and `approvers` (addresses mailed a link to approve or deny any other origin). A set mails at most 5 messages an hour per approver, and all sets together 40. A set with neither behaves as before.
 - A set with any member other than `keys`, `allow` and `approvers`, or an empty list, is now malformed: the Worker answers 500 and `keyset` refuses it. Unknown members were ignored before.
