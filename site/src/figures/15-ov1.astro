@@ -1,0 +1,176 @@
+---
+const story = 'keystone at a glance, in seven steps: 1, you deploy a key set per disk to keystone, a Worker on your Cloudflare account; 2, the computer binds its encrypted disk once to its key set; 3, at boot the computer asks keystone, sending only a blinded value; 4, keystone reads that key set; 5, it answers with the missing half of the key; 6, the computer opens the disk with no passphrase typed, and keystone never sees the disk; 7, if the computer is stolen, you delete its key set before it next starts, keystone refuses it, and the disk stays locked.';
+---
+<svg class="figure-wide" viewBox="0 0 1320 440" role="img" aria-label={story} xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ks-ov1-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="var(--text-2)"/></marker>
+    <marker id="ks-ov1-deny" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="var(--danger)"/></marker>
+  </defs>
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="8" y="8" width="1304" height="424" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <text x="32" y="38" font-family="'IBM Plex Mono', Menlo, monospace" font-size="14" font-weight="600" letter-spacing="0.08em" fill="var(--text-2)">WHY · THE DISK OPENS AT BOOT WITH NO ONE TYPING; DELETE ITS KEY SET BEFORE IT NEXT STARTS AND IT STAYS LOCKED</text>
+
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="12" letter-spacing="0.08em" fill="var(--text-muted)">
+      <text x="32" y="80">ACTORS</text>
+      <text x="1088" y="80">OUTSIDE</text>
+    </g>
+    <rect x="364" y="56" width="592" height="268" rx="10" fill="var(--accent-subtle)" stroke="var(--accent)" stroke-width="1.5"/>
+    <text x="384" y="80" font-family="'IBM Plex Mono', Menlo, monospace" font-size="12" font-weight="600" letter-spacing="0.08em" fill="var(--accent)">KEYSTONE · ON YOUR CLOUDFLARE ACCOUNT</text>
+
+    <g fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#ks-ov1-arrow)">
+      <path d="M232,112 H752"/>
+      <path d="M72,284 V396 H1248 V284"/>
+      <path d="M232,212 H420"/>
+      <path d="M660,240 H842 V192"/>
+      <path d="M420,264 H232"/>
+      <path d="M192,284 V352 H1128 V284"/>
+    </g>
+    <path d="M232,148 H752" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ks-ov1-deny)"/>
+
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-contrast)">
+      <circle cx="248" cy="98" r="9" fill="var(--accent)"/><text x="248" y="102">1</text>
+      <circle cx="420" cy="382" r="9" fill="var(--accent)"/><text x="420" y="386">2</text>
+      <circle cx="248" cy="198" r="9" fill="var(--accent)"/><text x="248" y="202">3</text>
+      <circle cx="676" cy="226" r="9" fill="var(--accent)"/><text x="676" y="230">4</text>
+      <circle cx="248" cy="250" r="9" fill="var(--accent)"/><text x="248" y="254">5</text>
+      <circle cx="720" cy="338" r="9" fill="var(--accent)"/><text x="720" y="342">6</text>
+      <circle cx="420" cy="134" r="9" fill="var(--danger)"/><text x="420" y="138" fill="var(--bg)">7</text>
+    </g>
+    <g font-size="15" font-weight="600" fill="var(--text)">
+      <text x="262" y="103">deploys</text>
+      <text x="434" y="387">binds once</text>
+      <text x="262" y="203">asks at boot</text>
+      <text x="690" y="231">reads</text>
+      <text x="262" y="255">answers</text>
+      <text x="734" y="343">opens</text>
+      <text x="434" y="139" fill="var(--danger)">deletes</text>
+    </g>
+    <g font-size="13" fill="var(--text-2)">
+      <text x="240" y="131">a key set per disk</text>
+      <text x="412" y="415">to its key set</text>
+      <text x="240" y="231">a blinded value</text>
+      <text x="240" y="283">the missing half</text>
+      <text x="712" y="371">no passphrase typed</text>
+      <text x="412" y="167" font-weight="600" fill="var(--danger)">if it is stolen; keystone then refuses it</text>
+    </g>
+
+    <g fill="var(--bg)" stroke="var(--border-strong)">
+      <rect x="32" y="96" width="200" height="64" rx="6"/>
+      <rect x="32" y="188" width="200" height="96" rx="6"/>
+      <rect x="420" y="180" width="240" height="124" rx="6"/>
+      <rect x="752" y="96" width="180" height="96" rx="6"/>
+      <rect x="1088" y="188" width="200" height="96" rx="6"/>
+    </g>
+    <g font-size="18" font-weight="600" text-anchor="middle" fill="var(--text)">
+      <text x="132" y="124">owner</text>
+      <text x="132" y="216">computer at boot</text>
+      <text x="540" y="210">keystone</text>
+      <text x="842" y="128">key sets</text>
+      <text x="1188" y="216">the disk</text>
+    </g>
+    <g font-size="13" text-anchor="middle" fill="var(--text-2)">
+      <text x="132" y="146">you</text>
+      <text x="132" y="262">before the disk opens</text>
+      <text x="540" y="232">a Cloudflare Worker</text>
+      <text x="540" y="284">sees only a blinded value</text>
+      <text x="842" y="152">one per disk</text>
+      <text x="842" y="172">kept as secrets</text>
+      <text x="1188" y="240">encrypted with LUKS</text>
+      <text x="1188" y="262">keystone never sees it</text>
+    </g>
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="12" text-anchor="middle" fill="var(--text-2)">
+      <text x="132" y="240">initramfs · clevis</text>
+      <text x="540" y="254">tang.example.org</text>
+    </g>
+  </g>
+</svg>
+<svg class="figure-narrow" viewBox="0 0 340 740" role="img" aria-label={story} xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ks-ov1n-arrow" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--text-2)"/></marker>
+    <marker id="ks-ov1n-deny" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="var(--danger)"/></marker>
+  </defs>
+  <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect x="0.5" y="0.5" width="339" height="739" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="9.5" font-weight="600" letter-spacing="0.06em" fill="var(--text-2)">
+      <text x="16" y="22">WHY · THE DISK OPENS AT BOOT WITH NO ONE</text>
+      <text x="16" y="34">TYPING; DELETE ITS KEY SET BEFORE IT NEXT</text>
+      <text x="16" y="46">STARTS AND IT STAYS LOCKED</text>
+    </g>
+
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" letter-spacing="0.08em" fill="var(--text-muted)">
+      <text x="16" y="64">ACTORS</text>
+      <text x="16" y="494">ACTORS</text>
+      <text x="16" y="646">OUTSIDE</text>
+    </g>
+    <rect x="10" y="184" width="320" height="256" rx="8" fill="var(--accent-subtle)" stroke="var(--accent)" stroke-width="1.5"/>
+    <text x="320" y="200" text-anchor="end" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" font-weight="600" letter-spacing="0.08em" fill="var(--accent)">KEYSTONE</text>
+
+    <g fill="none" stroke="var(--text-2)" stroke-width="1.5" marker-end="url(#ks-ov1n-arrow)">
+      <path d="M72,124 V212"/>
+      <path d="M72,564 V652"/>
+      <path d="M72,500 V412"/>
+      <path d="M170,312 V264"/>
+      <path d="M220,412 V500"/>
+      <path d="M220,564 V652"/>
+    </g>
+    <path d="M204,124 V212" fill="none" stroke="var(--danger)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ks-ov1n-deny)"/>
+
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-contrast)">
+      <circle cx="88" cy="146" r="8" fill="var(--accent)"/><text x="88" y="149.5">1</text>
+      <circle cx="88" cy="588" r="8" fill="var(--accent)"/><text x="88" y="591.5">2</text>
+      <circle cx="88" cy="460" r="8" fill="var(--accent)"/><text x="88" y="463.5">3</text>
+      <circle cx="186" cy="288" r="8" fill="var(--accent)"/><text x="186" y="291.5">4</text>
+      <circle cx="236" cy="460" r="8" fill="var(--accent)"/><text x="236" y="463.5">5</text>
+      <circle cx="236" cy="588" r="8" fill="var(--accent)"/><text x="236" y="591.5">6</text>
+      <circle cx="220" cy="146" r="8" fill="var(--danger)"/><text x="220" y="149.5" fill="var(--bg)">7</text>
+    </g>
+    <g font-size="11" font-weight="600" fill="var(--text)">
+      <text x="100" y="150">deploys</text>
+      <text x="100" y="592">binds once</text>
+      <text x="100" y="464">asks at boot</text>
+      <text x="198" y="292">reads</text>
+      <text x="248" y="464">answers</text>
+      <text x="248" y="592">opens</text>
+      <text x="232" y="150" fill="var(--danger)">deletes</text>
+    </g>
+    <g font-size="10" fill="var(--text-2)">
+      <text x="80" y="166">a key set per disk</text>
+      <text x="80" y="608">to its key set</text>
+      <text x="80" y="480">a blinded value</text>
+      <text x="228" y="480">the missing half</text>
+      <text x="228" y="608">no passphrase typed</text>
+      <g font-weight="600" fill="var(--danger)">
+        <text x="212" y="166">if it is stolen;</text>
+        <text x="212" y="178">keystone then refuses it</text>
+      </g>
+    </g>
+
+    <g fill="var(--bg)" stroke="var(--border-strong)">
+      <rect x="16" y="72" width="308" height="52" rx="6"/>
+      <rect x="22" y="212" width="296" height="52" rx="6"/>
+      <rect x="22" y="312" width="296" height="100" rx="6"/>
+      <rect x="16" y="500" width="308" height="64" rx="6"/>
+      <rect x="16" y="652" width="308" height="64" rx="6"/>
+    </g>
+    <g font-size="13" font-weight="600" text-anchor="middle" fill="var(--text)">
+      <text x="170" y="94">owner</text>
+      <text x="170" y="232">key sets</text>
+      <text x="170" y="334">keystone</text>
+      <text x="170" y="522">computer at boot</text>
+      <text x="170" y="674">the disk</text>
+    </g>
+    <g font-size="10" text-anchor="middle" fill="var(--text-2)">
+      <text x="170" y="112">you</text>
+      <text x="170" y="252">one per disk · kept as secrets</text>
+      <text x="170" y="352">a Cloudflare Worker</text>
+      <text x="170" y="394">sees only a blinded value</text>
+      <text x="170" y="554">before the disk opens</text>
+      <text x="170" y="692">encrypted with LUKS</text>
+      <text x="170" y="706">keystone never sees it</text>
+    </g>
+    <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" text-anchor="middle" fill="var(--text-2)">
+      <text x="170" y="368">tang.example.org</text>
+      <text x="170" y="538">initramfs · clevis</text>
+    </g>
+  </g>
+</svg>

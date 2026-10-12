@@ -9,12 +9,12 @@
     <path d="M496,116 V384" fill="none" stroke="var(--border)" stroke-dasharray="4 4"/>
     <!-- arrows -->
     <path d="M164,208 H496" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#unlock-arrow-moss)"/>
-    <path d="M496,288 H164" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#unlock-arrow-moss)"/>
+    <path data-step="2" d="M496,288 H164" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#unlock-arrow-moss)"/>
     <!-- labels -->
     <rect x="272" y="188" width="116" height="12" fill="var(--bg)"/>
     <text x="330" y="197" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">POST /&lt;name&gt;/rec/&lt;kid&gt;  X</text>
-    <rect x="320" y="268" width="20" height="12" fill="var(--bg)"/>
-    <text x="330" y="277" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">Y</text>
+    <rect data-step="2" x="320" y="268" width="20" height="12" fill="var(--bg)"/>
+    <text data-step="2" x="330" y="277" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" fill="var(--text-2)">Y</text>
     <!-- nodes -->
     <rect x="110" y="36" width="108" height="80" rx="6" fill="var(--surface)" stroke="var(--border)"/>
     <text x="164" y="62" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, monospace" font-size="8" letter-spacing="0.08em" fill="var(--text-muted)">DISK HOST</text>
@@ -27,19 +27,19 @@
     <!-- steps -->
     <rect x="92" y="136" width="144" height="32" rx="6" fill="var(--surface)" stroke="var(--border)"/>
     <text x="164" y="156" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">X = C + e·G</text>
-    <rect x="424" y="224" width="144" height="32" rx="6" fill="var(--accent)"/>
-    <text x="496" y="244" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">Y = s·X</text>
-    <rect x="92" y="304" width="144" height="32" rx="6" fill="var(--surface)" stroke="var(--border)"/>
-    <text x="164" y="324" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">K = Y − e·S</text>
-    <rect x="92" y="352" width="144" height="32" rx="6" fill="var(--surface)" stroke="var(--border)"/>
-    <text x="164" y="372" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">LUKS slot opens</text>
+    <rect data-step="2" x="424" y="224" width="144" height="32" rx="6" fill="var(--accent)"/>
+    <text data-step="2" x="496" y="244" text-anchor="middle" font-size="12" font-weight="600" fill="var(--accent-contrast)">Y = s·X</text>
+    <rect data-step="3" x="92" y="304" width="144" height="32" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text data-step="3" x="164" y="324" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">K = Y − e·S</text>
+    <rect data-step="3" x="92" y="352" width="144" height="32" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+    <text data-step="3" x="164" y="372" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">LUKS slot opens</text>
     <!-- notes -->
     <text x="248" y="149" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">C from the LUKS header</text>
     <text x="248" y="161" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">e fresh at this boot</text>
-    <text x="412" y="244" text-anchor="end" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">s: exchange private key</text>
-    <text x="248" y="317" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">= s·C, the unwrapping key</text>
-    <text x="248" y="329" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">S from the stored adv</text>
-    <text x="248" y="372" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">K unwraps the slot passphrase</text>
+    <text data-step="2" x="412" y="244" text-anchor="end" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">s: exchange private key</text>
+    <text data-step="3" x="248" y="317" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">= s·C, the unwrapping key</text>
+    <text data-step="3" x="248" y="329" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">S from the stored adv</text>
+    <text data-step="3" x="248" y="372" font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" fill="var(--text-2)">K unwraps the slot passphrase</text>
   </g>
 </svg>
 <svg class="figure-narrow" viewBox="0 0 340 432" role="img" aria-label="At boot clevis blinds the stored point with a fresh ephemeral key, the Worker multiplies the blinded point by the exchange private key, and clevis removes the blinding to recover K, the key that unwraps the slot passphrase." font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg">
