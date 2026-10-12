@@ -294,7 +294,7 @@ async function approval(request, env, name, set, token) {
     const approve = `<form class="focus-form" method="post"><p class="focus-note">Approving lets any machine in ${esc(t.o)} recover ${esc(name)} for ${GRANT / 60000} minutes.</p>` +
       `<div class="field"><label>Type <b>${esc(name)}</b> to approve: <input name="confirm" autocomplete="off" required></label></div> ` +
       '<button class="button button-primary focus-btn" name="decision" value="approve">Approve</button></form>';
-    const deny = '<form class="focus-form" method="post"><button class="button button-danger focus-btn" name="decision" value="deny">Deny</button></form>';
+    const deny = '<form class="focus-form" method="post"><button class="button button-secondary focus-btn" name="decision" value="deny">Deny</button></form>';
     const actions = p.state === 'open' ? approve + deny : p.state === 'denied' ? decided(p) + approve : decided(p);
     return page(200, `Unlock ${name} from ${t.o}?`, facts(name, t.o, p) + rest + actions);
   }
