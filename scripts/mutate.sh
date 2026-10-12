@@ -207,7 +207,10 @@ mutant "a stale send marks the new pending" 's/if (!ok || q?.pid !== p.pid) cont
 mutant "a failed send keeps its unit" '/approval mail to ${to} for ${name} failed/{n;d;}' $g
 mutant "a failed notice keeps its unit" '/capped notice to ${to} for ${name} failed/{n;d;}' $g
 mutant "a refund refused at the cap" 's/if (d > 0 \&\& m.n >= MAIL_MAX)/if (m.n >= MAIL_MAX)/' $g
-mutant "a notice marker kept when none went out" 's/    else await s.delete(key);//' $g
+mutant "a failed notice kept for 12 h" 's/    else await s.put(key, { expires: now + RETRY });//' $g
+mutant "a failed notice retried on every capped miss" 's/    else await s.put(key, { expires: now + RETRY });/    else await s.delete(key);/' $g
+mutant "the notice marker claimed after the sends" '/^    await s.put(key, { expires: now + PENDING_TTL });$/d; s/^    else await s.put(key, { expires: now + RETRY });$/    await s.put(key, { expires: now + (any ? PENDING_TTL : RETRY) });/' $g
+mutant "a timed-out send refunded" 's/    if (e.message !== TIMED_OUT) await this.budget(now, -1);/    await this.budget(now, -1);/' $g
 mutant "a failed send escapes the Gate" 's/console.error(`approval mail to/throw e; console.error(`approval mail to/' $g
 mutant "one link for every approver" 's/{ o: origin, p: p.pid, e: p.expires, a: to }/{ o: origin, p: p.pid, e: p.expires, a: set.approvers[0] }/' $g
 mutant "a mail link outlives its pending" 's/{ o: origin, p: p.pid, e: p.expires, a: to }/{ o: origin, p: p.pid, e: p.expires + 1e9, a: to }/' $g

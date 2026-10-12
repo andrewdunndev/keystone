@@ -14,6 +14,7 @@ const MAIL_MAX = 20;
 const RETRY = 5 * 60 * 1000;
 const RETRY_MAX = 3600 * 1000;
 const SEND_TIMEOUT = 10000;
+const TIMED_OUT = 'send timed out';
 
 // A plain-text message built by hand: the binding takes raw MIME and every value is ASCII by construction, so CR and
 // LF are the only characters to strip.
@@ -33,7 +34,7 @@ function mime(from, to, subject, text) {
 export async function send(env, to, subject, text) {
   const msg = new EmailMessage(env.ALERT_FROM, to, mime(env.ALERT_FROM, to, subject, text));
   let timer;
-  const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('send timed out')), SEND_TIMEOUT); });
+  const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(TIMED_OUT)), SEND_TIMEOUT); });
   try {
     await Promise.race([env.ALERT.send(msg), limit]);
   } finally {
@@ -127,7 +128,7 @@ export class Gate extends DurableObject {
         'moved, deny, and revoke the set.\n';
       const ok = await send(this.env, to, `keystone: unlock ${name} from ${where}?`, text).then(() => true, async (e) => {
         console.error(`approval mail to ${to} for ${name} failed: ${e.message}`);
-        await this.budget(now, -1);
+        await this.refund(now, e);
         return false;
       });
       const q = await s.get(key);
@@ -138,7 +139,7 @@ export class Gate extends DurableObject {
   }
 
   // Once per PENDING_TTL per set while capped: each approver gets the open pendings with their own links. The marker is
-  // claimed before the sends so concurrent misses send once, and dropped if nothing went out.
+  // claimed before the sends so concurrent misses send once, and cut to RETRY if nothing went out.
   async notice(name, set, open, now, refused) {
     const s = this.ctx.storage, key = `c:${name}`;
     await s.put(key, { expires: now + PENDING_TTL });
@@ -155,20 +156,25 @@ export class Gate extends DurableObject {
         any = true;
       } catch (e) {
         console.error(`capped notice to ${to} for ${name} failed: ${e.message}`);
-        await this.budget(now, -1);
+        await this.refund(now, e);
       }
     }
     if (any) console.log(JSON.stringify({ event: 'capped', name, open: open.length }));
-    else await s.delete(key);
+    else await s.put(key, { expires: now + RETRY });
   }
 
-  // MAIL_MAX messages an hour across every set, counted before the send and refunded (d = -1) when it fails.
+  // MAIL_MAX messages an hour across every set, counted before the send.
   async budget(now, d = 1) {
     const hour = Math.floor(now / 3600000), key = `m:${hour}`, m = (await this.ctx.storage.get(key)) ?? { n: 0, expires: (hour + 1) * 3600000 };
     if (d > 0 && m.n >= MAIL_MAX) return false;
     m.n += d;
     await this.ctx.storage.put(key, m);
     return true;
+  }
+
+  // A failed send gives its unit back, unless it timed out and may yet be delivered.
+  async refund(now, e) {
+    if (e.message !== TIMED_OUT) await this.budget(now, -1);
   }
 
   // The pending a token names, null unless it is still the current one, and the set's other open origins.
