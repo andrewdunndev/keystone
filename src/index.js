@@ -1,7 +1,10 @@
 // Tang server (McCallum-Relyea exchange, P-256 or P-521 per key set) as a Cloudflare Worker.
-// One write-once key set per name: /<name>/adv, /<name>/adv/<thp>, /<name>/rec/<kid>.
-import { EmailMessage } from 'cloudflare:email';
-import { b64u, kidMatches, parseSet, secretName, NAME } from './jwk.js';
+// One write-once key set per name: /<name>/adv, /<name>/adv/<thp>, /<name>/rec/<kid>, /<name>/approve/<token>.
+import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
+import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
+import { approveKey, send, verify, GRANT } from './gate.js';
+
+export { Gate } from './gate.js';
 
 const enc = new TextEncoder();
 // tangd (OpenSSL) accepts zero-padded coordinates and reduces them mod p; padding is capped at twice the field size.
@@ -35,8 +38,8 @@ const prepared = new Map();
 function load(raw, secret) {
   if (!prepared.has(raw)) {
     try {
-      const { sign, exch, curve } = parseSet(raw);
-      prepared.set(raw, { curve, sign: { jwk: sign, kids: {} }, exch: { jwk: exch, kids: {} } });
+      const { sign, exch, ...gate } = parseSet(raw);
+      prepared.set(raw, { ...gate, gated: !!(gate.allow || gate.approvers), sign: { jwk: sign, kids: {} }, exch: { jwk: exch, kids: {} } });
     } catch (e) {
       console.error(`${secret} is not a key set: ${e.message}`);
       return null;
@@ -44,6 +47,9 @@ function load(raw, secret) {
   }
   return prepared.get(raw);
 }
+
+// keyset's header: only then does an adv carry the version and policy headers, and a gated rec refuses a miss quietly.
+const probed = (request) => request.headers.get('keystone-probe') === '1';
 
 const reply = (status, body, type = 'text/plain') =>
   new Response(body, { status, headers: { 'content-type': type, 'cache-control': 'no-store' } });
@@ -71,15 +77,15 @@ const ecdhX = async (c, d, u, v) => toBig(new Uint8Array(await crypto.subtle.der
     { name: 'ECDH', namedCurve: c.crv }, false, []),
 }, d, c.coord * 8)));
 
-// The body as text, or null past MAX_BODY bytes; reading stops at the cap, whatever Content-Length says.
-async function readBody(request) {
+// The body as text, or null past `cap` bytes; reading stops at the cap, whatever Content-Length says.
+async function readBody(request, cap = MAX_BODY) {
   const reader = request.body?.getReader(), chunks = [];
   let n = 0;
   while (reader) {
     const { done, value } = await reader.read();
     if (done) break;
     chunks.push(value);
-    if ((n += value.byteLength) > MAX_BODY) return reader.cancel().then(() => null, () => null);
+    if ((n += value.byteLength) > cap) return reader.cancel().then(() => null, () => null);
   }
   const out = new Uint8Array(n);
   n = 0;
@@ -87,12 +93,9 @@ async function readBody(request) {
   return new TextDecoder().decode(out);
 }
 
-// ECDH yields only x(dX). With S = dG the exchange public key (its JWK import checks S against d), x(d(X+G)) = x(dX + S)
-// fixes y(dX) through the x-only addition law: x(Q+S)(xS-xQ)^2 = (xS*xQ + a)(xS + xQ) + 2b - 2*yS*yQ, with a = -3.
-// X = +-G gives dX = +-S directly. The client point must be on the set's curve, as tangd requires.
-async function recover(set, kid, request) {
-  const { exch, curve: c } = set;
-  if (!(await kidMatches(exch.jwk, kid, exch.kids))) return reply(404, 'unknown kid\n');
+// The client point of a rec body, on the set's curve and reduced mod p, or the error reply. It reads public data only.
+async function parseRec(set, request) {
+  const c = set.curve;
   if (Number(request.headers.get('content-length')) > MAX_BODY) return reply(413, 'body too large\n');
   let jwk;
   try {
@@ -104,9 +107,18 @@ async function recover(set, kid, request) {
   if (!jwk || (jwk.alg !== undefined && jwk.alg !== 'ECMR') || jwk.kty !== 'EC' || jwk.crv !== c.crv || x === null || y === null) {
     return reply(400, 'bad point\n');
   }
-  const { p: P, b: B, gx: GX, gy: GY } = c, { mod, inv } = field(P);
+  const { p: P, b: B } = c, { mod } = field(P);
   x %= P; y %= P;
   if (mod(y * y - x * x * x + 3n * x - B) !== 0n) return reply(400, 'point not on curve\n');
+  return { x, y };
+}
+
+// ECDH yields only x(dX). With S = dG the exchange public key (its JWK import checks S against d), x(d(X+G)) = x(dX + S)
+// fixes y(dX) through the x-only addition law: x(Q+S)(xS-xQ)^2 = (xS*xQ + a)(xS + xQ) + 2b - 2*yS*yQ, with a = -3.
+// X = +-G gives dX = +-S directly. The client point must be on the set's curve, as tangd requires.
+async function exchange(set, { x, y }) {
+  const { exch, curve: c } = set;
+  const { p: P, b: B, gx: GX, gy: GY } = c, { mod, inv } = field(P);
   const d = await privateKey(exch, 'ECDH', 'deriveBits');
   const xs = toBig(b64u.dec(exch.jwk.x)), ys = toBig(b64u.dec(exch.jwk.y));
   let xq, yq;
@@ -124,27 +136,11 @@ async function recover(set, kid, request) {
   }), 'application/jwk+json');
 }
 
-// The /24 (IPv4) or /48 (IPv6) an address sits in; null when it is neither.
-export function sourceNet(ip) {
-  ip = ip?.trim().toLowerCase();
-  if (!ip) return null;
-  const v4 = ip.split('.');
-  if (v4.length === 4 && v4.every((x) => /^\d{1,3}$/.test(x) && +x <= 255)) return `${v4.slice(0, 3).join('.')}.0/24`;
-  const halves = ip.split('::');
-  if (halves.length > 2) return null;
-  const [a, b] = halves.map((h) => (h ? h.split(':') : []));
-  if (b && a.length + b.length > 7) return null;
-  const groups = b ? [...a, ...Array(8 - a.length - b.length).fill('0'), ...b] : a;
-  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return null;
-  return `${groups.slice(0, 3).map((g) => parseInt(g, 16).toString(16)).join(':')}::/48`;
-}
-
 // One alert per key set per hour bounds the mail a stream of new sources can cause; KV's minimum TTL is 60 s. Sources
 // that arrive during the cooldown are held in KV and mailed as one digest by the cron trigger. KV takes one write a
 // second per key and, on the Free plan, 1,000 writes a day per account; HELD_CAP keeps a set's worst day near 400.
 const COOLDOWN = 3600;
 const HELD_TTL = 7 * 86400;
-const SEND_TIMEOUT = 10000;
 const SEEN_MAX = 1000;
 const HELD_CAP = 5;
 const DIGEST_MAX = 200;
@@ -155,36 +151,12 @@ const coolUntil = new Map();
 const heldCount = new Map();
 
 export function resetAlertState() {
-  for (const s of [seen, held, inflight]) s.clear();
-  coolUntil.clear();
+  for (const s of [seen, held, inflight, failed]) s.clear();
+  for (const m of [coolUntil, loggedAt, answered]) m.clear();
   heldCount.clear();
 }
 
-// A plain-text message built by hand: the binding takes raw MIME, and the values are ASCII by construction (set
-// names are [a-z0-9-], the rest is numeric or a country code), so CR and LF are the only characters to strip.
-function mime(from, to, subject, text) {
-  const line = (s) => String(s).replace(/[\r\n]+/g, ' ');
-  const domain = line(from).split('@').pop();
-  return [
-    `From: ${line(from)}`, `To: ${line(to)}`, `Subject: ${line(subject)}`, `Date: ${new Date().toUTCString()}`,
-    `Message-ID: <${crypto.randomUUID()}@${domain}>`, 'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=us-ascii', 'Content-Transfer-Encoding: 7bit', '',
-    text.replace(/\r?\n/g, '\r\n'),
-  ].join('\r\n');
-}
-
-// The send_email binding only delivers to its verified destination, from an address on a domain with Email Routing
-// enabled. It has no timeout of its own, so a stalled send is cut off here.
-async function sendMail(env, subject, text) {
-  const msg = new EmailMessage(env.ALERT_FROM, env.ALERT_TO, mime(env.ALERT_FROM, env.ALERT_TO, subject, text));
-  let timer;
-  const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('send timed out')), SEND_TIMEOUT); });
-  try {
-    await Promise.race([env.ALERT.send(msg), limit]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const sendMail = (env, subject, text) => send(env, env.ALERT_TO, subject, text);
 
 function add(set, k) {
   if (set.size >= SEEN_MAX) set.clear();
@@ -194,11 +166,12 @@ function add(set, k) {
 // A recovery request from a (/24 or /48, ASN, country) not seen before mails once per set per cooldown. The kid is
 // public, so a request proves nothing about an unlock. Sources met during the cooldown or while a mail is in flight are
 // held for the digest. The set name and source are claimed before the first await so concurrent requests send one mail.
-async function alertNewSource(request, env, name) {
+// A refused source is a source of its own, so a refusal never marks the source seen for a later recovery.
+async function alertNewSource(request, env, name, refused = false) {
   const net = sourceNet(request.headers.get('CF-Connecting-IP'));
   if (!net) return;
   const { asn = '?', country = '?' } = request.cf ?? {};
-  const id = `${name}:${net}:${asn}:${country}`;
+  const id = `${name}:${net}:${asn}:${country}${refused ? ':refused' : ''}`;
   const key = `seen:${id}`;
   if (seen.has(key) || held.has(id) || inflight.has(key)) return;
   const hold = async () => {
@@ -210,7 +183,7 @@ async function alertNewSource(request, env, name) {
     }
     if (c.n >= HELD_CAP) return;
     c.n++;
-    await env.UNLOCKS.put(`held:${id}`, JSON.stringify({ host: name, net, asn, country, time: new Date().toISOString() }), { expirationTtl: HELD_TTL });
+    await env.UNLOCKS.put(`held:${id}`, JSON.stringify({ host: name, net, asn, country, refused, time: new Date().toISOString() }), { expirationTtl: HELD_TTL });
     add(held, id);
     await env.UNLOCKS.put(`heldn:${name}`, String(c.n), { expirationTtl: COOLDOWN });
   };
@@ -223,11 +196,19 @@ async function alertNewSource(request, env, name) {
     const next = Date.now() + COOLDOWN * 1000;
     coolUntil.set(name, next);
     await env.UNLOCKS.put(`cool:${name}`, String(next), { expirationTtl: COOLDOWN }).catch(() => {});
+    const facts = `source: ${net}\nASN: ${asn}\ncountry: ${country}\ntime: ${new Date().toISOString()}\n\n`;
+    const [subject, text] = refused ? [`keystone: refused a recovery request from a new source for ${name}`,
+      `Key set ${name} refused a recovery request from a source not seen before: the origin is not admitted, so no key ` +
+      `was released.\n\n${facts}` + (refused === 'origin'
+        ? 'Origins on Cloudflare\'s own network (WARP, Worker egress), with no ASN, or in 240.0.0.0/4 (Pseudo IPv4) are never ' +
+          'admitted. If this is the host, it must egress elsewhere.'
+        : 'If the host moved, add its prefix to the set\'s allow list.') +
+      ` If it is not the host, someone who knows the set's name is asking for it.\n`] : [`keystone: recovery request from a new source for ${name}`,
+      `Key set ${name} received a recovery request from a source not seen before.\n\n${facts}` +
+      `The key id is public, so this does not prove an unlock happened. If you did not expect it, ` +
+      `check the host before deleting ${secretName(name)}: deleting it blocks the next boot.\n`];
     try {
-      await sendMail(env, `keystone: recovery request from a new source for ${name}`,
-        `Key set ${name} received a recovery request from a source not seen before.\n\nsource: ${net}\nASN: ${asn}\ncountry: ${country}\n` +
-        `time: ${new Date().toISOString()}\n\nThe key id is public, so this does not prove an unlock happened. If you did not expect it, ` +
-        `check the host before deleting ${secretName(name)}: deleting it blocks the next boot.\n`);
+      await sendMail(env, subject, text);
     } catch (e) {
       await hold().catch(() => {});
       throw e;
@@ -251,7 +232,7 @@ async function sendDigest(env) {
     if (v) fresh.push({ name, seenKey, ...v });
   }
   if (!fresh.length) return;
-  const lines = fresh.map((v) => `${v.host}  ${v.net}  ASN ${v.asn}  ${v.country}  ${v.time}`).join('\n');
+  const lines = fresh.map((v) => `${v.host}  ${v.net}  ASN ${v.asn}  ${v.country}  ${v.time}${v.refused ? '  refused' : ''}`).join('\n');
   await sendMail(env, `keystone: ${fresh.length} held recovery request source(s)`,
     `Recovery requests from sources not seen before, held during an alert cooldown:\n\n${lines}\n\n` +
     `The key id is public, so a request does not prove an unlock. Delete ${[...new Set(fresh.map((v) => secretName(v.host)))].join(', ')} only after checking the host.\n`);
@@ -261,7 +242,121 @@ async function sendDigest(env) {
   }
 }
 
+const PAGE_HEADERS = {
+  'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin',
+  'x-content-type-options': 'nosniff',
+  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
+const page = (status, title, body) => new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">' +
+  `<title>${esc(title)}</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem}` +
+  `dt{font-weight:600}input,button{font:inherit}</style><h1>${esc(title)}</h1>${body}`, { status, headers: PAGE_HEADERS });
+
+function facts(name, origin, p) {
+  const i = p.info;
+  return `<dl><dt>Key set</dt><dd>${esc(name)}</dd><dt>Origin</dt><dd>${esc(origin)}</dd><dt>Network</dt><dd>AS${esc(i.asn)} ${esc(i.org)}</dd>` +
+    `<dt>Location</dt><dd>${esc(i.city)}, ${esc(i.country)} (approximate)</dd><dt>Cloudflare colo</dt><dd>${esc(i.colo)}</dd>` +
+    `<dt>First seen</dt><dd>${when(p.created)}</dd><dt>Expires</dt><dd>${when(p.expires)}</dd></dl>`;
+}
+
+// /<name>/approve/<token>, over https only. A GET shows; a POST from the page itself decides. A token is 404 unless its
+// MAC holds and it names a current approver.
+async function approval(request, env, name, set, token) {
+  if (new URL(request.url).protocol !== 'https:') return reply(403, 'https only\n');
+  const t = await verify(set.approveKey ??= approveKey(set.exch.jwk), name, token);
+  if (!t || !set.approvers.includes(t.a)) return reply(404, 'not found\n');
+  if (request.method !== 'GET' && request.method !== 'POST') return reply(405, 'method not allowed\n');
+  if (t.e <= Date.now()) return page(410, 'This request has expired', '<p>Nothing changed. A host still asking gets a new request.</p>');
+  if (!env.GATE) return page(503, 'Approvals are unavailable', '<p>The Gate is not bound.</p>');
+  const decided = (p) => `<p>${p.state === 'approved' ? 'Approved' : 'Denied'} at ${when(p.decided.at)} by ${esc(p.decided.a)}.` +
+    `${p.state === 'approved' ? ` Any machine in ${esc(t.o)} can recover ${esc(name)} until ${when(p.grantUntil)}.` : ''}</p>`;
+  if (request.method === 'GET') {
+    const { p, others } = await gate(env).view(name, t.o, t.p);
+    if (!p) return page(409, 'This request is no longer current', '<p>Nothing changed. A host still asking gets a new request.</p>');
+    const rest = others.length ? `<p><strong>${others.length} other origin(s) are asking for this set.</strong> If you did not move ` +
+      `the host, deny them all.</p><ul>${others.map((o) => `<li>${esc(o.origin)}: AS${esc(o.info.asn)} ${esc(o.info.org)}, ` +
+      `${esc(o.info.city)}, ${esc(o.info.country)}, since ${when(o.created)}</li>`).join('')}</ul>` : '';
+    const approve = `<form method="post"><p>Approving lets any machine in ${esc(t.o)} recover ${esc(name)} for ${GRANT / 60000} minutes.</p>` +
+      `<label>Type <b>${esc(name)}</b> to approve: <input name="confirm" autocomplete="off" required></label> ` +
+      '<button name="decision" value="approve">Approve</button></form>';
+    const deny = '<form method="post"><button name="decision" value="deny">Deny</button></form>';
+    const actions = p.state === 'open' ? approve + deny : p.state === 'denied' ? decided(p) + approve : decided(p);
+    return page(200, `Unlock ${name} from ${t.o}?`, facts(name, t.o, p) + rest + actions);
+  }
+  if (request.headers.get('Origin') !== new URL(request.url).origin) return page(403, 'Refused', '<p>Decide from the approval page.</p>');
+  const body = /^application\/x-www-form-urlencoded(;|$)/.test(request.headers.get('content-type') ?? '') ? await readBody(request, 256) : null;
+  const form = new URLSearchParams(body ?? '');
+  const decision = form.get('decision');
+  if (body === null || !['approve', 'deny'].includes(decision) || (decision === 'approve' && form.get('confirm') !== name)) {
+    return page(400, 'Nothing changed', `<p>To approve, type ${esc(name)} exactly.</p>`);
+  }
+  const ip = request.headers.get('CF-Connecting-IP'), asn = request.cf?.asn ?? null;
+  const { status, p } = await gate(env).decide(name, t.o, t.p, decision, { a: t.a, ip, asn });
+  if (status !== 200) return page(409, 'Nothing changed', p ? decided(p) : '<p>This request is no longer current.</p>');
+  console.log(JSON.stringify({ event: p.state, name, origin: t.o, approver: t.a, ip, asn }));
+  answered.delete(`${name} ${t.o}`);
+  return page(200, p.state === 'approved' ? 'Approved' : 'Denied', decided(p));
+}
+
 const alertsOn = (env) => env.UNLOCKS && env.ALERT && env.ALERT_FROM && env.ALERT_TO;
+const gateBound = (env) => env.GATE && env.ALERT && env.ALERT_FROM;
+
+const failed = new Set();
+const loggedAt = new Map();
+const answered = new Map();
+const ANSWER_TTL = 5000;
+const gate = (env) => env.GATE.get(env.GATE.idFromName('gate'));
+const clip = (v) => String(v ?? '?').slice(0, 64);
+
+// null when the origin is admitted, else why not. A refused origin never reaches a private key or the Gate.
+async function admit(set, name, ip, request, env) {
+  if (set.nets?.some((c) => inCidr(ip, c))) return null;
+  if (!set.approvers) return 'allow';
+  if (probed(request)) return 'probe';
+  if (!gateBound(env)) return closed(name, 'GATE, ALERT and ALERT_FROM are not all bound');
+  // Answers are kept per set and origin, so a box retrying twice a second asks the Gate once per ANSWER_TTL.
+  const origin = sourceNet(request.headers.get('CF-Connecting-IP')), at = `${name} ${origin}`, now = Date.now();
+  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;
+  const cf = request.cf ?? {};
+  let why;
+  try {
+    // The rec that opens a pending is usually a stranger's: its scheme and port never reach a link.
+    why = await gate(env).miss(name, origin, {
+      asn: clip(cf.asn), org: clip(cf.asOrganization), country: clip(cf.country), city: clip(cf.city), colo: clip(cf.colo),
+      base: `https://${new URL(request.url).hostname}`,
+    });
+  } catch (e) { return closed(name, e.message); }
+  if (why === 'served') return null;
+  if (!['held', 'denied', 'capped'].includes(why)) return closed(name, `unexpected Gate answer ${clip(why)}`);
+  if (answered.size >= SEEN_MAX) answered.clear();
+  answered.set(at, { why, until: now + ANSWER_TTL });
+  return why;
+}
+
+function closed(name, why) {
+  if (!failed.has(name)) {
+    failed.add(name);
+    console.error(`${name}: approvals unavailable, refusing new origins: ${why}`);
+  }
+  return 'unavailable';
+}
+
+// Unserved recoveries all look alike to the client. A held origin is logged by the Gate instead.
+function refuse(request, env, ctx, name, why) {
+  const ip = request.headers.get('CF-Connecting-IP');
+  const key = `${name}:${sourceNet(ip) ?? ip}`;
+  if (why !== 'held' && (loggedAt.get(key) ?? 0) <= Date.now()) {
+    if (loggedAt.size >= SEEN_MAX) loggedAt.clear();
+    loggedAt.set(key, Date.now() + 60000);
+    const { asn = null, country = null } = request.cf ?? {};
+    console.log(JSON.stringify({ event: 'refused', name, ip, asn, country, why }));
+  }
+  if ((why === 'allow' || why === 'origin') && !probed(request) && alertsOn(env)) {
+    ctx.waitUntil(alertNewSource(request, env, name, why).catch((e) => console.error('refusal alert failed:', e.message)));
+  }
+  return reply(403, 'origin not admitted\n');
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -275,12 +370,28 @@ export default {
     if (!set) return reply(500, 'unreadable key set\n');
     if (op === 'adv') {
       if (request.method !== 'GET') return reply(405, 'method not allowed\n');
-      return (await advert(set, arg)) ?? reply(404, 'no such key\n');
+      const res = await advert(set, arg);
+      if (!res) return reply(404, 'no such key\n');
+      if (probed(request)) {
+        if (env.CF_VERSION_METADATA?.id) res.headers.set('keystone-version', env.CF_VERSION_METADATA.id);
+        const tag = await (set.tag ??= policyTag({ ...set, exch: set.exch.jwk }));
+        if (tag) res.headers.set('keystone-policy', tag);
+        if (set.approvers && !gateBound(env)) res.headers.set('keystone-gate', 'unavailable');
+      }
+      return res;
     }
     if (op === 'rec' && arg) {
       if (request.method !== 'POST') return reply(405, 'method not allowed\n');
-      const res = await recover(set, arg, request);
-      if (res.status !== 200) return res;
+      if (!(await kidMatches(set.exch.jwk, arg, set.exch.kids))) return reply(404, 'unknown kid\n');
+      const ip = set.gated && parseIp(request.headers.get('CF-Connecting-IP'));
+      if (set.gated && unadmittable(ip, request.cf?.asn)) return refuse(request, env, ctx, name, 'origin');
+      const point = await parseRec(set, request);
+      if (point instanceof Response) return point;
+      if (set.gated) {
+        const why = await admit(set, name, ip, request, env);
+        if (why) return refuse(request, env, ctx, name, why);
+      }
+      const res = await exchange(set, point);
       // One line per recovery for the Workers logs: the source, never key material or the body.
       const { asn = null, country = null } = request.cf ?? {};
       console.log(JSON.stringify({ event: 'rec', name, ip: request.headers.get('CF-Connecting-IP'), asn, country }));
@@ -289,6 +400,7 @@ export default {
       }
       return res;
     }
+    if (op === 'approve' && arg && set.approvers) return approval(request, env, name, set, arg);
     return reply(404, 'not found\n');
   },
   async scheduled(event, env) {

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Origin gate: a set may carry `allow` (prefixes served unattended) and `approvers` (addresses mailed a link to approve or deny any other origin). A set mails at most 5 messages an hour per approver, and all sets together 40. A set with neither behaves as before.
+- A set with any member other than `keys`, `allow` and `approvers`, or an empty list, is now malformed: the Worker answers 500 and `keyset` refuses it. Unknown members were ignored before.
+- `keyset deploy` writes a policy edit to a live set whose keys match, reported as `policy`. Deploy this version's code before the first policy edit.
+- Before deploying, onboard a sender subdomain in Email Sending and move `ALERT_FROM` onto it, copy `GATE`, its migration and `CF_VERSION_METADATA` from the example config, and drop `destination_address` from `ALERT`.
+
 ## v0.1.1 - 2026-10-08
 
 Documentation and housekeeping; the Worker and `keyset` behave as in v0.1.0.

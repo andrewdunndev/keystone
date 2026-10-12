@@ -15,21 +15,35 @@ head_sampling_rate = 1
 enabled = true
 invocation_logs = true
 
-# Unlock alerts are off unless all four of the following are bound.
+# Pending approvals for sets with approvers. Declared whether or not any set uses it: Cloudflare refuses a rollback
+# across a Durable Object class change, so no version that ignores allow and approvers can be rolled back to.
+[[durable_objects.bindings]]
+name = "GATE"
+class_name = "Gate"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Gate"]
+
+# The version id keyset compares before a policy write.
+[version_metadata]
+binding = "CF_VERSION_METADATA"
+
+# Unlock alerts are off unless all four of the following are bound. Sets with approvers also need ALERT and ALERT_FROM,
+# and refuse every new origin without them.
 
 # Seen sources, cooldowns and held sources. Create the id with: npx wrangler kv namespace create UNLOCKS
 # [[kv_namespaces]]
 # binding = "UNLOCKS"
 # id = "<namespace id>"
 
-# Sends the alert through Email Routing; destination_address must be a verified destination.
+# Sends alerts and approval mail through Email Sending. Without destination_address it reaches any recipient.
 # [[send_email]]
 # name = "ALERT"
-# destination_address = "you@example.org"
 
-# ALERT_TO is the destination above; ALERT_FROM is an address on a zone with Email Routing enabled.
+# ALERT_FROM is an address on a subdomain onboarded to Email Sending.
 # [vars]
-# ALERT_FROM = "keystone@example.org"
+# ALERT_FROM = "unlock@mail.example.org"
 # ALERT_TO = "you@example.org"
 
 # Hourly trigger that mails the digest of held sources.

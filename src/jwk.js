@@ -1,6 +1,8 @@
 // The key set format, in WebCrypto and standard JS so any runtime can load it: one signing key and one ECMR exchange
 // key, private JWKs on one curve: ES256 with P-256 (as `jose jwk gen` writes them) or ES512 with P-521 (as
 // tangd-keygen writes them).
+import { parseCidr } from './origin.js';
+
 const enc = new TextEncoder();
 // Each curve is y^2 = x^3 - 3x + b over GF(p), with base point G = (gx, gy) and coordinates of `coord` bytes.
 export const CURVES = {
@@ -57,13 +59,26 @@ const ROLE = { __proto__: null, ES256: 'sign', ES512: 'sign', ECMR: 'exch' };
 const SIGN_CURVE = { __proto__: null, ES256: CURVES['P-256'], ES512: CURVES['P-521'] };
 const PRIVATE = ['x', 'y', 'd'];
 
+const MEMBERS = ['keys', 'allow', 'approvers'];
+const ALLOW_MAX = 32;
+const APPROVERS_MAX = 5;
+// Safe as a MIME To: line as it stands.
+const APPROVER = /^[^\s@<>()",;:\\]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+function list(v, what, max) {
+  if (!Array.isArray(v) || !v.length || v.length > max) throw new Error(`${what} is not a list of 1 to ${max} entries`);
+  return v;
+}
+
 // {"keys":[...]} holding exactly one signing key and one ECMR key, private EC JWKs with their alg, both on the signing
-// alg's curve; anything else throws. The set comes back with its CURVES entry. Messages never quote the text, which
-// carries private keys.
+// alg's curve, and optionally the origin gate's `allow` and `approvers`; anything else throws. The set comes back with
+// its CURVES entry. Messages never quote the text, which carries private keys.
 export function parseSet(text) {
-  let keys;
-  try { keys = JSON.parse(text)?.keys; } catch { throw new Error('not JSON'); }
+  let obj;
+  try { obj = JSON.parse(text); } catch { throw new Error('not JSON'); }
+  const keys = obj?.keys;
   if (!Array.isArray(keys)) throw new Error('not a {"keys":[...]} object');
+  if (Object.keys(obj).some((m) => !MEMBERS.includes(m))) throw new Error('a member other than keys, allow and approvers');
   const set = {};
   for (const k of keys) {
     const role = ROLE[k?.alg];
@@ -79,5 +94,35 @@ export function parseSet(text) {
   for (const k of [set.sign, set.exch]) {
     if (k.crv !== curve.crv) throw new Error(`the ${k.alg} key is not on ${curve.crv}, the curve of ${set.sign.alg}`);
   }
-  return { sign: set.sign, exch: set.exch, curve };
+  const out = { sign: set.sign, exch: set.exch, curve };
+  if ('allow' in obj) {
+    out.nets = list(obj.allow, 'allow', ALLOW_MAX).map(parseCidr);
+    out.allow = obj.allow;
+  }
+  if ('approvers' in obj) {
+    const a = list(obj.approvers, 'approvers', APPROVERS_MAX);
+    if (!a.every((x) => typeof x === 'string' && x.length <= 254 && /^[\x21-\x7e]+$/.test(x) && APPROVER.test(x))) {
+      throw new Error('an approver is not a plain ASCII address');
+    }
+    if (new Set(a.map((x) => x.toLowerCase())).size !== a.length) throw new Error('approvers repeat an address');
+    out.approvers = a;
+  }
+  return out;
+}
+
+// HMAC keys derived from the exchange key's d. Sets are write-once, so a rolled-back secret derives the same keys, and
+// revoking the set retires everything they signed.
+export async function derivedKey(exch, info) {
+  const ikm = await crypto.subtle.importKey('raw', b64u.dec(exch.d), 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: enc.encode(info) }, ikm,
+    { name: 'HMAC', hash: 'SHA-256', length: 256 }, false, ['sign', 'verify']);
+}
+
+// What the keystone-policy header carries for a gated set, so keyset can tell the live policy from its own; null when
+// the set has neither field.
+export async function policyTag(set) {
+  if (!set.allow && !set.approvers) return null;
+  const mac = await crypto.subtle.sign('HMAC', await derivedKey(set.exch, 'keystone-policy-v1'),
+    enc.encode(JSON.stringify([set.allow ?? null, set.approvers ?? null])));
+  return b64u.enc(new Uint8Array(mac));
 }

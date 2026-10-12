@@ -57,7 +57,7 @@ mutant "kid length names the wrong hash" "s/43: 'SHA-256'/43: 'SHA-384'/" src/jw
 mutant "kid cache ignores the hash" 's/cache\[h\] ??=/cache.any ??=/' src/jwk.js
 mutant "kid cache shared across keys" 's/cache\[h\] ??=/kidMatches[h] ??=/' src/jwk.js
 mutant "inverted thumbprint comparison" 's/=== kid;/!== kid;/' src/jwk.js
-mutant "bare array accepted" 's/keys = JSON.parse(text)?.keys;/keys = JSON.parse(text); keys = Array.isArray(keys) ? keys : keys?.keys;/' src/jwk.js
+mutant "bare array accepted" 's/const keys = obj?.keys;/const keys = Array.isArray(obj) ? obj : obj?.keys; if (Array.isArray(obj)) obj = { keys };/' src/jwk.js
 mutant "a second signing key accepted" "s/if (set\[role\]) throw/if (set[role] \&\& role !== 'sign') throw/" src/jwk.js
 mutant "wrong curve accepted" 's/if (k.crv !== curve.crv) throw/if (false) throw/' src/jwk.js
 mutant "mixed-curve set accepted" 's/for (const k of \[set.sign, set.exch\])/for (const k of [set.sign])/' src/jwk.js
@@ -71,20 +71,41 @@ mutant "missing x accepted" "s/\['x', 'y', 'd'\]/['y', 'd']/" src/jwk.js
 mutant "wrong kty accepted" "s/k.kty !== 'EC' || //" src/jwk.js
 mutant "inherited alg names a role" 's/__proto__: null, //' src/jwk.js
 mutant "JSON error quotes the set" "s/catch { throw new Error('not JSON'); }/catch (e) { throw e; }/" src/jwk.js
+mutant "unknown member accepted" 's/if (Object.keys(obj).some((m) => !MEMBERS.includes(m))) throw/if (false) throw/' src/jwk.js
+mutant "empty list accepted" 's/!Array.isArray(v) || !v.length || /!Array.isArray(v) || /' src/jwk.js
+mutant "33 allow entries accepted" 's/const ALLOW_MAX = 32;/const ALLOW_MAX = 33;/' src/jwk.js
+mutant "6 approvers accepted" 's/const APPROVERS_MAX = 5;/const APPROVERS_MAX = 6;/' src/jwk.js
+mutant "approver pattern unchecked" 's/ \&\& APPROVER.test(x)//' src/jwk.js
+mutant "non-ASCII approver accepted" 's/ \&\& \/^\[\\x21-\\x7e\]+\$\/.test(x)//' src/jwk.js
+mutant "repeated approver accepted" 's/if (new Set(a.map((x) => x.toLowerCase())).size !== a.length) throw/if (false) throw/' src/jwk.js
+mutant "approver repeat case-sensitive" 's/new Set(a.map((x) => x.toLowerCase()))/new Set(a)/' src/jwk.js
+mutant "allow entries unparsed" 's/\.map(parseCidr);/;/' src/jwk.js
+mutant "policy tag ignores approvers" 's/JSON.stringify(\[set.allow ?? null, set.approvers ?? null\])/JSON.stringify([set.allow ?? null])/' src/jwk.js
+mutant "derived keys ignore their purpose" "s/info: enc.encode(info)/info: enc.encode('keystone')/" src/jwk.js
+o=src/origin.js
+mutant "IPv4 prefix floor /7" 's/4: \[8, 32\]/4: [7, 32]/' $o
+mutant "IPv6 prefix floor /15" 's/6: \[16, 128\]/6: [15, 128]/' $o
+mutant "v4-mapped prefix accepted" 's/if (a.v === 6 \&\& len >= 96 \&\& a.n >> 32n === MAPPED) throw/if (false) throw/' $o
+mutant "240.0.0.0/4 prefix accepted" 's/if (a.v === 4 \&\& a.n >= CLASS_E) throw/if (false) throw/' $o
+mutant "host bits accepted" 's/if (net !== a.n) throw/if (false) throw/' $o
+mutant "v4-mapped address not folded" 's/a?.v === 6 \&\& a.n >> 32n === MAPPED ?/false ?/' $o
+mutant "dotted IPv6 tail unparsed" 's/^  if (tail) {$/  if (false) {/' $o
+mutant "a single zero group compressed" 's/run\[1\] - run\[0\] < 2 ?/run[1] - run[0] < 1 ?/' $o
+mutant "the last longest zero run compressed" 's/if (j - i > run\[1\] - run\[0\])/if (j - i >= run[1] - run[0])/' $o
 mutant "imported key shared across keys" 's/(e.key ??= /(privateKey.key ??= /'
 mutant "adv/<thp> unchecked" 's/if (thp \&\& !(await kidMatches/if (false \&\& !(await kidMatches/'
-mutant "rec accepts the signing key's kid" 's/(await kidMatches(exch.jwk, kid, exch.kids))/(await kidMatches(exch.jwk, kid, exch.kids) || await kidMatches(set.sign.jwk, kid, set.sign.kids))/'
+mutant "rec accepts the signing key's kid" 's/(await kidMatches(set.exch.jwk, arg, set.exch.kids))/(await kidMatches(set.exch.jwk, arg, set.exch.kids) || await kidMatches(set.sign.jwk, arg, set.sign.kids))/'
 mutant "no 1-mod-4 coordinate reject" 's/ \&\& s.length % 4 !== 1//'
-mutant "no body cap on read length" 's/if ((n += value.byteLength) > MAX_BODY) return/n += value.byteLength; if (false) return/'
-mutant "body cap checked after the full read" 's/if ((n += value.byteLength) > MAX_BODY) return reader.cancel().then(() => null, () => null);/n += value.byteLength;/; s/if (done) break;/if (done) { if (n > MAX_BODY) return null; break; }/'
+mutant "no body cap on read length" 's/if ((n += value.byteLength) > cap) return/n += value.byteLength; if (false) return/'
+mutant "body cap checked after the full read" 's/if ((n += value.byteLength) > cap) return reader.cancel().then(() => null, () => null);/n += value.byteLength;/; s/if (done) break;/if (done) { if (n > cap) return null; break; }/'
 mutant "no Content-Length cap" 's/if (Number(request.headers.get(.content-length.)) > MAX_BODY)/if (false)/'
-mutant "read-length cap rejects exactly 4 KiB" 's/byteLength) > MAX_BODY) return/byteLength) >= MAX_BODY) return/'
+mutant "read-length cap rejects exactly 4 KiB" 's/byteLength) > cap) return/byteLength) >= cap) return/'
 mutant "Content-Length cap rejects exactly 4 KiB" 's/)) > MAX_BODY) return reply(413/)) >= MAX_BODY) return reply(413/'
 mutant "client alg not checked" 's/(jwk.alg !== undefined \&\& jwk.alg !== .ECMR.) || //'
 mutant "adv imports the exchange key" "s/^  if (thp \&\& .* return null;\$/&\n  await privateKey(set.exch, 'ECDH', 'deriveBits');/"
 mutant "rec imports the signing key" "s/^  const { exch, curve: c } = set;\$/&\n  await privateKey(set.sign, 'ECDSA', 'sign');/"
 
-mutant "refused recovery logged and alerted" 's/      if (res.status !== 200) return res;//'
+mutant "malformed body reaches the exchange" 's/      if (point instanceof Response) return point;//'
 mutant "seen source mailed again" 's/if (await env.UNLOCKS.get(key) !== null) return add(seen, key);//'
 mutant "KV cooldown ignored" 's/    if (until > Date.now()) {.*//'
 mutant "in-isolate cooldown ignored" 's/ || (coolUntil.get(name) ?? 0) > Date.now()//'
@@ -99,20 +120,128 @@ mutant "digest list unbounded" 's/, limit: DIGEST_MAX//'
 mutant "held writes uncapped" 's/    if (c.n >= HELD_CAP) return;//'
 mutant "mail claims an unlock" 's/received a recovery request/was unlocked/'
 mutant "alert failure escapes to the response path" 's/\.catch((e) => console.error(.unlock alert failed:., e.message))//'
-mutant "source key drops the ASN" 's/`${name}:${net}:${asn}:${country}`/`${name}:${net}:${country}`/'
-mutant "source is the full IPv4 address" "s|\${v4.slice(0, 3).join('.')}.0/24|\${ip}|"
-mutant "IPv6 source is a /64" 's/groups.slice(0, 3)/groups.slice(0, 4)/'
-mutant "send has no timeout" 's/Promise.race(\[env.ALERT.send(msg), limit\])/env.ALERT.send(msg)/'
-mutant "message addressed to the sender" 's/new EmailMessage(env.ALERT_FROM, env.ALERT_TO,/new EmailMessage(env.ALERT_FROM, env.ALERT_FROM,/'
-mutant "envelope sender is the recipient" 's/new EmailMessage(env.ALERT_FROM, env.ALERT_TO,/new EmailMessage(env.ALERT_TO, env.ALERT_TO,/'
-mutant "header values not stripped of CR and LF" 's/const line = (s) => String(s).replace(.*/const line = (s) => String(s);/'
-mutant "body keeps bare LF line ends" 's/    text.replace(.*/    text,/'
-mutant "no Message-ID header" 's/Message-ID: <[^>]*>/X-Id: 1/'
-mutant "no MIME-Version header" "s/'MIME-Version: 1.0'/'X-V: 1'/"
+mutant "source key drops the ASN" 's/${name}:${net}:${asn}:${country}${refused/${name}:${net}:${country}${refused/'
+mutant "source is the full IPv4 address" 's|format({ v: 4, n: (a.n >> 8n) << 8n })}/24|format(a)}/24|' src/origin.js
+mutant "IPv6 source is a /64" 's/groups(a.n).slice(0, 3)/groups(a.n).slice(0, 4)/' src/origin.js
+mutant "send has no timeout" 's/Promise.race(\[env.ALERT.send(msg), limit\])/env.ALERT.send(msg)/' src/gate.js
+mutant "message addressed to the sender" 's/new EmailMessage(env.ALERT_FROM, to,/new EmailMessage(env.ALERT_FROM, env.ALERT_FROM,/' src/gate.js
+mutant "envelope sender is the recipient" 's/new EmailMessage(env.ALERT_FROM, to,/new EmailMessage(to, to,/' src/gate.js
+mutant "alert addressed to the sender" 's/=> send(env, env.ALERT_TO,/=> send(env, env.ALERT_FROM,/'
+mutant "header values not stripped of CR and LF" 's/const line = (s) => String(s).replace(.*/const line = (s) => String(s);/' src/gate.js
+mutant "body keeps bare LF line ends" 's/    text.replace(.*/    text,/' src/gate.js
+mutant "no Message-ID header" 's/Message-ID: <[^>]*>/X-Id: 1/' src/gate.js
+mutant "no MIME-Version header" "s/'MIME-Version: 1.0'/'X-V: 1'/" src/gate.js
 mutant "alerts on without the binding" 's/env.UNLOCKS \&\& env.ALERT \&\& /env.UNLOCKS \&\& /'
+mutant "adv headers without the probe" 's/      if (probed(request)) {/      if (true) {/'
+mutant "no version header" "/res.headers.set('keystone-version'/d"
+mutant "no policy header" "/if (tag) res.headers.set('keystone-policy', tag);/d"
+mutant "origin check skipped" 's/      if (set.gated \&\& unadmittable(ip, request.cf?.asn)) return refuse/      if (false) return refuse/'
+mutant "admission skipped" 's/        const why = await admit(set, name, ip, request, env);/        const why = null;/'
+mutant "allow miss served" "s/if (!set.approvers) return 'allow';/if (!set.approvers) return null;/"
+mutant "fail-closed error on every request" 's/  if (!failed.has(name)) {/  if (true) {/'
+mutant "refusal logged on every request" "s/  if (why !== 'held' \&\& (loggedAt.get(key) ?? 0) <= Date.now()) {/  if (why !== 'held') {/"
+mutant "a held origin logged as refused" "s/  if (why !== 'held' \&\& (loggedAt/  if ((loggedAt/"
+mutant "refusal never alerts" "s/if ((why === 'allow' || why === 'origin') \&\& /if (false \&\& /"
+mutant "held and failed-closed requests alert" "s/(why === 'allow' || why === 'origin')/(why !== 'probe')/"
+mutant "a probed refusal alerts" 's/ \&\& !probed(request) \&\& alertsOn(env)/ \&\& alertsOn(env)/'
+mutant "a refusal marks the source seen" "s/\${refused ? ':refused' : ''}//"
+mutant "a probed miss reaches the Gate" "s/  if (probed(request)) return 'probe';//"
+mutant "fail-closed checks GATE alone" 's/^const gateBound = (env) => env.GATE \&\& env.ALERT \&\& env.ALERT_FROM;/const gateBound = (env) => env.GATE;/'
+mutant "a probed adv hides an unbound Gate" "/res.headers.set('keystone-gate', 'unavailable');/d"
+mutant "an ungated set's adv reports the Gate" "s/if (set.approvers \&\& !gateBound(env)) res.headers.set/if (!gateBound(env)) res.headers.set/"
+mutant "Gate answers not cached" 's/  if ((answered.get(at)?.until ?? 0) > now)/  if (false)/'
+mutant "capped answers cached per set" "s/answered.set(at,/answered.set(why === 'capped' ? name : at,/; s/  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;/  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;/"
+mutant "answers cached for a minute" 's/const ANSWER_TTL = 5000;/const ANSWER_TTL = 60000;/'
+mutant "a decision leaves the cached answer" '/  answered.delete(`${name} ${t.o}`);/d'
+mutant "a grant refused" "s/  if (why === 'served') return null;/  if (false) return null;/"
+mutant "token expiry not enforced" 's/  if (t.e <= Date.now()) return page(410/  if (false) return page(410/'
+mutant "token live at its expiry" 's/if (t.e <= Date.now())/if (t.e < Date.now())/'
+mutant "a POST from anywhere decides" "s/  if (request.headers.get('Origin') !== new URL(request.url).origin) return page(403/  if (false) return page(403/"
+mutant "any method decides" "s/if (request.method !== 'GET' \&\& request.method !== 'POST') return reply(405/if (false) return reply(405/"
+mutant "the approval page over http" "s|  if (new URL(request.url).protocol !== 'https:') return reply(403|  if (false) return reply(403|"
+mutant "links follow the request scheme and port" 's|base: `https://${new URL(request.url).hostname}`,|base: new URL(request.url).origin,|'
+mutant "a removed approver's link works" 's/if (!t || !set.approvers.includes(t.a)) return/if (!t) return/'
+mutant "an unexpected Gate answer admits" "/  if (!\['held', 'denied', 'capped'\].includes(why)) return closed/d"
+mutant "an origin refusal advises allow" "s/(refused === 'origin'/(false/"
+mutant "approve without the typed name" "s/ || (decision === 'approve' \&\& form.get('confirm') !== name)//"
+mutant "any content type read as a form" 's/ ? await readBody(request, 256) : null;/ \&\& false ? 0 : await readBody(request, 256);/'
+mutant "form body capped at 4 KiB" 's/await readBody(request, 256)/await readBody(request)/'
+mutant "a GET decides" "s/    const { p, others } = await gate(env).view(name, t.o, t.p);/    await gate(env).decide(name, t.o, t.p, 'approve', { a: t.a }); const { p, others } = await gate(env).view(name, t.o, t.p);/"
+mutant "approve route on a set without approvers" 's/if (op === .approve. \&\& arg \&\& set.approvers)/if (op === "approve" \&\& arg)/'
+mutant "no CSP on the page" "/'content-security-policy': /d"
+mutant "page sends the referrer anywhere" "s/'referrer-policy': 'same-origin'/'referrer-policy': 'unsafe-url'/"
+mutant "page values unescaped" 's/^const esc = (s) => String(s).replace(.*/const esc = (s) => String(s);/'
+g=src/gate.js
+mutant "a denied origin reopened" "s/      if (p.state === 'denied') return 'denied';//" $g
+mutant "a held origin reopened" "s/      if (p.state === 'open') {/      if (false) {/" $g
+mutant "a grant never ends" "s/      if (p.grantUntil > now) return 'served';/      if (p.grantUntil) return 'served';/" $g
+mutant "a grant live at its end" 's/if (p.grantUntil > now)/if (p.grantUntil >= now)/' $g
+mutant "a grant of 11 minutes" 's/export const GRANT = 10 \* 60 \* 1000;/export const GRANT = 11 * 60 * 1000;/' $g
+mutant "a pending lives 13 hours" 's/export const PENDING_TTL = 12 \* 3600 \* 1000;/export const PENDING_TTL = 13 * 3600 * 1000;/' $g
+mutant "an expired pending kept" 's/    if (p?.expires > now) {/    if (p) {/' $g
+mutant "4 open pendings per set" 's/const OPEN_MAX = 3;/const OPEN_MAX = 4;/' $g
+mutant "decided pendings count toward the cap" "s/.filter((\[, p\]) => p.state === 'open' \&\& p.expires > now)/.filter(([, p]) => p.expires > now)/" $g
+mutant "expired entries never pruned" 's/    await this.prune(now);//' $g
+mutant "a replaced pending decided" 's/const live = p?.pid === pid \&\& p.expires > now;/const live = !!p \&\& p.expires > now;/' $g
+mutant "an expired pending decided" 's/const live = p?.pid === pid \&\& p.expires > now;/const live = p?.pid === pid;/' $g
+mutant "deny on a denied pending" "s/!(p.state === 'open' || (decision === 'approve' \&\& p.state === 'denied'))/!(p.state === 'open' || p.state === 'denied')/" $g
+mutant "approve on an approved pending" "s/(decision === 'approve' \&\& p.state === 'denied')/(decision === 'approve')/" $g
+mutant "a late grant cut at the pending's expiry" 's/, expires: Math.max(p.expires, now + GRANT) });/ });/' $g
+mutant "a replaced pending shown" 's/return { p: p?.pid === pid \&\& p.expires > now ? p : null, others };/return { p, others };/' $g
+mutant "an expired pending shown" 's/p?.pid === pid \&\& p.expires > now ? p : null/p?.pid === pid ? p : null/' $g
+mutant "the approve key is the policy key" "s/'keystone-approve-v1'/'keystone-policy-v1'/" $g
+mutant "other origins include this one" 's/.filter((o) => o.origin !== origin)/.filter(() => true)/' $g
+mutant "the token MAC ignores the set name" 's/enc.encode(`${name}.${payload}`)/enc.encode(payload)/' $g
+mutant "the token MAC unchecked" 's/if (!m || !(await crypto.subtle.verify(/if (!m || false \&\& !(await crypto.subtle.verify(/' $g
+mutant "held mail resent on every miss" 's/if (set.approvers.some((to) => due(p, to)) \&\& retryAt(p.mail) <= now)/if (true)/' $g
+mutant "a fully mailed pending rewritten on a held miss" 's/if (set.approvers.some((to) => due(p, to)) \&\& /if (true \&\& /' $g
+mutant "an added approver never mailed" 's/set.approvers.some((to) => due(p, to))/Object.values(p.mail.sent).includes(false)/' $g
+mutant "a failed send retried after a minute" 's/const RETRY = 5 \* 60 \* 1000;/const RETRY = 60 * 1000;/' $g
+mutant "a retry does not restart the clock" 's/Object.assign(p.mail, { at: now, tries: p.mail.tries + 1 });/p.mail.tries++;/' $g
+mutant "a retry not counted" 's/Object.assign(p.mail, { at: now, tries: p.mail.tries + 1 });/p.mail.at = now;/' $g
+mutant "no backoff" 's/Math.min(RETRY_MAX, RETRY \* 2 \*\* (m.tries - 1))/RETRY/' $g
+mutant "backoff past an hour" 's/^const RETRY_MAX = 3600 \* 1000;/const RETRY_MAX = 7200 * 1000;/' $g
+mutant "a delivered message never recorded" 's/      q.mail.sent\[to\] = true;//' $g
+mutant "a failed send recorded as delivered" 's/if (!ok || q?.pid !== p.pid) continue;/if (q?.pid !== p.pid) continue;/' $g
+mutant "a stale send marks the new pending" 's/if (!ok || q?.pid !== p.pid) continue;/if (!ok || !q) continue;/' $g
+mutant "a failed send keeps its unit" '/approval mail to ${to} for ${name} failed/{n;d;}' $g
+mutant "a failed notice keeps its unit" '/capped notice to ${to} for ${name} failed/{n;d;}' $g
+mutant "a refund refused at the cap" 's/if (d > 0 \&\& (all.n/if ((all.n/' $g
+mutant "a failed notice kept for 12 h" 's/    else await s.put(key, { expires: now + RETRY });//' $g
+mutant "a failed notice retried on every capped miss" 's/    else await s.put(key, { expires: now + RETRY });/    else await s.delete(key);/' $g
+mutant "the notice marker claimed after the sends" '/^    await s.put(key, { expires: now + PENDING_TTL });$/d; s/^    else await s.put(key, { expires: now + RETRY });$/    await s.put(key, { expires: now + (any ? PENDING_TTL : RETRY) });/' $g
+mutant "a timed-out send refunded" 's/    if (e.message !== TIMED_OUT) await this.budget(name, set, now, -1);/    await this.budget(name, set, now, -1);/' $g
+mutant "a failed send escapes the Gate" 's/console.error(`approval mail to/throw e; console.error(`approval mail to/' $g
+mutant "one link for every approver" 's/{ o: origin, p: p.pid, e: p.expires, a: to }/{ o: origin, p: p.pid, e: p.expires, a: set.approvers[0] }/' $g
+mutant "a mail link outlives its pending" 's/{ o: origin, p: p.pid, e: p.expires, a: to }/{ o: origin, p: p.pid, e: p.expires + 1e9, a: to }/' $g
+mutant "a notice link outlives its pending" 's/{ o: o.origin, p: o.pid, e: o.expires, a: to }/{ o: o.origin, p: o.pid, e: o.expires + 1e9, a: to }/' $g
+mutant "mail values not folded to ASCII" 's/^const ascii = (s) => String(s).replace(.*/const ascii = (s) => String(s);/' $g
+mutant "other origins left out of the mail" 's/(others.length ? /(false ? /' $g
+mutant "a notice on every capped miss" 's/      if (!((await s.get(`c:${name}`))?.expires > now)) await this.notice/      await this.notice/' $g
+mutant "notice links signed for approver 0" 's/{ o: o.origin, p: o.pid, e: o.expires, a: to }/{ o: o.origin, p: o.pid, e: o.expires, a: set.approvers[0] }/' $g
+mutant "a notice leaves out the refused origin" 's/  ${about(refused)}//' $g
+mutant "41 messages an hour" 's/const MAIL_MAX = 40;/const MAIL_MAX = 41;/' $g
+mutant "6 messages an hour per approver" 's/^const SHARE = 5;/const SHARE = 6;/' $g
+mutant "no per-set share" 's/ || own.n >= SHARE \* set.approvers.length//' $g
+mutant "a share not scaled by approvers" 's/own.n >= SHARE \* set.approvers.length/own.n >= SHARE/' $g
+mutant "one share for every set" 's/`m:${hour}:${name}`/`m:${hour}:`/g' $g
+mutant "a share that never renews" 's/`m:${hour}:${name}`/`m:${name}`/g' $g
+mutant "a refund leaves the set's share spent" 's/^    own.n += d;/    own.n += Math.max(d, 0);/' $g
+mutant "a refund leaves the hourly count spent" 's/^    all.n += d;/    all.n += Math.max(d, 0);/' $g
+mutant "notices outside the cap" 's/      if (!(await this.budget(name, set, now))) break;//' $g
+mutant "approval mail outside the cap" 's/      if (!due(p, to) || !(await this.budget(name, set, now))) continue;/      if (!due(p, to)) continue;/' $g
+o=src/origin.js
+mutant "allow match ignores the prefix length" 's/a.n >> BigInt(BITS\[c.v\] - c.len) === c.n >> BigInt(BITS\[c.v\] - c.len)/a.n === c.n/' $o
+mutant "allow matches across families" 's/(a, c) => a.v === c.v \&\& /(a, c) => /' $o
+mutant "AS13335 admitted" 's/ || asn === 13335//' $o
+mutant "240.0.0.0/4 address admitted" 's/ || (a.v === 4 \&\& a.n >= CLASS_E)//' $o
+mutant "240.0.0.0 admitted" 's/(a.v === 4 \&\& a.n >= CLASS_E) || !Number/(a.v === 4 \&\& a.n > CLASS_E) || !Number/' $o
+mutant "a missing ASN admitted" 's/ || !Number.isInteger(asn)//' $o
+mutant "no address admitted" 's/=> !a || /=> /' $o
 
 k=bin/keyset.mjs
 mutant "deploy rewrites a live set" 's/\.catch(() => null) !== set\.roles)/.catch(() => null) === null)/' $k
+mutant "a missing version reported as a mismatch" "s/      else if (!version) say('REFUSE'/      else if (false) say('REFUSE'/" $k
 mutant "deploy creates an absent set without --new" "s/if (!isNew) say('REFUSE'/if (false) say('REFUSE'/" $k
 mutant "deploy hints --new for a revoked set" "s/'absent (never deployed, or revoked); --new only for a freshly minted set'/'absent; pass --new to create it'/" $k
 mutant "deploy --new on a live set" "s/else if (isNew) say('REFUSE'/else if (false) say('REFUSE'/" $k
@@ -131,9 +260,17 @@ mutant "a signal exits 1, not 128+signo" 's/exit(128 + constants.signals\[sig\])
 mutant "no SIGHUP handler" "s/, 'SIGHUP'\]/]/" $k
 mutant "signal handlers left installed" '/io.process.off(sig, onSignal)/d' $k
 mutant "secrets file mode not 0600" 's/mode: 0o600/mode: 0o644/' $k
-mutant "secrets file rewrites live sets" 's/sets.filter((s) => s.isNew).map((s) => \[s.secret, s.text\])/sets.map((s) => [s.secret, s.text])/' $k
+mutant "secrets file rewrites live sets" 's/sets.filter((s) => s.isNew || s.policy).map((s) => \[s.secret, s.text\])/sets.map((s) => [s.secret, s.text])/' $k
+mutant "secrets file omits a policy edit" 's/sets.filter((s) => s.isNew || s.policy)/sets.filter((s) => s.isNew)/' $k
+mutant "policy edit planned as ok" "s/else if (res.headers.get('keystone-policy') !== set.tag) {/else if (false) {/" $k
+mutant "policy write skips the version gate" 's/if (writes.length \&\& (o.apply || io.env.CLOUDFLARE_API_TOKEN))/if (false)/' $k
+mutant "split deployment taken as one version" 's/versions?.length === 1 \&\& versions\[0\].percentage === 100 \&\& //' $k
+mutant "version mismatch accepted" 's/else if (version !== live) say/else if (false) say/' $k
+mutant "check ignores the live policy" "/the live policy is not the set's/d" $k
+mutant "a 403 skipped for an ungated set" 's/if (rep.status === 403 \&\& set.tag)/if (rep.status === 403)/' $k
+mutant "keyset sends no probe header" 's/{ headers: PROBE }/{}/' $k
 mutant "apply skips the check after deploy" 's/^  for (const { name, set } of sets) {$/  for (const { name, set } of []) {/' $k
-mutant "tombstone written to the secrets file" 's/sets.filter((s) => s.isNew).map((s) => \[s.secret, s.text\])/[...sets.filter((s) => s.isNew), ...tombs].map((s) => [s.secret, s.text ?? null])/' $k
+mutant "tombstone written to the secrets file" 's/sets.filter((s) => s.isNew || s.policy).map((s) => \[s.secret, s.text\])/[...sets.filter((s) => s.isNew), ...tombs].map((s) => [s.secret, s.text ?? null])/' $k
 mutant "apply skips the tombstone 404 check" 's/^  for (const { name } of tombs) {$/  for (const { name } of []) {/' $k
 mutant "deploy over a tombstone the target holds" 's/    else if (kept) say/    else if (false) say/' $k
 mutant "served tombstone passes without a secret list" 's/    else if (!listed) say/    else if (false) say/' $k
@@ -146,6 +283,7 @@ mutant "revoke deletes a secret the wrangler target lacks" 's/if (!listed.has(se
 mutant "revoke apply skips the 404 poll" 's/if (await adv() === 404) {/if (true) {/' $k
 mutant "revoke omits the tombstone reminder" 's/, revoked; keep .* stays revoked/, revoked/' $k
 mutant "check skips the signature verification" 's/if (!await crypto.subtle.verify(/if (false \&\& !await crypto.subtle.verify(/' $k
+mutant "check passes an unbound Gate" "/=== 'unavailable') throw new Error/d" $k
 mutant "check accepts an adv carrying a private key" "s/if (keys.some((k) => 'd' in k)) return null;//" $k
 mutant "rec proof compares against S, not ECDH(r, S)" 's/if (got !== want)/if (got !== set.exch.x)/' $k
 mutant "a set's private key need not match its public key" 's/\.catch(() => { throw new Error(`the ${k.alg} private key does not match its public key`); });/.catch(() => {});/' $k
