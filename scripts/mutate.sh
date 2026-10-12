@@ -167,7 +167,7 @@ mutant "approve without the typed name" "s/ || (decision === 'approve' \&\& form
 mutant "any content type read as a form" 's/ ? await readBody(request, 256) : null;/ \&\& false ? 0 : await readBody(request, 256);/'
 mutant "form body capped at 4 KiB" 's/await readBody(request, 256)/await readBody(request)/'
 mutant "a GET decides" "s/    const { p, others } = await gate(env).view(name, t.o, t.p);/    await gate(env).decide(name, t.o, t.p, 'approve', { a: t.a }); const { p, others } = await gate(env).view(name, t.o, t.p);/"
-mutant "approve route on a set without approvers" 's/if (op === .approve. \&\& arg \&\& set.approvers)/if (op === "approve" \&\& arg)/'
+mutant "approve route on a set without approvers" 's/set.approvers ? approval(request, env, name, set, arg) : notFound()/approval(request, env, name, set, arg)/'
 mutant "no CSP on the page" "/'content-security-policy': /d"
 mutant "page sends the referrer anywhere" "s/'referrer-policy': 'same-origin'/'referrer-policy': 'unsafe-url'/"
 mutant "page values unescaped" 's/^const esc = (s) => String(s).replace(.*/const esc = (s) => String(s);/'
