@@ -29,7 +29,11 @@ function block(css, selector) {
 }
 function decls(body) {
   const m = new Map();
-  for (const d of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) m.set(d[1], d[2].trim().replace(/\s+/g, ' '));
+  for (const d of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+    const v = d[2].trim().replace(/\s+/g, ' ');
+    if (/[^\w #%.,()'"+*/-]/.test(v)) throw new Error(`tokens: ${d[1]} carries a character outside plain CSS values`);
+    m.set(d[1], v);
+  }
   return m;
 }
 
