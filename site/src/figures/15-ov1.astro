@@ -1,5 +1,5 @@
 ---
-const story = 'keystone at a glance, in seven steps: 1, you deploy a key set per disk to keystone, a Worker on your Cloudflare account; 2, the computer binds its encrypted disk once to its key set; 3, at boot the computer asks keystone, sending only a blinded value; 4, keystone reads that key set; 5, it answers with the missing half of the key; 6, the computer opens the disk with no passphrase typed, and keystone never sees the disk; 7, if the computer is stolen, you delete its key set, keystone refuses it, and the disk stays locked.';
+const story = 'keystone at a glance, in seven steps: 1, you deploy a key set per disk to keystone, a Worker on your Cloudflare account; 2, the computer binds its encrypted disk once to its key set; 3, at boot the computer asks keystone, sending only a blinded value; 4, keystone reads that key set; 5, it answers with the missing half of the key; 6, the computer opens the disk with no passphrase typed, and keystone never sees the disk; 7, if the computer is stolen, you delete its key set before it next starts, keystone refuses it, and the disk stays locked.';
 ---
 <svg class="figure-wide" viewBox="0 0 1320 440" role="img" aria-label={story} xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -8,7 +8,7 @@ const story = 'keystone at a glance, in seven steps: 1, you deploy a key set per
   </defs>
   <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
     <rect x="8" y="8" width="1304" height="424" rx="6" fill="var(--bg)" stroke="var(--border)"/>
-    <text x="32" y="38" font-family="'IBM Plex Mono', Menlo, monospace" font-size="14" font-weight="600" letter-spacing="0.08em" fill="var(--text-2)">WHY · THE DISK OPENS AT BOOT WITH NO ONE TYPING; DELETE A KEY SET AND IT STAYS LOCKED</text>
+    <text x="32" y="38" font-family="'IBM Plex Mono', Menlo, monospace" font-size="14" font-weight="600" letter-spacing="0.08em" fill="var(--text-2)">WHY · THE DISK OPENS AT BOOT WITH NO ONE TYPING; DELETE ITS KEY SET BEFORE IT NEXT STARTS AND IT STAYS LOCKED</text>
 
     <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="12" letter-spacing="0.08em" fill="var(--text-muted)">
       <text x="32" y="80">ACTORS</text>
@@ -92,8 +92,9 @@ const story = 'keystone at a glance, in seven steps: 1, you deploy a key set per
   <g font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
     <rect x="0.5" y="0.5" width="339" height="739" rx="6" fill="var(--bg)" stroke="var(--border)"/>
     <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="9.5" font-weight="600" letter-spacing="0.06em" fill="var(--text-2)">
-      <text x="16" y="26">WHY · THE DISK OPENS AT BOOT WITH NO ONE</text>
-      <text x="16" y="40">TYPING; DELETE A KEY SET AND IT STAYS LOCKED</text>
+      <text x="16" y="22">WHY · THE DISK OPENS AT BOOT WITH NO ONE</text>
+      <text x="16" y="34">TYPING; DELETE ITS KEY SET BEFORE IT NEXT</text>
+      <text x="16" y="46">STARTS AND IT STAYS LOCKED</text>
     </g>
 
     <g font-family="'IBM Plex Mono', Menlo, monospace" font-size="9" letter-spacing="0.08em" fill="var(--text-muted)">
