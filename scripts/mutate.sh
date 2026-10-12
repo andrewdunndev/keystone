@@ -211,6 +211,7 @@ mutant "mail values not folded to ASCII" 's/^const ascii = (s) => String(s).repl
 mutant "other origins left out of the mail" 's/(others.length ? /(false ? /' $g
 mutant "a notice on every capped miss" 's/      if (!((await s.get(`c:${name}`))?.expires > now)) await this.notice/      await this.notice/' $g
 mutant "notice links signed for approver 0" 's/{ o: o.origin, p: o.pid, e: o.expires, a: to }/{ o: o.origin, p: o.pid, e: o.expires, a: set.approvers[0] }/' $g
+mutant "a notice leaves out the refused origin" 's/  ${about(refused)}//' $g
 mutant "21 messages an hour" 's/const MAIL_MAX = 20;/const MAIL_MAX = 21;/' $g
 mutant "notices outside the cap" 's/      if (!(await this.budget(now))) break;//' $g
 mutant "approval mail outside the cap" 's/      if (!due(p, to) || !(await this.budget(now))) continue;/      if (!due(p, to)) continue;/' $g

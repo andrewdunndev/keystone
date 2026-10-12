@@ -475,7 +475,7 @@ test('concurrent misses send one message per approver; a failed send is logged a
   assert.deepEqual(pending(f, NET).mail.sent, { [APPROVERS[0]]: true, [APPROVERS[1]]: true });
 }));
 
-test('a capped set mails each approver one notice listing the open origins with their own links', withClock(async () => {
+test('a capped set mails each approver one notice naming the refused origin and listing the open ones with their own links', withClock(async () => {
   const e = gateEnv();
   const origins = ['198.51.100.1', '203.0.113.1', '192.0.2.1'];
   for (const ip of origins) await rec(e, 'ask', { ip });
@@ -492,6 +492,7 @@ test('a capped set mails each approver one notice listing the open origins with 
     assert.equal(links.length, 3);
     for (const t of links.map(payload)) assert.deepEqual([t.e, t.a], [pending(e, t.o).expires, APPROVERS[a]]);
     assert.match(m.raw, /deny them all and revoke the set/);
+    assert.match(m.raw, /so this origin was refused, as is any other new one until one is decided:\r\n\r\n  2001:db8:0::\/48  AS64500 .*\r\n\r\nThe origins waiting are not that one/);
     assert.equal((await post(e, links[a], { decision: 'deny' })).status, 200);
     assert.equal(logged.at(-1).approver, APPROVERS[a]);
   }

@@ -98,7 +98,7 @@ export class Gate extends DurableObject {
     await this.prune(now);
     const open = await this.open(name, now);
     if (open.length >= OPEN_MAX) {
-      if (!((await s.get(`c:${name}`))?.expires > now)) await this.notice(name, set, open, now);
+      if (!((await s.get(`c:${name}`))?.expires > now)) await this.notice(name, set, open, now, { origin, info, created: now });
       return 'capped';
     }
     const mail = { at: now, sent: {}, failed: {} };
@@ -139,7 +139,7 @@ export class Gate extends DurableObject {
 
   // Once per PENDING_TTL per set while capped: each approver gets the open pendings with their own links. The marker is
   // claimed before the sends so concurrent misses send once, and dropped if nothing went out.
-  async notice(name, set, open, now) {
+  async notice(name, set, open, now, refused) {
     const s = this.ctx.storage, key = `c:${name}`;
     await s.put(key, { expires: now + PENDING_TTL });
     let any = false;
@@ -149,9 +149,9 @@ export class Gate extends DurableObject {
         `  ${about(o)}\n  ${o.info.base}/${name}/approve/${await sign(set.key, name, { o: o.origin, p: o.pid, e: o.expires, a: to })}`));
       try {
         await send(this.env, to, `keystone: ${name} has ${open.length} origins waiting; new ones are refused`,
-          `Key set ${name} already holds ${open.length} origins awaiting a decision, so a host asking from any other origin ` +
-          `is refused until one is decided:\n\n${items.join('\n\n')}\n\nIf you did not move the host, deny them all and ` +
-          'revoke the set.\n');
+          `Key set ${name} already holds ${open.length} origins awaiting a decision, so this origin was refused, as is any ` +
+          `other new one until one is decided:\n\n  ${about(refused)}\n\nThe origins waiting are not that one; denying one ` +
+          `frees a slot for it:\n\n${items.join('\n\n')}\n\nIf you did not move the host, deny them all and revoke the set.\n`);
         any = true;
       } catch (e) {
         console.error(`capped notice to ${to} for ${name} failed: ${e.message}`);
