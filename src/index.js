@@ -296,7 +296,6 @@ async function approval(request, env, name, set, token) {
   if (status !== 200) return page(409, 'Nothing changed', p ? decided(p) : '<p>This request is no longer current.</p>');
   console.log(JSON.stringify({ event: p.state, name, origin: t.o, approver: t.a, ip, asn }));
   answered.delete(`${name} ${t.o}`);
-  answered.delete(name);
   return page(200, p.state === 'approved' ? 'Approved' : 'Denied', decided(p));
 }
 
@@ -315,10 +314,9 @@ async function admit(set, name, ip, request, env) {
   if (!set.approvers) return 'allow';
   if (probed(request)) return 'probe';
   if (!env.GATE || !env.ALERT || !env.ALERT_FROM) return closed(name, 'GATE, ALERT and ALERT_FROM are not all bound');
-  // Held and denied answers are kept per set and origin, capped ones per set, so a box retrying twice a second asks the
-  // Gate once per ANSWER_TTL.
+  // Answers are kept per set and origin, so a box retrying twice a second asks the Gate once per ANSWER_TTL.
   const origin = sourceNet(request.headers.get('CF-Connecting-IP')), at = `${name} ${origin}`, now = Date.now();
-  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;
+  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;
   const cf = request.cf ?? {};
   let why;
   try {
@@ -331,7 +329,7 @@ async function admit(set, name, ip, request, env) {
   if (why === 'served') return null;
   if (!['held', 'denied', 'capped'].includes(why)) return closed(name, `unexpected Gate answer ${clip(why)}`);
   if (answered.size >= SEEN_MAX) answered.clear();
-  answered.set(why === 'capped' ? name : at, { why, until: now + ANSWER_TTL });
+  answered.set(at, { why, until: now + ANSWER_TTL });
   return why;
 }
 

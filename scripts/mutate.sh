@@ -147,8 +147,8 @@ mutant "a probed refusal alerts" 's/ \&\& !probed(request) \&\& alertsOn(env)/ \
 mutant "a refusal marks the source seen" "s/\${refused ? ':refused' : ''}//"
 mutant "a probed miss reaches the Gate" "s/  if (probed(request)) return 'probe';//"
 mutant "fail-closed checks GATE alone" 's/  if (!env.GATE || !env.ALERT || !env.ALERT_FROM) return closed/  if (!env.GATE) return closed/'
-mutant "Gate answers not cached" 's/  for (const k of \[at, name\]) if/  for (const k of []) if/'
-mutant "capped answers cached per origin" "s/answered.set(why === 'capped' ? name : at,/answered.set(at,/"
+mutant "Gate answers not cached" 's/  if ((answered.get(at)?.until ?? 0) > now)/  if (false)/'
+mutant "capped answers cached per set" "s/answered.set(at,/answered.set(why === 'capped' ? name : at,/; s/  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;/  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;/"
 mutant "answers cached for a minute" 's/const ANSWER_TTL = 5000;/const ANSWER_TTL = 60000;/'
 mutant "a decision leaves the cached answer" '/  answered.delete(`${name} ${t.o}`);/d'
 mutant "a grant refused" "s/  if (why === 'served') return null;/  if (false) return null;/"

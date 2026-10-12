@@ -363,17 +363,18 @@ test('a token tampered in any part, signed for another set, or naming a revoked 
   assert.equal((await open(e, url)).status, 404);
 }));
 
-test('a set takes 3 open pendings; further origins are capped, per set, until one is decided', withClock(async () => {
+test('a set takes 3 open pendings; further origins are capped until one is decided', withClock(async () => {
   const e = gateEnv({ TANG_KEY_OTHER: setText({ approvers: APPROVERS }) });
   for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1']) await rec(e, 'ask', { ip });
   await refusedReply(await rec(e, 'ask', { ip: '2001:db8::1' }));
   assert.equal(pending(e, '2001:db8:0::/48'), undefined);
   const misses = e.misses;
-  await refusedReply(await rec(e, 'ask', { ip: '2001:db8:5::1' }));
+  await refusedReply(await rec(e, 'ask', { ip: '2001:db8::2' }));
   assert.equal(e.misses, misses);
   await rec(e, 'other', { ip: '2001:db8::1' });
   assert.equal(pending(e, '2001:db8:0::/48', 'other').state, 'open');
   assert.equal((await post(e, await link(e, '203.0.113.0/24'), { decision: 'deny' })).status, 200);
+  mock.timers.tick(5001);
   await rec(e, 'ask', { ip: '2001:db8::1' });
   assert.equal(pending(e, '2001:db8:0::/48').state, 'open');
   const html = await (await open(e, await link(e, '2001:db8:0::/48'))).text();
@@ -381,6 +382,15 @@ test('a set takes 3 open pendings; further origins are capped, per set, until on
   mock.timers.tick(12 * 3600e3);
   await rec(e, 'ask', { ip: '203.0.113.200' });
   assert.deepEqual([...e.store.m.keys()].sort(), [`m:${(T0 + 12 * 3600e3) / 3600e3}`, 'p:ask:203.0.113.0/24']);
+}));
+
+test('a capped answer is cached per origin, so a granted origin is served while strangers keep the set capped', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  await post(e, await link(e, NET), { decision: 'approve', confirm: 'ask' });
+  for (const ip of ['203.0.113.1', '192.0.2.1', '2001:db8::1']) await rec(e, 'ask', { ip });
+  await refusedReply(await rec(e, 'ask', { ip: '2001:db8:5::1' }));
+  assert.equal((await rec(e, 'ask', { ip: HOME })).status, 200);
 }));
 
 test('a probed miss never reaches the Gate, a throwing Gate fails closed, and a grant raises the served alert', withClock(async () => {
