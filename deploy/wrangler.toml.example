@@ -37,14 +37,13 @@ binding = "CF_VERSION_METADATA"
 # binding = "UNLOCKS"
 # id = "<namespace id>"
 
-# Sends alerts and approval mail through Email Routing. With no destination_address it reaches any verified
-# destination: ALERT_TO and every approver must be one.
+# Sends alerts and approval mail through Email Sending. Without destination_address it reaches any recipient.
 # [[send_email]]
 # name = "ALERT"
 
-# ALERT_FROM is an address on a zone with Email Routing enabled.
+# ALERT_FROM is an address on a subdomain onboarded to Email Sending.
 # [vars]
-# ALERT_FROM = "keystone@example.org"
+# ALERT_FROM = "unlock@mail.example.org"
 # ALERT_TO = "you@example.org"
 
 # Hourly trigger that mails the digest of held sources.

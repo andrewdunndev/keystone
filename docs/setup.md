@@ -115,11 +115,11 @@ To upgrade, update the clone, run `npm ci` and merge the example config's new bi
 
 ## Alerts
 
-When a `rec` succeeds from a new source, keystone mails one alert through a Cloudflare Email Workers `send_email` binding. A source is the client's /24 or /48 with its ASN and country. A failed alert is logged and never changes the unlock. Each set sends at most one alert an hour; up to five sources met meanwhile wait for the hourly digest.
+When a `rec` succeeds from a new source, keystone mails one alert through a Cloudflare Email Sending `send_email` binding. A source is the client's /24 or /48 with its ASN and country. A failed alert is logged and never changes the unlock. Each set sends at most one alert an hour; up to five sources met meanwhile wait for the hourly digest.
 
 1. Create the namespace: `npx wrangler kv namespace create UNLOCKS`.
-2. Enable Email Routing on a zone in the same account and verify the destination address.
-3. Uncomment all four blocks in `deploy/wrangler.toml`: the `UNLOCKS` namespace id, the `ALERT` binding, `ALERT_FROM` and `ALERT_TO`, and the hourly cron. `ALERT_FROM` must be on the Email Routing zone.
+2. Onboard a subdomain such as `mail.example.org` in Email Sending, which needs Workers Paid. The apex domain's mail is untouched.
+3. Uncomment all four blocks in `deploy/wrangler.toml`: the `UNLOCKS` namespace id, the `ALERT` binding, `ALERT_FROM` and `ALERT_TO`, and the hourly cron. `ALERT_FROM` must be on that subdomain.
 4. Redeploy.
 
 ## Origin gate
@@ -140,7 +140,7 @@ pass tang/server-1 | jq -R '{TANG_KEY_SERVER_1: .}' |
 
 - Pin every family the host can egress on, its IPv4 /32 and its delegated IPv6 prefix, since clevis may use either at boot. Approval covers a renumber or a visit.
 - With `approvers` alone, every unlock needs an approval.
-- Approvals need `GATE`, `ALERT` and `ALERT_FROM`. Leave `destination_address` off `ALERT` and verify every approver in Email Routing. Without them, such a set refuses every new origin and `check` fails.
+- Approvals need `GATE`, `ALERT` without `destination_address`, and `ALERT_FROM`. Without them, such a set refuses every new origin and `check` fails.
 - A set holds 3 origins at a time; a fourth is refused and approvers get one notice naming it and the three. A set sends at most 5 messages an hour per approver, and all sets together 40.
 - Turn Pseudo IPv4 off for the zone. With it on, IPv6 clients arrive as 240.0.0.0/4 addresses, which are refused.
 - `deploy` rewrites a live set only when its keys match stdin and one Worker version, the one `--url` serves, takes all traffic. `check` from outside `allow` prints `SKIP rec`.

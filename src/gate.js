@@ -30,8 +30,7 @@ function mime(from, to, subject, text) {
   ].join('\r\n');
 }
 
-// The send_email binding delivers only to verified Email Routing destinations, from an address on a zone with Email
-// Routing enabled. It has no timeout of its own, so a stalled send is cut off here.
+// The send_email binding has no timeout of its own, so a stalled send is cut off here.
 export async function send(env, to, subject, text) {
   const msg = new EmailMessage(env.ALERT_FROM, to, mime(env.ALERT_FROM, to, subject, text));
   let timer;
