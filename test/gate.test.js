@@ -285,7 +285,7 @@ test('a miss on a set with approvers is held: one pending, a cached answer, and 
   assert.match(html, /Springfield/);
   assert.match(html, /name="confirm"/);
   assert.match(html, /value="deny"/);
-  assert.doesNotMatch(html, /<script/i);
+  assert.doesNotMatch(html, /<script|<link|@import|url\(|<img|src=/i);
 }));
 
 test('approve needs the page\'s Origin, a small form body and the typed name; then rec is served for 10 minutes', withClock(async () => {

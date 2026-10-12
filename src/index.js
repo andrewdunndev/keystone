@@ -3,6 +3,7 @@
 import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
 import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
 import { approveKey, send, verify, GRANT } from './gate.js';
+import { AUTH_CSS } from './auth-css.js';
 
 export { Gate } from './gate.js';
 
@@ -249,9 +250,22 @@ const PAGE_HEADERS = {
 };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
-const page = (status, title, body) => new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">' +
-  `<title>${esc(title)}</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem}` +
-  `dt{font-weight:600}input,button{font:inherit}</style><h1>${esc(title)}</h1>${body}`, { status, headers: PAGE_HEADERS });
+const MARK = '<svg viewBox="0 0 64 64" aria-hidden="true"><g stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M8 45 A24 24 0 0 1 27.01 21.52" stroke-width="2"/><path d="M36.99 21.52 A24 24 0 0 1 56 45" stroke-width="2"/>' +
+  '<path d="M18 45 A14 14 0 0 1 29.09 31.31" stroke-width="2"/><path d="M34.91 31.31 A14 14 0 0 1 46 45" stroke-width="2"/>' +
+  '<line x1="23" y1="34.28" x2="16.57" y2="26.61" stroke-width="1.6"/><line x1="41" y1="34.28" x2="47.43" y2="26.61" stroke-width="1.6"/>' +
+  '<path d="M8 45 V56 H18 V45 Z" stroke-width="2"/><path d="M46 45 V56 H56 V45 Z" stroke-width="2"/></g>' +
+  '<polygon points="26.26,18 37.74,18 34.91,31.31 29.09,31.31" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+const STYLE = AUTH_CSS +
+  'dl{margin:0}dt{font-size:.75rem;letter-spacing:.02em;opacity:.7}dd{margin:0 0 .75rem;overflow-wrap:anywhere}dd:last-child{margin:0}' +
+  'ul{margin:0;padding-left:1.25rem}li+li{margin-top:.5rem}.field input{margin-top:.5rem}.page.page-narrow .focus-card>.notice{margin:0}';
+const note = (text, tone = '') => `<p class="notice ${tone}">${text}</p>`;
+const page = (status, title, body) => new Response('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+  `<title>${esc(title)} - keystone</title><style>${STYLE}</style><header class="site-header"><div class="header-inner"><span class="brand"><span class="brand-mark">${MARK}</span><span class="brand-name">keystone</span></span></div></header>` +
+  `<main class="page page-narrow"><header class="page-header"><h1 class="page-title">${esc(title)}</h1></header><section class="panel focus-card">${body}</section></main>` +
+  '<footer class="site-footer"><div class="footer-inner">keystone<span class="footer-sep">&middot;</span><a href="https://gitlab.com/dunn.dev/keystone">repo</a><span class="footer-sep">&middot;</span><a href="https://keystone.dunn.dev">site</a></div></footer>', { status, headers: PAGE_HEADERS });
+
+const notFound = () => page(404, 'Not found', '');
 
 function facts(name, origin, p) {
   const i = p.info;
@@ -265,35 +279,35 @@ function facts(name, origin, p) {
 async function approval(request, env, name, set, token) {
   if (new URL(request.url).protocol !== 'https:') return reply(403, 'https only\n');
   const t = await verify(set.approveKey ??= approveKey(set.exch.jwk), name, token);
-  if (!t || !set.approvers.includes(t.a)) return reply(404, 'not found\n');
+  if (!t || !set.approvers.includes(t.a)) return notFound();
   if (request.method !== 'GET' && request.method !== 'POST') return reply(405, 'method not allowed\n');
-  if (t.e <= Date.now()) return page(410, 'This request has expired', '<p>Nothing changed. A host still asking gets a new request.</p>');
-  if (!env.GATE) return page(503, 'Approvals are unavailable', '<p>The Gate is not bound.</p>');
-  const decided = (p) => `<p>${p.state === 'approved' ? 'Approved' : 'Denied'} at ${when(p.decided.at)} by ${esc(p.decided.a)}.` +
-    `${p.state === 'approved' ? ` Any machine in ${esc(t.o)} can recover ${esc(name)} until ${when(p.grantUntil)}.` : ''}</p>`;
+  if (t.e <= Date.now()) return page(410, 'This request has expired', note('Nothing changed. A host still asking gets a new request.'));
+  if (!env.GATE) return page(503, 'Approvals are unavailable', note('The Gate is not bound.', 'notice-danger'));
+  const decided = (p) => note(`${p.state === 'approved' ? 'Approved' : 'Denied'} at ${when(p.decided.at)} by ${esc(p.decided.a)}.` +
+    `${p.state === 'approved' ? ` Any machine in ${esc(t.o)} can recover ${esc(name)} until ${when(p.grantUntil)}.` : ''}`, p.state === 'approved' ? 'notice-success' : 'notice-danger');
   if (request.method === 'GET') {
     const { p, others } = await gate(env).view(name, t.o, t.p);
-    if (!p) return page(409, 'This request is no longer current', '<p>Nothing changed. A host still asking gets a new request.</p>');
-    const rest = others.length ? `<p><strong>${others.length} other origin(s) are asking for this set.</strong> If you did not move ` +
-      `the host, deny them all.</p><ul>${others.map((o) => `<li>${esc(o.origin)}: AS${esc(o.info.asn)} ${esc(o.info.org)}, ` +
+    if (!p) return page(409, 'This request is no longer current', note('Nothing changed. A host still asking gets a new request.'));
+    const rest = others.length ? note(`<strong>${others.length} other origin(s) are asking for this set.</strong> If you did not move ` +
+      'the host, deny them all.', 'notice-warning') + `<ul>${others.map((o) => `<li>${esc(o.origin)}: AS${esc(o.info.asn)} ${esc(o.info.org)}, ` +
       `${esc(o.info.city)}, ${esc(o.info.country)}, since ${when(o.created)}</li>`).join('')}</ul>` : '';
-    const approve = `<form method="post"><p>Approving lets any machine in ${esc(t.o)} recover ${esc(name)} for ${GRANT / 60000} minutes.</p>` +
-      `<label>Type <b>${esc(name)}</b> to approve: <input name="confirm" autocomplete="off" required></label> ` +
-      '<button name="decision" value="approve">Approve</button></form>';
-    const deny = '<form method="post"><button name="decision" value="deny">Deny</button></form>';
+    const approve = `<form class="focus-form" method="post"><p class="focus-note">Approving lets any machine in ${esc(t.o)} recover ${esc(name)} for ${GRANT / 60000} minutes.</p>` +
+      `<div class="field"><label>Type <b>${esc(name)}</b> to approve: <input name="confirm" autocomplete="off" required></label></div> ` +
+      '<button class="button button-primary focus-btn" name="decision" value="approve">Approve</button></form>';
+    const deny = '<form class="focus-form" method="post"><button class="button button-secondary focus-btn" name="decision" value="deny">Deny</button></form>';
     const actions = p.state === 'open' ? approve + deny : p.state === 'denied' ? decided(p) + approve : decided(p);
     return page(200, `Unlock ${name} from ${t.o}?`, facts(name, t.o, p) + rest + actions);
   }
-  if (request.headers.get('Origin') !== new URL(request.url).origin) return page(403, 'Refused', '<p>Decide from the approval page.</p>');
+  if (request.headers.get('Origin') !== new URL(request.url).origin) return page(403, 'Refused', note('Decide from the approval page.', 'notice-danger'));
   const body = /^application\/x-www-form-urlencoded(;|$)/.test(request.headers.get('content-type') ?? '') ? await readBody(request, 256) : null;
   const form = new URLSearchParams(body ?? '');
   const decision = form.get('decision');
   if (body === null || !['approve', 'deny'].includes(decision) || (decision === 'approve' && form.get('confirm') !== name)) {
-    return page(400, 'Nothing changed', `<p>To approve, type ${esc(name)} exactly.</p>`);
+    return page(400, 'Nothing changed', note(`To approve, type ${esc(name)} exactly.`, 'notice-danger'));
   }
   const ip = request.headers.get('CF-Connecting-IP'), asn = request.cf?.asn ?? null;
   const { status, p } = await gate(env).decide(name, t.o, t.p, decision, { a: t.a, ip, asn });
-  if (status !== 200) return page(409, 'Nothing changed', p ? decided(p) : '<p>This request is no longer current.</p>');
+  if (status !== 200) return page(409, 'Nothing changed', p ? decided(p) : note('This request is no longer current.'));
   console.log(JSON.stringify({ event: p.state, name, origin: t.o, approver: t.a, ip, asn }));
   answered.delete(`${name} ${t.o}`);
   return page(200, p.state === 'approved' ? 'Approved' : 'Denied', decided(p));
@@ -400,7 +414,7 @@ export default {
       }
       return res;
     }
-    if (op === 'approve' && arg && set.approvers) return approval(request, env, name, set, arg);
+    if (op === 'approve' && arg) return set.approvers ? approval(request, env, name, set, arg) : notFound();
     return reply(404, 'not found\n');
   },
   async scheduled(event, env) {
