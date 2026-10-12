@@ -315,6 +315,17 @@ test('approve needs the page\'s Origin, a small form body and the typed name; th
   assert.notEqual(pending(e, NET).pid, pid);
 }));
 
+test('an approval in a pending\'s last minutes still grants the full 10 minutes', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  const url = await link(e, NET);
+  mock.timers.tick(12 * 3600e3 - 60e3);
+  assert.equal((await post(e, url, { decision: 'approve', confirm: 'ask' })).status, 200);
+  mock.timers.tick(10 * 60e3 - 1);
+  assert.equal((await rec(e, 'ask', { ip: HOME })).status, 200);
+  assert.equal(pending(e, NET).state, 'approved');
+}));
+
 test('a decided or replaced pending answers 409, an expired token 410; deny holds, and approve still works after it', withClock(async () => {
   const e = gateEnv();
   await rec(e, 'ask', { ip: HOME });

@@ -186,6 +186,7 @@ mutant "a replaced pending decided" 's/const live = p?.pid === pid \&\& p.expire
 mutant "an expired pending decided" 's/const live = p?.pid === pid \&\& p.expires > now;/const live = p?.pid === pid;/' $g
 mutant "deny on a denied pending" "s/!(p.state === 'open' || (decision === 'approve' \&\& p.state === 'denied'))/!(p.state === 'open' || p.state === 'denied')/" $g
 mutant "approve on an approved pending" "s/(decision === 'approve' \&\& p.state === 'denied')/(decision === 'approve')/" $g
+mutant "a late grant cut at the pending's expiry" 's/, expires: Math.max(p.expires, now + GRANT) });/ });/' $g
 mutant "a replaced pending shown" 's/return { p: p?.pid === pid \&\& p.expires > now ? p : null, others };/return { p, others };/' $g
 mutant "an expired pending shown" 's/p?.pid === pid \&\& p.expires > now ? p : null/p?.pid === pid ? p : null/' $g
 mutant "the approve key is the policy key" "s/'keystone-approve-v1'/'keystone-policy-v1'/" $g

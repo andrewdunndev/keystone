@@ -185,7 +185,7 @@ export class Gate extends DurableObject {
     if (!live || !(p.state === 'open' || (decision === 'approve' && p.state === 'denied'))) return { status: 409, p: live ? p : null };
     p.state = decision === 'approve' ? 'approved' : 'denied';
     p.decided = { at: now, ...by };
-    if (decision === 'approve') p.grantUntil = now + GRANT;
+    if (decision === 'approve') Object.assign(p, { grantUntil: now + GRANT, expires: Math.max(p.expires, now + GRANT) });
     await s.put(key, p);
     return { status: 200, p };
   }
