@@ -78,6 +78,7 @@ async function check(url, name, set, { fetch }) {
   }
   if (await advertised(jws) !== set.roles) throw new Error(`adv ${name}: the advertised keys are not the set's`);
   if (res.headers.get('keystone-policy') !== set.tag) throw new Error(`adv ${name}: the live policy is not the set's`);
+  if (res.headers.get('keystone-gate') === 'unavailable') throw new Error(`adv ${name}: approvals unavailable: bind GATE, ALERT and ALERT_FROM`);
 
   const r = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: crv }, true, ['deriveBits']);
   const { x, y } = await crypto.subtle.exportKey('jwk', r.publicKey);

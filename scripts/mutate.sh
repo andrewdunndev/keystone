@@ -146,7 +146,9 @@ mutant "held and failed-closed requests alert" "s/(why === 'allow' || why === 'o
 mutant "a probed refusal alerts" 's/ \&\& !probed(request) \&\& alertsOn(env)/ \&\& alertsOn(env)/'
 mutant "a refusal marks the source seen" "s/\${refused ? ':refused' : ''}//"
 mutant "a probed miss reaches the Gate" "s/  if (probed(request)) return 'probe';//"
-mutant "fail-closed checks GATE alone" 's/  if (!env.GATE || !env.ALERT || !env.ALERT_FROM) return closed/  if (!env.GATE) return closed/'
+mutant "fail-closed checks GATE alone" 's/^const gateBound = (env) => env.GATE \&\& env.ALERT \&\& env.ALERT_FROM;/const gateBound = (env) => env.GATE;/'
+mutant "a probed adv hides an unbound Gate" "/res.headers.set('keystone-gate', 'unavailable');/d"
+mutant "an ungated set's adv reports the Gate" "s/if (set.approvers \&\& !gateBound(env)) res.headers.set/if (!gateBound(env)) res.headers.set/"
 mutant "Gate answers not cached" 's/  if ((answered.get(at)?.until ?? 0) > now)/  if (false)/'
 mutant "capped answers cached per set" "s/answered.set(at,/answered.set(why === 'capped' ? name : at,/; s/  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;/  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;/"
 mutant "answers cached for a minute" 's/const ANSWER_TTL = 5000;/const ANSWER_TTL = 60000;/'
@@ -269,6 +271,7 @@ mutant "revoke deletes a secret the wrangler target lacks" 's/if (!listed.has(se
 mutant "revoke apply skips the 404 poll" 's/if (await adv() === 404) {/if (true) {/' $k
 mutant "revoke omits the tombstone reminder" 's/, revoked; keep .* stays revoked/, revoked/' $k
 mutant "check skips the signature verification" 's/if (!await crypto.subtle.verify(/if (false \&\& !await crypto.subtle.verify(/' $k
+mutant "check passes an unbound Gate" "/=== 'unavailable') throw new Error/d" $k
 mutant "check accepts an adv carrying a private key" "s/if (keys.some((k) => 'd' in k)) return null;//" $k
 mutant "rec proof compares against S, not ECDH(r, S)" 's/if (got !== want)/if (got !== set.exch.x)/' $k
 mutant "a set's private key need not match its public key" 's/\.catch(() => { throw new Error(`the ${k.alg} private key does not match its public key`); });/.catch(() => {});/' $k

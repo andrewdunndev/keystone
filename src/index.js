@@ -300,6 +300,7 @@ async function approval(request, env, name, set, token) {
 }
 
 const alertsOn = (env) => env.UNLOCKS && env.ALERT && env.ALERT_FROM && env.ALERT_TO;
+const gateBound = (env) => env.GATE && env.ALERT && env.ALERT_FROM;
 
 const failed = new Set();
 const loggedAt = new Map();
@@ -313,7 +314,7 @@ async function admit(set, name, ip, request, env) {
   if (set.nets?.some((c) => inCidr(ip, c))) return null;
   if (!set.approvers) return 'allow';
   if (probed(request)) return 'probe';
-  if (!env.GATE || !env.ALERT || !env.ALERT_FROM) return closed(name, 'GATE, ALERT and ALERT_FROM are not all bound');
+  if (!gateBound(env)) return closed(name, 'GATE, ALERT and ALERT_FROM are not all bound');
   // Answers are kept per set and origin, so a box retrying twice a second asks the Gate once per ANSWER_TTL.
   const origin = sourceNet(request.headers.get('CF-Connecting-IP')), at = `${name} ${origin}`, now = Date.now();
   if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;
@@ -375,6 +376,7 @@ export default {
         if (env.CF_VERSION_METADATA?.id) res.headers.set('keystone-version', env.CF_VERSION_METADATA.id);
         const tag = await (set.tag ??= policyTag({ ...set, exch: set.exch.jwk }));
         if (tag) res.headers.set('keystone-policy', tag);
+        if (set.approvers && !gateBound(env)) res.headers.set('keystone-gate', 'unavailable');
       }
       return res;
     }

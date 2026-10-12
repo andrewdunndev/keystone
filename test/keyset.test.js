@@ -460,8 +460,10 @@ test('deploy refuses a tombstone the wrangler target still holds, one served wit
 const withPolicy = (set, policy) => JSON.stringify({ ...JSON.parse(set.text), ...policy });
 const VERSION = { CF_VERSION_METADATA: { id: 'v1' } };
 
-test('a policy edit is planned as policy and written with the keys exactly as stdin has them', async () => {
-  const live = { ...VERSION, TANG_KEY_A_1: A.text }, seen = [];
+const GATED = { GATE: {}, ALERT: {}, ALERT_FROM: 'keystone@example.org' };
+
+test('a policy edit is planned as policy and written with the keys exactly as stdin has them, and fails without the Gate\'s bindings', async () => {
+  const live = { ...VERSION, ...GATED, TANG_KEY_A_1: A.text }, seen = [];
   const edited = withPolicy(A, { allow: ['192.0.2.0/24'], approvers: ['ops@example.org'] });
   let r = await deploy({ TANG_KEY_A_1: edited }, [], { live });
   assert.equal(r.code, 0, r.out);
@@ -474,6 +476,10 @@ test('a policy edit is planned as policy and written with the keys exactly as st
   assert.match(r.out, /^OK +adv a-1:.*\nSKIP rec a-1: 403/m);
   r = await deploy({ TANG_KEY_A_1: edited }, [], { live });
   assert.match(r.out, /^ok +a-1: live and unchanged$/m);
+  const bare = { ...VERSION, TANG_KEY_A_1: A.text };
+  r = await deploy({ TANG_KEY_A_1: edited }, ['--apply'], { live: bare, wrangler: cf(bare) });
+  assert.equal(r.code, 1);
+  assert.match(r.err, /^FAIL adv a-1: approvals unavailable: bind GATE, ALERT and ALERT_FROM$/m);
 });
 
 test('a live policy other than stdin\'s, a rolled-back one included, is reported as policy; other keys still refuse', async () => {
@@ -533,7 +539,7 @@ test('check skips rec on a 403 only from a gated set, and sends the probe header
   let r = await run(['check', URL, 'a-1'], { stdin: A.text, fetch: deny });
   assert.equal(r.code, 1);
   assert.match(r.err, /^FAIL rec a-1: HTTP 403$/m);
-  live.TANG_KEY_A_1 = withPolicy(A, { approvers: ['ops@example.org'] });
+  Object.assign(live, GATED, { TANG_KEY_A_1: withPolicy(A, { approvers: ['ops@example.org'] }) });
   r = await run(['check', URL, 'a-1'], { stdin: live.TANG_KEY_A_1, fetch: deny });
   assert.equal(r.code, 0, r.err);
   assert.match(r.out, /^OK +adv a-1: .*\nSKIP rec a-1: 403, this origin is not admitted\n$/);

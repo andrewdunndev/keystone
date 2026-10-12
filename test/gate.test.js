@@ -203,10 +203,14 @@ test('a refusal mails a refused alert under the alert caps, logs once a minute, 
   } finally { mock.timers.reset(); }
 });
 
-test('approvers without GATE, ALERT or ALERT_FROM fail closed: 403, one error per set per isolate; allow still admits', async () => {
+test('approvers without GATE, ALERT or ALERT_FROM fail closed: 403, one error per set per isolate, a probed adv says so; allow still admits', async () => {
+  const gateHeader = async (e, headers) => (await call('/ask/adv', { headers }, e)).headers.get('keystone-gate');
   for (const missing of ['GATE', 'ALERT', 'ALERT_FROM']) {
     const full = gateEnv({ TANG_KEY_ASK: setText({ allow: ['192.0.2.0/24'], approvers: APPROVERS }) });
     const e = fresh({ ...full, [missing]: undefined });
+    assert.equal(await gateHeader(e, { 'keystone-probe': '1' }), 'unavailable', missing);
+    assert.equal(await gateHeader(e, {}), null);
+    assert.equal(await gateHeader(full, { 'keystone-probe': '1' }), null);
     await refusedReply(await rec(e, 'ask', { ip: '198.51.100.9' }));
     await refusedReply(await rec(e, 'ask', { ip: '203.0.113.9' }));
     assert.equal(errors.length, 1, missing);
