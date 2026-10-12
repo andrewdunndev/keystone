@@ -190,15 +190,17 @@ mutant "the approve key is the policy key" "s/'keystone-approve-v1'/'keystone-po
 mutant "other origins include this one" 's/.filter((o) => o.origin !== origin)/.filter(() => true)/' $g
 mutant "the token MAC ignores the set name" 's/enc.encode(`${name}.${payload}`)/enc.encode(payload)/' $g
 mutant "the token MAC unchecked" 's/if (!m || !(await crypto.subtle.verify(/if (!m || false \&\& !(await crypto.subtle.verify(/' $g
-mutant "held mail resent on every miss" 's/if (set.approvers.some((to) => due(p, to)) \&\& p.mail.at + RETRY <= now)/if (true)/' $g
+mutant "held mail resent on every miss" 's/if (set.approvers.some((to) => due(p, to)) \&\& retryAt(p.mail) <= now)/if (true)/' $g
 mutant "a fully mailed pending rewritten on a held miss" 's/if (set.approvers.some((to) => due(p, to)) \&\& /if (true \&\& /' $g
 mutant "an added approver never mailed" 's/set.approvers.some((to) => due(p, to))/Object.values(p.mail.sent).includes(false)/' $g
 mutant "a failed send retried after a minute" 's/const RETRY = 5 \* 60 \* 1000;/const RETRY = 60 * 1000;/' $g
-mutant "a retry does not restart the clock" '/          p.mail.at = now;/d' $g
-mutant "a delivered message never recorded" 's/if (ok) q.mail.sent\[to\] = true;/if (ok) ;/' $g
-mutant "a stale send marks the new pending" 's/if (q?.pid !== p.pid) continue;/if (!q) continue;/' $g
-mutant "failed sends retried forever" 's/ \&\& (p.mail.failed\[to\] ?? 0) < TRIES//' $g
-mutant "4 tries per approver" 's/^const TRIES = 3;/const TRIES = 4;/' $g
+mutant "a retry does not restart the clock" 's/Object.assign(p.mail, { at: now, tries: p.mail.tries + 1 });/p.mail.tries++;/' $g
+mutant "a retry not counted" 's/Object.assign(p.mail, { at: now, tries: p.mail.tries + 1 });/p.mail.at = now;/' $g
+mutant "no backoff" 's/Math.min(RETRY_MAX, RETRY \* 2 \*\* (m.tries - 1))/RETRY/' $g
+mutant "backoff past an hour" 's/^const RETRY_MAX = 3600 \* 1000;/const RETRY_MAX = 7200 * 1000;/' $g
+mutant "a delivered message never recorded" 's/      q.mail.sent\[to\] = true;//' $g
+mutant "a failed send recorded as delivered" 's/if (!ok || q?.pid !== p.pid) continue;/if (q?.pid !== p.pid) continue;/' $g
+mutant "a stale send marks the new pending" 's/if (!ok || q?.pid !== p.pid) continue;/if (!ok || !q) continue;/' $g
 mutant "a failed send keeps its unit" '/approval mail to ${to} for ${name} failed/{n;d;}' $g
 mutant "a failed notice keeps its unit" '/capped notice to ${to} for ${name} failed/{n;d;}' $g
 mutant "a refund refused at the cap" 's/if (d > 0 \&\& m.n >= MAIL_MAX)/if (m.n >= MAIL_MAX)/' $g

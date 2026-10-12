@@ -440,7 +440,7 @@ test('a held origin mails each approver once, in ASCII, with their own link, and
   assert.equal(logged.at(-1).approver, APPROVERS[1]);
 }));
 
-test('concurrent misses send one message per approver; a failed send is logged and retried by a miss after 5 minutes', withClock(async () => {
+test('concurrent misses send one message per approver; a failed send is logged and retried by a miss after 5, then 10 minutes', withClock(async () => {
   const e = mailTo(gateEnv(), async (m) => { sent.push(m); await new Promise((r) => setTimeout(r, 5)); });
   await Promise.all([rec(e, 'ask', { ip: HOME }), rec(e, 'ask', { ip: '198.51.100.10' }), rec(e, 'ask', { ip: '198.51.100.11' })]);
   assert.equal(sent.length, 2);
@@ -463,12 +463,12 @@ test('concurrent misses send one message per approver; a failed send is logged a
   await rec(f, 'ask', { ip: HOME });
   assert.equal(tries.length, 4);
   up.add(APPROVERS[1]);
-  mock.timers.tick(5 * 60e3);
+  mock.timers.tick(10 * 60e3);
   await rec(f, 'ask', { ip: HOME });
   assert.deepEqual(tries.slice(4), [APPROVERS[1]]);
   const puts = [], put = f.store.put;
   f.store.put = async (k, v) => { puts.push(k); return put(k, v); };
-  mock.timers.tick(5 * 60e3);
+  mock.timers.tick(60 * 60e3);
   await rec(f, 'ask', { ip: HOME });
   assert.equal(tries.length, 5);
   assert.deepEqual(puts, []);
@@ -517,16 +517,31 @@ test('at most 20 messages an hour across all sets, notices included; held mail g
   assert.ok(e.store.m.get('c:ask'));
 }));
 
-test('a failed send is refunded to the hourly cap and tried 3 times per approver; a notice that never went out is retried', withClock(async () => {
+test('held mail that keeps failing is retried after 5, 10, 20, 40, then every 60 minutes while the pending lives', withClock(async () => {
+  let up = false, tries = 0;
+  const e = mailTo(gateEnv(), async (m) => { tries++; if (!up) throw new Error('E_DESTINATION_NOT_VERIFIED'); sent.push(m); });
+  await rec(e, 'ask', { ip: HOME });
+  for (const wait of [5, 10, 20, 40, 60, 60]) {
+    const before = tries;
+    mock.timers.tick(wait * 60e3 - 5001);
+    await rec(e, 'ask', { ip: HOME });
+    assert.equal(tries, before, String(wait));
+    mock.timers.tick(5001);
+    await rec(e, 'ask', { ip: HOME });
+    assert.equal(tries, before + 2, String(wait));
+  }
+  up = true;
+  mock.timers.tick(3600e3);
+  await rec(e, 'ask', { ip: HOME });
+  assert.deepEqual(sent.map((m) => m.to), APPROVERS);
+}));
+
+test('a failed send is refunded to the hourly cap; a notice that never went out is retried', withClock(async () => {
   const e = mailTo(gateEnv(), async () => { throw new Error('E_DESTINATION_NOT_VERIFIED'); });
   await rec(e, 'ask', { ip: HOME });
-  for (let i = 0; i < 3; i++) {
-    mock.timers.tick(5 * 60e3);
-    await rec(e, 'ask', { ip: HOME });
-  }
-  assert.deepEqual(pending(e, NET).mail.failed, { [APPROVERS[0]]: 3, [APPROVERS[1]]: 3 });
-  assert.equal(errors.length, 8);
-  assert.deepEqual(errors.filter((x) => x.endsWith('given up')), APPROVERS.map((to) => `approval mail to ${to} for ask given up`));
+  mock.timers.tick(5 * 60e3);
+  await rec(e, 'ask', { ip: HOME });
+  assert.equal(errors.length, 4);
   assert.equal(e.store.m.get(`m:${T0 / 3600e3}`).n, 0);
   for (const ip of ['203.0.113.1', '192.0.2.1']) await rec(e, 'ask', { ip });
   errors.length = 0;

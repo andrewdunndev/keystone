@@ -12,7 +12,7 @@ export const GRANT = 10 * 60 * 1000;
 const OPEN_MAX = 3;
 const MAIL_MAX = 20;
 const RETRY = 5 * 60 * 1000;
-const TRIES = 3;
+const RETRY_MAX = 3600 * 1000;
 const SEND_TIMEOUT = 10000;
 
 // A plain-text message built by hand: the binding takes raw MIME and every value is ASCII by construction, so CR and
@@ -74,7 +74,8 @@ export async function verify(key, name, token) {
   return JSON.parse(new TextDecoder().decode(b64u.dec(m[1])));
 }
 
-const due = (p, to) => !p.mail.sent[to] && (p.mail.failed[to] ?? 0) < TRIES;
+const due = (p, to) => !p.mail.sent[to];
+const retryAt = (m) => m.at + Math.min(RETRY_MAX, RETRY * 2 ** (m.tries - 1));
 
 export class Gate extends DurableObject {
   // For an origin outside the set's allow list: 'served' while a grant runs, 'denied', 'capped', or 'held' with a
@@ -86,8 +87,8 @@ export class Gate extends DurableObject {
     if (p?.expires > now) {
       if (p.state === 'denied') return 'denied';
       if (p.state === 'open') {
-        if (set.approvers.some((to) => due(p, to)) && p.mail.at + RETRY <= now) {
-          p.mail.at = now;
+        if (set.approvers.some((to) => due(p, to)) && retryAt(p.mail) <= now) {
+          Object.assign(p.mail, { at: now, tries: p.mail.tries + 1 });
           await s.put(key, p);
           await this.mail(name, origin, set, now);
         }
@@ -101,7 +102,7 @@ export class Gate extends DurableObject {
       if (!((await s.get(`c:${name}`))?.expires > now)) await this.notice(name, set, open, now, { origin, info, created: now });
       return 'capped';
     }
-    const mail = { at: now, sent: {}, failed: {} };
+    const mail = { at: now, tries: 1, sent: {} };
     await s.put(key, { pid: crypto.randomUUID(), state: 'open', created: now, expires: now + PENDING_TTL, info, mail });
     console.log(JSON.stringify({ event: 'held', name, origin, asn: info.asn, country: info.country }));
     await this.mail(name, origin, set, now);
@@ -109,7 +110,7 @@ export class Gate extends DurableObject {
   }
 
   // One message per approver not yet reached, each with its own link. State is written before each send is awaited,
-  // so concurrent misses send once; a failed send is retried by a miss after RETRY, TRIES times in all.
+  // so concurrent misses send once; a failed send is retried by a later miss, backing off from RETRY to RETRY_MAX.
   async mail(name, origin, set, now) {
     const s = this.ctx.storage, key = `p:${name}:${origin}`, p = await s.get(key);
     const others = (await this.open(name, now)).filter((o) => o.origin !== origin);
@@ -130,9 +131,8 @@ export class Gate extends DurableObject {
         return false;
       });
       const q = await s.get(key);
-      if (q?.pid !== p.pid) continue;
-      if (ok) q.mail.sent[to] = true;
-      else if ((q.mail.failed[to] = (q.mail.failed[to] ?? 0) + 1) === TRIES) console.error(`approval mail to ${to} for ${name} given up`);
+      if (!ok || q?.pid !== p.pid) continue;
+      q.mail.sent[to] = true;
       await s.put(key, q);
     }
   }
