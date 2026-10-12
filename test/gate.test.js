@@ -396,7 +396,8 @@ test('a set takes 3 open pendings; further origins are capped until one is decid
   assert.match(html, /2 other origin\(s\) are asking for this set.*deny them all/s);
   mock.timers.tick(12 * 3600e3);
   await rec(e, 'ask', { ip: '203.0.113.200' });
-  assert.deepEqual([...e.store.m.keys()].sort(), [`m:${(T0 + 12 * 3600e3) / 3600e3}`, 'p:ask:203.0.113.0/24']);
+  const h = (T0 + 12 * 3600e3) / 3600e3;
+  assert.deepEqual([...e.store.m.keys()].sort(), [`m:${h}`, `m:${h}:ask`, 'p:ask:203.0.113.0/24']);
 }));
 
 test('a capped answer is cached per origin, so a granted origin is served while strangers keep the set capped', withClock(async () => {
@@ -513,22 +514,40 @@ test('a capped set mails each approver one notice naming the refused origin and 
   }
 }));
 
-test('at most 20 messages an hour across all sets, notices included; held mail goes out once the hour turns', withClock(async () => {
+test('a set that spends its share of 5 messages an hour per approver leaves another set\'s held host its mail', withClock(async () => {
   const five = ['a@example.org', 'b@example.org', 'c@example.org', 'd@example.org', 'e@example.org'];
-  const e = gateEnv({ TANG_KEY_ASK: setText({ approvers: five }), TANG_KEY_OTHER: setText({ approvers: five }) });
-  for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1']) await rec(e, 'ask', { ip });
-  await rec(e, 'other', { ip: '198.51.100.1' });
+  const e = gateEnv({ TANG_KEY_ASK: setText({ approvers: five }), TANG_KEY_OTHER: setText({ approvers: APPROVERS }) });
+  for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1', '2001:db8::1']) await rec(e, 'ask', { ip });
   assert.equal(sent.length, 20);
-  await rec(e, 'other', { ip: '203.0.113.1' });
+  for (const [origin, net] of [['198.51.100.0/24', '2001:db8:1::'], ['203.0.113.0/24', '2001:db8:2::']]) {
+    assert.equal((await post(e, await link(e, origin, { a: five[0] }), { decision: 'deny' })).status, 200);
+    await rec(e, 'ask', { ip: `${net}1` });
+    assert.equal(pending(e, `${net}/48`).state, 'open');
+  }
+  assert.equal(sent.length, 25);
+  await rec(e, 'other', { ip: HOME });
+  assert.deepEqual(sent.slice(25).map((m) => m.to), APPROVERS);
+  mock.timers.tick(3600e3);
+  await rec(e, 'ask', { ip: '2001:db8:2::1' });
+  assert.deepEqual(sent.slice(27).map((m) => m.to), five);
+}));
+
+test('at most 40 messages an hour across all sets, notices included; held mail goes out once the hour turns', withClock(async () => {
+  const five = ['a@example.org', 'b@example.org', 'c@example.org', 'd@example.org', 'e@example.org'];
+  const e = gateEnv(Object.fromEntries(['ASK', 'OTHER', 'THIRD'].map((n) => [`TANG_KEY_${n}`, setText({ approvers: five })])));
+  for (const name of ['ask', 'other']) for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1']) await rec(e, name, { ip });
+  for (const ip of ['198.51.100.1', '203.0.113.1']) await rec(e, 'third', { ip });
+  assert.equal(sent.length, 40);
+  await rec(e, 'third', { ip: '192.0.2.1' });
   await rec(e, 'ask', { ip: '2001:db8::1' });
-  assert.equal(sent.length, 20);
+  assert.equal(sent.length, 40);
   assert.equal(e.store.m.get('c:ask').expires, T0 + 5 * 60e3);
   mock.timers.tick(3600e3);
-  await rec(e, 'other', { ip: '203.0.113.1' });
-  assert.equal(sent.length, 25);
-  assert.deepEqual(sent.slice(20).map((m) => m.to), five);
+  await rec(e, 'third', { ip: '192.0.2.1' });
+  assert.equal(sent.length, 45);
+  assert.deepEqual(sent.slice(40).map((m) => m.to), five);
   await rec(e, 'ask', { ip: '2001:db8::1' });
-  assert.deepEqual(subjects().slice(25), Array(5).fill('keystone: ask has 3 origins waiting; new ones are refused'));
+  assert.deepEqual(subjects().slice(45), Array(5).fill('keystone: ask has 3 origins waiting; new ones are refused'));
   assert.ok(e.store.m.get('c:ask'));
 }));
 
@@ -557,7 +576,7 @@ test('a failed send is refunded to the hourly cap; a notice that never went out 
   mock.timers.tick(5 * 60e3);
   await rec(e, 'ask', { ip: HOME });
   assert.equal(errors.length, 4);
-  assert.equal(e.store.m.get(`m:${T0 / 3600e3}`).n, 0);
+  for (const k of [`m:${T0 / 3600e3}`, `m:${T0 / 3600e3}:ask`]) assert.equal(e.store.m.get(k).n, 0);
   for (const ip of ['203.0.113.1', '192.0.2.1']) await rec(e, 'ask', { ip });
   errors.length = 0;
   await rec(e, 'ask', { ip: '2001:db8::1' });
@@ -572,13 +591,13 @@ test('a failed send is refunded to the hourly cap; a notice that never went out 
   mock.timers.tick(5 * 60e3 - 10 * 5001);
   await rec(e, 'ask', { ip: '2001:db8::1' });
   assert.deepEqual(sent.map((m) => m.to), APPROVERS);
-  assert.equal(e.store.m.get(`m:${T0 / 3600e3}`).n, 2);
+  for (const k of [`m:${T0 / 3600e3}`, `m:${T0 / 3600e3}:ask`]) assert.equal(e.store.m.get(k).n, 2);
   assert.equal(e.store.m.get('c:ask').expires, Date.now() + 12 * 3600e3);
-  const g = e.GATE.get();
-  for (let i = 2; i < 20; i++) assert.ok(await g.budget(T0));
-  assert.equal(await g.budget(T0), false);
-  await g.budget(T0, -1);
-  assert.ok(await g.budget(T0));
+  const g = e.GATE.get(), set = { approvers: APPROVERS };
+  for (let i = 2; i < 10; i++) assert.ok(await g.budget('ask', set, T0));
+  assert.equal(await g.budget('ask', set, T0), false);
+  await g.budget('ask', set, T0, -1);
+  assert.ok(await g.budget('ask', set, T0));
 }));
 
 test('concurrent capped misses send one notice per approver', withClock(async () => {
@@ -601,7 +620,7 @@ test('a send that times out keeps its unit of the hourly cap, since it may yet b
   }
   await held;
   assert.deepEqual(errors, APPROVERS.map((to) => `approval mail to ${to} for ask failed: send timed out`));
-  assert.equal(e.store.m.get(`m:${T0 / 3600e3}`).n, 2);
+  for (const k of [`m:${T0 / 3600e3}`, `m:${T0 / 3600e3}:ask`]) assert.equal(e.store.m.get(k).n, 2);
 }));
 
 test('240.0.0.0/4 is refused from its first address, as is AS13335 or a missing ASN; the alert says the origin is never admitted', async () => {

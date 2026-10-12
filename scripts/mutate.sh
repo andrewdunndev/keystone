@@ -206,11 +206,11 @@ mutant "a failed send recorded as delivered" 's/if (!ok || q?.pid !== p.pid) con
 mutant "a stale send marks the new pending" 's/if (!ok || q?.pid !== p.pid) continue;/if (!ok || !q) continue;/' $g
 mutant "a failed send keeps its unit" '/approval mail to ${to} for ${name} failed/{n;d;}' $g
 mutant "a failed notice keeps its unit" '/capped notice to ${to} for ${name} failed/{n;d;}' $g
-mutant "a refund refused at the cap" 's/if (d > 0 \&\& m.n >= MAIL_MAX)/if (m.n >= MAIL_MAX)/' $g
+mutant "a refund refused at the cap" 's/if (d > 0 \&\& (all.n/if ((all.n/' $g
 mutant "a failed notice kept for 12 h" 's/    else await s.put(key, { expires: now + RETRY });//' $g
 mutant "a failed notice retried on every capped miss" 's/    else await s.put(key, { expires: now + RETRY });/    else await s.delete(key);/' $g
 mutant "the notice marker claimed after the sends" '/^    await s.put(key, { expires: now + PENDING_TTL });$/d; s/^    else await s.put(key, { expires: now + RETRY });$/    await s.put(key, { expires: now + (any ? PENDING_TTL : RETRY) });/' $g
-mutant "a timed-out send refunded" 's/    if (e.message !== TIMED_OUT) await this.budget(now, -1);/    await this.budget(now, -1);/' $g
+mutant "a timed-out send refunded" 's/    if (e.message !== TIMED_OUT) await this.budget(name, set, now, -1);/    await this.budget(name, set, now, -1);/' $g
 mutant "a failed send escapes the Gate" 's/console.error(`approval mail to/throw e; console.error(`approval mail to/' $g
 mutant "one link for every approver" 's/{ o: origin, p: p.pid, e: p.expires, a: to }/{ o: origin, p: p.pid, e: p.expires, a: set.approvers[0] }/' $g
 mutant "a mail link outlives its pending" 's/{ o: origin, p: p.pid, e: p.expires, a: to }/{ o: origin, p: p.pid, e: p.expires + 1e9, a: to }/' $g
@@ -220,9 +220,16 @@ mutant "other origins left out of the mail" 's/(others.length ? /(false ? /' $g
 mutant "a notice on every capped miss" 's/      if (!((await s.get(`c:${name}`))?.expires > now)) await this.notice/      await this.notice/' $g
 mutant "notice links signed for approver 0" 's/{ o: o.origin, p: o.pid, e: o.expires, a: to }/{ o: o.origin, p: o.pid, e: o.expires, a: set.approvers[0] }/' $g
 mutant "a notice leaves out the refused origin" 's/  ${about(refused)}//' $g
-mutant "21 messages an hour" 's/const MAIL_MAX = 20;/const MAIL_MAX = 21;/' $g
-mutant "notices outside the cap" 's/      if (!(await this.budget(now))) break;//' $g
-mutant "approval mail outside the cap" 's/      if (!due(p, to) || !(await this.budget(now))) continue;/      if (!due(p, to)) continue;/' $g
+mutant "41 messages an hour" 's/const MAIL_MAX = 40;/const MAIL_MAX = 41;/' $g
+mutant "6 messages an hour per approver" 's/^const SHARE = 5;/const SHARE = 6;/' $g
+mutant "no per-set share" 's/ || own.n >= SHARE \* set.approvers.length//' $g
+mutant "a share not scaled by approvers" 's/own.n >= SHARE \* set.approvers.length/own.n >= SHARE/' $g
+mutant "one share for every set" 's/`m:${hour}:${name}`/`m:${hour}:`/g' $g
+mutant "a share that never renews" 's/`m:${hour}:${name}`/`m:${name}`/g' $g
+mutant "a refund leaves the set's share spent" 's/^    own.n += d;/    own.n += Math.max(d, 0);/' $g
+mutant "a refund leaves the hourly count spent" 's/^    all.n += d;/    all.n += Math.max(d, 0);/' $g
+mutant "notices outside the cap" 's/      if (!(await this.budget(name, set, now))) break;//' $g
+mutant "approval mail outside the cap" 's/      if (!due(p, to) || !(await this.budget(name, set, now))) continue;/      if (!due(p, to)) continue;/' $g
 o=src/origin.js
 mutant "allow match ignores the prefix length" 's/a.n >> BigInt(BITS\[c.v\] - c.len) === c.n >> BigInt(BITS\[c.v\] - c.len)/a.n === c.n/' $o
 mutant "allow matches across families" 's/(a, c) => a.v === c.v \&\& /(a, c) => /' $o
