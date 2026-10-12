@@ -5,7 +5,7 @@ export NODE_OPTIONS=--disable-warning=ExperimentalWarning
 root=$(pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-cp -r src bin test package.json "$work"/
+cp -r src bin test scripts package.json "$work"/
 ln -s "$root/node_modules" "$work/node_modules"
 cd "$work"
 node --import ./test/register.mjs test/gen-fixture.mjs >/dev/null || exit 1

@@ -9,9 +9,11 @@
   "scripts": {
     "pretest": "node --import ./test/register.mjs test/gen-fixture.mjs",
     "test": "node --disable-warning=ExperimentalWarning --import ./test/register.mjs --test test/*.test.js",
-    "mutate": "bash scripts/mutate.sh"
+    "mutate": "bash scripts/mutate.sh",
+    "tokens": "node scripts/tokens.mjs"
   },
   "devDependencies": {
+    "@dunn.dev/reference": "0.8.3",
     "@noble/curves": "2.4.0",
     "wrangler": "4.149.0"
   },

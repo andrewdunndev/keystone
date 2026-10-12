@@ -3,6 +3,7 @@
 import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
 import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
 import { approveKey, send, verify, GRANT } from './gate.js';
+import { TOKENS } from './tokens.js';
 
 export { Gate } from './gate.js';
 
@@ -249,29 +250,35 @@ const PAGE_HEADERS = {
 };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
-const LIGHT = '--bg:#fff;--sf:#f4f4f4;--bd:#e0e0e0;--bs:#b0b0b0;--tx:#0a0a0a;--t2:#404040;--tm:#707070;--ac:#4a6741;--ah:#3a5533;--ak:#fff;--dg:#a8443a;--ok:#4a7a4a;--wn:#a0602f;--m:10%';
-const DARK = '--bg:#1c1c1e;--sf:#242426;--bd:#303032;--bs:#48484a;--tx:#f2f2f7;--t2:#aeaeb2;--tm:#8e8e93;--ac:#6aaa58;--ah:#9cc494;--ak:#1c1c1e;--dg:#d4736a;--ok:#7aaa7a;--wn:#d4915a;--m:14%';
-const STYLE = `:root{${LIGHT};color-scheme:light dark}@media(prefers-color-scheme:dark){:root{${DARK}}}` +
-  '*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--tx);font:1rem/1.55 "IBM Plex Sans",system-ui,sans-serif}' +
-  'header{border-bottom:1px solid var(--bd)}footer{margin-top:auto;border-top:1px solid var(--bd)}' +
-  '.in{max-width:1100px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;font:.85rem "IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}header .in{min-height:4rem;font-weight:700;letter-spacing:.02em}footer .in{padding-block:1.5rem;font-size:.72rem;color:var(--tm)}' +
-  'main{width:100%;max-width:32rem;margin:0 auto;padding:2rem 1.5rem 4rem}@media(max-width:640px){.in,main{padding-inline:1rem}}' +
-  'h1{margin:0 0 1.5rem;font-size:clamp(1.9rem,1.45rem + .8vw,2.35rem);font-weight:800;letter-spacing:-.02em;line-height:1.15;overflow-wrap:anywhere}' +
-  'p{margin:0 0 1.5rem;color:var(--t2)}ul{margin:0 0 1.5rem;padding-left:1.25rem;color:var(--t2);overflow-wrap:anywhere}li+li{margin-top:.5rem}' +
-  'dl{margin:0 0 1.5rem;padding:1.5rem;background:var(--sf);border:1px solid var(--bd);border-radius:4px}' +
-  'dt{font:.72rem "IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;letter-spacing:.02em;color:var(--t2)}dd{margin:0 0 .75rem;overflow-wrap:anywhere}dd:last-child{margin:0}' +
-  '.n{padding:.75rem 1rem;background:var(--sf);border-left:3px solid var(--tm);border-radius:0 4px 4px 0;font-size:.85rem;color:var(--tx);overflow-wrap:anywhere}' +
-  '.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) var(--m),transparent)}.bad{border-color:var(--dg);background:color-mix(in srgb,var(--dg) var(--m),transparent)}.warn{border-color:var(--wn);background:color-mix(in srgb,var(--wn) var(--m),transparent)}' +
-  'form{display:flex;flex-direction:column;gap:1rem;margin:0 0 1.5rem}form p{margin:0;font-size:.85rem}' +
-  'label{display:block;font:.72rem "IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;letter-spacing:.02em;color:var(--t2)}label b{color:var(--tx)}' +
-  'input{display:block;margin-top:.5rem;width:100%;min-height:2.75rem;padding:.75rem;background:var(--bg);color:var(--tx);border:1px solid var(--bs);border-radius:4px;font:inherit}' +
-  'button{width:100%;min-height:48px;padding:0 1rem;font:500 .85rem "IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;border-radius:4px;border:1px solid var(--ac);background:var(--ac);color:var(--ak);cursor:pointer}button:hover{background:var(--ah);border-color:var(--ah)}' +
-  'button[value=deny]{background:var(--bg);color:var(--dg);border-color:var(--dg)}button[value=deny]:hover{background:color-mix(in srgb,var(--dg) var(--m),var(--bg))}' +
-  ':focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:2px}';
+const MARK = '<svg class="mk" viewBox="0 0 64 64" aria-hidden="true"><g stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M8 45 A24 24 0 0 1 27.01 21.52" stroke-width="2"/><path d="M36.99 21.52 A24 24 0 0 1 56 45" stroke-width="2"/>' +
+  '<path d="M18 45 A14 14 0 0 1 29.09 31.31" stroke-width="2"/><path d="M34.91 31.31 A14 14 0 0 1 46 45" stroke-width="2"/>' +
+  '<line x1="23" y1="34.28" x2="16.57" y2="26.61" stroke-width="1.6"/><line x1="41" y1="34.28" x2="47.43" y2="26.61" stroke-width="1.6"/>' +
+  '<path d="M8 45 V56 H18 V45 Z" stroke-width="2"/><path d="M46 45 V56 H56 V45 Z" stroke-width="2"/></g>' +
+  '<polygon points="26.26,18 37.74,18 34.91,31.31 29.09,31.31" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+const STYLE = TOKENS +
+  '*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font:var(--text-base)/var(--lh-base) var(--font-body)}' +
+  'header{border-bottom:1px solid var(--border)}footer{margin-top:auto;border-top:1px solid var(--border)}' +
+  '.in{max-width:1100px;margin:0 auto;padding:0 var(--space-5);display:flex;align-items:center;font:var(--text-sm) var(--font-mono)}' +
+  'header .in{min-height:var(--space-8);gap:var(--space-2);font-weight:700;letter-spacing:.02em}.mk{width:1.5rem;height:1.5rem;color:var(--accent)}' +
+  'footer .in{padding-block:var(--space-5);gap:var(--space-3);font-size:var(--text-xs);color:var(--text-muted)}footer a{color:inherit;text-decoration:none}footer a:hover{color:var(--text)}footer i{font-style:normal;color:var(--border-strong)}' +
+  'main{width:100%;max-width:32rem;margin:0 auto;padding:var(--space-6) var(--space-5) var(--space-8)}@media(max-width:640px){.in,main{padding-inline:var(--space-4)}}' +
+  'h1{margin:0 0 var(--space-5);font-size:var(--text-3xl);font-weight:800;letter-spacing:-.02em;line-height:var(--lh-hero);overflow-wrap:anywhere}' +
+  'p{margin:0 0 var(--space-5);color:var(--text-2)}ul{margin:0 0 var(--space-5);padding-left:1.25rem;color:var(--text-2);overflow-wrap:anywhere}li+li{margin-top:var(--space-2)}' +
+  'dl{margin:0 0 var(--space-5);padding:var(--space-5);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}' +
+  'dt{font:var(--text-xs) var(--font-mono);letter-spacing:.02em;color:var(--text-2)}dd{margin:0 0 var(--space-3);overflow-wrap:anywhere}dd:last-child{margin:0}' +
+  '.n{padding:var(--space-3) var(--space-4);background:var(--surface);border-left:3px solid var(--text-muted);border-radius:0 var(--radius) var(--radius) 0;font-size:var(--text-sm);color:var(--text);overflow-wrap:anywhere}' +
+  '.ok{border-color:var(--success);background:var(--success-subtle)}.bad{border-color:var(--danger);background:var(--danger-subtle)}.warn{border-color:var(--warning);background:var(--warning-subtle)}' +
+  'form{display:flex;flex-direction:column;gap:var(--space-4);margin:0 0 var(--space-5)}form p{margin:0;font-size:var(--text-sm)}' +
+  'label{display:block;font:var(--text-xs) var(--font-mono);letter-spacing:.02em;color:var(--text-2)}label b{color:var(--text)}' +
+  'input{display:block;margin-top:var(--space-2);width:100%;min-height:2.75rem;padding:var(--space-3);background:var(--bg);color:var(--text);border:1px solid var(--border-strong);border-radius:var(--radius);font:inherit}' +
+  'button{width:100%;min-height:48px;padding:0 var(--space-4);font:500 var(--text-sm) var(--font-mono);border-radius:var(--radius);border:1px solid var(--accent);background:var(--accent);color:var(--accent-contrast);cursor:pointer}button:hover{background:var(--accent-hover);border-color:var(--accent-hover)}' +
+  'button[value=deny]{background:var(--bg);color:var(--danger);border-color:var(--danger)}button[value=deny]:hover{background:var(--danger-subtle)}' +
+  ':focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}';
 const note = (text, tone = '') => `<p class="n ${tone}">${text}</p>`;
 const page = (status, title, body) => new Response('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-  `<title>${esc(title)} - keystone</title><style>${STYLE}</style><header><div class="in">keystone</div></header>` +
-  `<main><h1>${esc(title)}</h1>${body}</main><footer><div class="in">keystone</div></footer>`, { status, headers: PAGE_HEADERS });
+  `<title>${esc(title)} - keystone</title><style>${STYLE}</style><header><div class="in">${MARK}keystone</div></header>` +
+  `<main><h1>${esc(title)}</h1>${body}</main><footer><div class="in">keystone<i>&middot;</i><a href="https://gitlab.com/dunn.dev/keystone">repo</a><i>&middot;</i><a href="https://keystone.dunn.dev">site</a></div></footer>`, { status, headers: PAGE_HEADERS });
 
 const notFound = () => page(404, 'Not found', '');
 
