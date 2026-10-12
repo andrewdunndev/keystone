@@ -177,7 +177,8 @@ async function deploy(argv, io) {
     const live = await serving(io, extra);
     for (const { name, version } of writes) {
       if (!live) say('REFUSE', name, 'wrangler deployments status shows no single version serving all traffic');
-      else if (version !== live) say('REFUSE', name, `--url serves version ${version ?? 'unknown'}, the wrangler target ${live}`);
+      else if (!version) say('REFUSE', name, '--url sends no keystone-version: bind CF_VERSION_METADATA as the example config does');
+      else if (version !== live) say('REFUSE', name, `--url serves version ${version}, the wrangler target ${live}`);
     }
   }
   // A null value is a tombstone: the set was revoked, and a Worker version rolled back past the revoke serves it again

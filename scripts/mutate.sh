@@ -234,6 +234,7 @@ mutant "no address admitted" 's/=> !a || /=> /' $o
 
 k=bin/keyset.mjs
 mutant "deploy rewrites a live set" 's/\.catch(() => null) !== set\.roles)/.catch(() => null) === null)/' $k
+mutant "a missing version reported as a mismatch" "s/      else if (!version) say('REFUSE'/      else if (false) say('REFUSE'/" $k
 mutant "deploy creates an absent set without --new" "s/if (!isNew) say('REFUSE'/if (false) say('REFUSE'/" $k
 mutant "deploy hints --new for a revoked set" "s/'absent (never deployed, or revoked); --new only for a freshly minted set'/'absent; pass --new to create it'/" $k
 mutant "deploy --new on a live set" "s/else if (isNew) say('REFUSE'/else if (false) say('REFUSE'/" $k

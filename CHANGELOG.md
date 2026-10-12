@@ -5,7 +5,7 @@
 - Origin gate: a set may carry `allow` (prefixes served unattended) and `approvers` (addresses mailed a link to approve or deny any other origin). A set with neither behaves as before.
 - A set with any member other than `keys`, `allow` and `approvers`, or an empty list, is now malformed: the Worker answers 500 and `keyset` refuses it. Unknown members were ignored before.
 - `keyset deploy` writes a policy edit to a live set whose keys match, reported as `policy`. Deploy this version's code before the first policy edit.
-- The example config declares the `GATE` Durable Object and `CF_VERSION_METADATA`, and the `ALERT` binding loses `destination_address`.
+- Before deploying, copy the example config's `GATE` Durable Object, its migration and `CF_VERSION_METADATA` into yours, and drop `destination_address` from `ALERT`.
 
 ## v0.1.1 - 2026-10-08
 

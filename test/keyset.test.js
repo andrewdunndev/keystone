@@ -498,7 +498,7 @@ test('a policy write refuses a split deployment, a version other than --url serv
   const cases = [
     [{ ...VERSION }, [{ version_id: 'v1', percentage: 50 }, { version_id: 'v2', percentage: 50 }], /no single version serving all traffic/],
     [{ ...VERSION }, [{ version_id: 'v2', percentage: 100 }], /--url serves version v1, the wrangler target v2/],
-    [{}, [{ version_id: 'v1', percentage: 100 }], /--url serves version unknown/],
+    [{}, [{ version_id: 'v1', percentage: 100 }], /--url sends no keystone-version: bind CF_VERSION_METADATA/],
   ];
   for (const [meta, versions, why] of cases) {
     const live = { ...meta, TANG_KEY_A_1: A.text }, seen = [];
