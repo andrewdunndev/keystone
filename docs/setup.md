@@ -132,7 +132,8 @@ A set may name who can recover it. A set with neither field answers any client.
 Both fields live in the set's secret beside its keys. Edit them in the key store, then deploy; the plan reads `policy`.
 
 ```sh
-pass tang/server-1 | jq -c '.allow = ["198.51.100.7/32"] | .approvers = ["you@example.org"]' | pass insert -m -f tang/server-1
+entry=$(pass tang/server-1 | jq -ce '.allow = ["198.51.100.7/32"] | .approvers = ["you@example.org"]') &&
+  printf '%s\n' "$entry" | pass insert -m -f tang/server-1
 pass tang/server-1 | jq -R '{TANG_KEY_SERVER_1: .}' |
   keyset deploy --url https://tang.example.org --apply -- --config "$KEYSTONE/deploy/wrangler.toml"
 ```
