@@ -13,7 +13,7 @@
     "auth-css": "node scripts/auth-css.mjs"
   },
   "devDependencies": {
-    "@dunn.dev/reference": "0.9.2",
+    "@dunn.dev/reference": "0.10.0",
     "@noble/curves": "2.4.0",
     "wrangler": "4.150.0"
   },
