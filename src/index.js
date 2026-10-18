@@ -320,6 +320,7 @@ const failed = new Set();
 const loggedAt = new Map();
 const answered = new Map();
 const ANSWER_TTL = 5000;
+const GATE_WAIT = 30000;
 const gate = (env) => env.GATE.get(env.GATE.idFromName('gate'));
 const clip = (v) => String(v ?? '?').slice(0, 64);
 
@@ -333,14 +334,17 @@ async function admit(set, name, ip, request, env) {
   const origin = sourceNet(request.headers.get('CF-Connecting-IP')), at = `${name} ${origin}`, now = Date.now();
   if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;
   const cf = request.cf ?? {};
-  let why;
+  let why, timer;
   try {
     // The rec that opens a pending is usually a stranger's: its scheme and port never reach a link.
-    why = await gate(env).miss(name, origin, {
-      asn: clip(cf.asn), org: clip(cf.asOrganization), country: clip(cf.country), city: clip(cf.city), colo: clip(cf.colo),
-      base: `https://${new URL(request.url).hostname}`,
-    });
-  } catch (e) { return closed(name, e.message); }
+    why = await Promise.race([
+      gate(env).miss(name, origin, {
+        asn: clip(cf.asn), org: clip(cf.asOrganization), country: clip(cf.country), city: clip(cf.city), colo: clip(cf.colo),
+        base: `https://${new URL(request.url).hostname}`,
+      }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('the Gate did not answer')), GATE_WAIT); }),
+    ]);
+  } catch (e) { return closed(name, e.message); } finally { clearTimeout(timer); }
   if (why === 'served') return null;
   if (!['held', 'denied', 'capped'].includes(why)) return closed(name, `unexpected Gate answer ${clip(why)}`);
   if (answered.size >= SEEN_MAX) answered.clear();

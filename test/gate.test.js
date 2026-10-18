@@ -462,6 +462,20 @@ test('a probed rec outside a set\'s allow list is refused in every gate state, a
   }
 }));
 
+test('a Gate call that never answers is refused as unavailable, not left hanging', { timeout: 5000 }, async () => {
+  mock.timers.enable({ apis: ['setTimeout', 'Date'], now: T0 });
+  try {
+    const e = gateEnv();
+    e.GATE = { idFromName: () => 'gate', get: () => ({ miss: () => new Promise(() => {}) }) };
+    const pending = rec(e, 'ask', { ip: HOME });
+    await new Promise((r) => setImmediate(r));
+    mock.timers.tick(60000);
+    await refusedReply(await pending);
+    assert.match(errors[0], /^ask: approvals unavailable, refusing new origins: /);
+    assert.equal(sent.length, 0);
+  } finally { mock.timers.reset(); }
+});
+
 const linkIn = (m) => m.raw.match(/^https:\/\/tang\.example\.org(\/[a-z0-9-]+\/approve\/\S+)\r$/m)?.[1];
 const mailTo = (e, fn) => { e.ALERT = { send: fn }; return e; };
 const payload = (path) => JSON.parse(Buffer.from(path.split('.')[1], 'base64url'));
