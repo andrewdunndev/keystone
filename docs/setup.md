@@ -117,6 +117,8 @@ To upgrade, update the clone, run `npm ci` and merge the example config's new bi
 
 When a `rec` succeeds from a new source, keystone mails one alert through a Cloudflare Email Sending `send_email` binding. A source is the client's /24 or /48 with its ASN and country. A failed alert is logged and never changes the unlock. Each set sends at most one alert an hour; up to five sources met meanwhile wait for the hourly digest.
 
+Any client may send `keystone-probe: 1`, as `keyset check` does. It mutes only the refusal alert for that request, and a probed `rec` is never served unless its origin is in `allow` or the set has no gate, exactly as without the header. A probed `adv` also reveals the set's policy tag and whether a gated set lacks its bindings, so a probe shows that a set is gated.
+
 1. Create the namespace: `npx wrangler kv namespace create UNLOCKS`.
 2. Onboard a subdomain such as `mail.example.org` in Email Sending, which needs Workers Paid. The apex domain's mail is untouched.
 3. Uncomment all four blocks in `deploy/wrangler.toml`: the `UNLOCKS` namespace id, the `ALERT` binding, `ALERT_FROM` and `ALERT_TO`, and the hourly cron. `ALERT_FROM` must be on that subdomain.
