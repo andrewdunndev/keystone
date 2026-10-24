@@ -506,7 +506,7 @@ test('a set whose live policy stdin lacks is refused unless --drop-policy, and n
   const live = { ...VERSION, ...GATED, TANG_KEY_A_1: withPolicy(A, { approvers: ['old@example.org'] }) }, seen = [];
   let r = await deploy({ TANG_KEY_A_1: A.text }, ['--apply'], { live, wrangler: cf(live, { seen }) });
   assert.equal(r.code, 1);
-  assert.match(r.out, /^REFUSE +a-1: live with a policy, stdin has none; pass --drop-policy/m);
+  assert.match(r.out, /^REFUSE +a-1: live with a policy, stdin has none; pass --drop-policy a-1 to write it without$/m);
   assert.ok(!r.calls.some((a) => a[0] === 'deploy'));
   assert.equal(seen.length, 0);
   r = await deploy({ TANG_KEY_A_1: A.text }, ['--drop-policy', 'a-1'], { live });

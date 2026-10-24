@@ -166,7 +166,7 @@ async function deploy(argv, io) {
     else if (isNew) say('REFUSE', name, 'live; --new names only absent sets');
     else if (await res.json().then(advertised).catch(() => null) !== set.roles) say('REFUSE', name, 'live with other keys; keys are never rewritten, rotate to a new name');
     else if (listed && !held) say('REFUSE', name, `live at --url, yet the wrangler target lacks ${secret}`);
-    else if (res.headers.get('keystone-policy') && !set.tag && !drops.has(name)) say('REFUSE', name, 'live with a policy, stdin has none; pass --drop-policy <name> to write it without');
+    else if (res.headers.get('keystone-policy') && !set.tag && !drops.has(name)) say('REFUSE', name, `live with a policy, stdin has none; pass --drop-policy ${name} to write it without`);
     else if (res.headers.get('keystone-policy') !== set.tag) {
       Object.assign(s, { policy: true, version: res.headers.get('keystone-version') });
       say('policy', name, set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed');
