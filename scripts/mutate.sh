@@ -9,7 +9,7 @@ cp -r src bin test scripts package.json "$work"/
 ln -s "$root/node_modules" "$work/node_modules"
 cd "$work"
 node --import ./test/register.mjs test/gen-fixture.mjs >/dev/null || exit 1
-node --import ./test/register.mjs --test test/*.test.js >/dev/null || { echo "baseline suite fails"; exit 1; }
+node --import ./test/register.mjs --test test/*.test.js > baseline.log 2>&1 || { grep -A 30 "not ok" baseline.log | head -80; echo "baseline suite fails"; exit 1; }
 
 survived=0
 mutant() {
