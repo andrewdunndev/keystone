@@ -111,7 +111,7 @@ The plan labels each set `ok`, `new`, `policy`, `revoked` or `REFUSE` and applie
 
 `--apply` refuses when the wrangler target's secrets disagree with `--url`. `keyset` prints private keys only from `new` and deletes only the set `revoke` names. `deploy --apply` redeploys the Worker from the config given after `--`. Each check sends a real `rec`, which can raise an alert and marks its source seen.
 
-To upgrade, update the clone, run `npm ci` and merge the example config's new bindings. To move to a new hostname, change the route. Either way, redeploy with `npx wrangler deploy --config "$KEYSTONE/deploy/wrangler.toml"`; secrets persist. Then plan `keyset deploy` against the new `--url`: every set should read `ok`.
+To upgrade, update the clone and run `npm ci`. Then plan `keyset deploy` over the whole store: the new `keyset` refuses locally, before any deploy, a set with a member other than `keys`, `allow` and `approvers`. Fix it in the store, then merge the example config's new bindings and redeploy with `npx wrangler deploy --config "$KEYSTONE/deploy/wrangler.toml"`; secrets persist. A set already answering 500 is repaired with `wrangler secret put` of the cleaned value. To move to a new hostname, change the route and redeploy the same way. Then plan `keyset deploy` against the new `--url`: every set should read `ok`.
 
 ## Alerts
 
