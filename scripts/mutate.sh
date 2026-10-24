@@ -148,7 +148,10 @@ mutant "a refusal marks the source seen" "s/\${refused ? ':refused' : ''}//"
 mutant "a probed miss reaches the Gate" "s/  if (probed(request)) return 'probe';//"
 mutant "fail-closed checks GATE alone" 's/^const gateBound = (env) => env.GATE \&\& env.ALERT \&\& env.ALERT_FROM;/const gateBound = (env) => env.GATE;/'
 mutant "a probed adv hides an unbound Gate" "/res.headers.set('keystone-gate', 'unavailable');/d"
-mutant "an ungated set's adv reports the Gate" "s/if (set.approvers \&\& !gateBound(env)) res.headers.set/if (!gateBound(env)) res.headers.set/"
+mutant "an allow-only set's adv hides an unbound GATE" "s/if ((set.gated \&\& !env.GATE) || (set.approvers/if ((false) || (set.approvers/"
+mutant "an ungated set's adv reports an unbound GATE" "s/if ((set.gated \&\& !env.GATE)/if ((!env.GATE)/"
+mutant "check names ALERT for an allow-only set" "s/: 'gate unavailable: bind GATE'}/: 'approvals unavailable: bind GATE, ALERT and ALERT_FROM'}/" bin/keyset.mjs
+mutant "an ungated set's adv reports the Gate" "s/|| (set.approvers \&\& !gateBound(env))/|| (!gateBound(env))/"
 mutant "Gate answers not cached" 's/  if ((answered.get(at)?.until ?? 0) > now)/  if (false)/'
 mutant "capped answers cached per set" "s/answered.set(at,/answered.set(why === 'capped' ? name : at,/; s/  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;/  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;/"
 mutant "answers cached for a minute" 's/const ANSWER_TTL = 5000;/const ANSWER_TTL = 60000;/'
@@ -283,6 +286,9 @@ mutant "revoke deletes a secret the wrangler target lacks" 's/if (!listed.has(se
 mutant "revoke apply skips the 404 poll" 's/if (await adv() === 404) {/if (true) {/' $k
 mutant "revoke omits the tombstone reminder" 's/, revoked; keep .* stays revoked/, revoked/' $k
 mutant "check skips the signature verification" 's/if (!await crypto.subtle.verify(/if (false \&\& !await crypto.subtle.verify(/' $k
+mutant "a policy drop covers every set" "s/!set.tag \&\& !drops.has(name))/!set.tag \&\& !drops.size)/" bin/keyset.mjs
+mutant "a policy drop is not checked by name" "s/ \&\& !drops.has(name))/)/" bin/keyset.mjs
+mutant "a policy strip is reported as a write" "s/set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed'/'keys unchanged, policy will be written'/" bin/keyset.mjs
 mutant "check passes an unbound Gate" "/=== 'unavailable') throw new Error/d" $k
 mutant "check accepts an adv carrying a private key" "s/if (keys.some((k) => 'd' in k)) return null;//" $k
 mutant "rec proof compares against S, not ECDH(r, S)" 's/if (got !== want)/if (got !== set.exch.x)/' $k

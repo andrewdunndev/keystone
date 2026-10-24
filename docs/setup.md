@@ -111,7 +111,7 @@ The plan labels each set `ok`, `new`, `policy`, `revoked` or `REFUSE` and applie
 
 `--apply` refuses when the wrangler target's secrets disagree with `--url`. `keyset` prints private keys only from `new` and deletes only the set `revoke` names. `deploy --apply` redeploys the Worker from the config given after `--`. Each check sends a real `rec`, which can raise an alert and marks its source seen.
 
-To upgrade, update the clone, run `npm ci` and merge the example config's new bindings. To move to a new hostname, change the route. Either way, redeploy with `npx wrangler deploy --config "$KEYSTONE/deploy/wrangler.toml"`; secrets persist. Then plan `keyset deploy` against the new `--url`: every set should read `ok`.
+To upgrade, update the clone and run `npm ci`. Then plan `keyset deploy` over the whole store: `keyset` refuses, before any deploy, a set with a member other than `keys`, `allow` and `approvers`. Fix it in the store, then merge the example config's new bindings and redeploy with `npx wrangler deploy --config "$KEYSTONE/deploy/wrangler.toml"`; secrets persist. A set already answering 500 is repaired with `wrangler secret put TANG_KEY_<NAME> --config "$KEYSTONE/deploy/wrangler.toml"` with the cleaned value. To move to a new hostname, change the route and redeploy the same way. Then plan `keyset deploy` against the new `--url`: every set should read `ok`.
 
 ## Alerts
 
@@ -131,7 +131,7 @@ A set may name who can recover it. A set with neither field answers any client.
 - `allow`: 1 to 32 prefixes, IPv4 `/8` to `/32` or IPv6 `/16` to `/128`, host bits zero. An origin inside one is served unattended.
 - `approvers`: 1 to 5 addresses. Any other origin's `rec` is held and each approver is mailed a link to approve or deny it. Approval lets any machine in that /24 or /48 recover the set for 10 minutes; the held host is served within about 15 seconds. Removing an approver retires their links.
 
-Both fields live in the set's secret beside its keys. Edit them in the key store, then deploy; the plan reads `policy`. Input with neither field for a set whose live policy has one is refused; pass `--drop-policy` to write the set without a policy.
+Both fields live in the set's secret beside its keys. Edit them in the key store, then deploy; the plan reads `policy`. Input with neither field for a set whose live policy has one is refused; pass `--drop-policy <name>` for each such set to write it without a policy.
 
 ```sh
 entry=$(pass tang/server-1 | jq -ce '.allow = ["198.51.100.7/32"] | .approvers = ["you@example.org"]') &&
@@ -141,8 +141,8 @@ pass tang/server-1 | jq -R '{TANG_KEY_SERVER_1: .}' |
 ```
 
 - Pin every family the host can egress on, its IPv4 /32 and its delegated IPv6 prefix, since clevis may use either at boot. Approval covers a renumber or a visit.
-- With `approvers` alone, every unlock needs an approval.
-- Approvals need `GATE`, `ALERT` without `destination_address`, and `ALERT_FROM`. Without them, such a set refuses every new origin and `check` fails.
+- With `approvers` alone, every unlock needs an approval, and a Gate or mail outage, or a full set, leaves the disk's passphrase slot as the only way in; list the host's own prefixes in `allow` so it boots unattended.
+- Any set with `allow` or `approvers` needs `GATE`; `check` fails without it. `approvers` also needs `ALERT` without `destination_address` and `ALERT_FROM`; without them the set refuses every new origin.
 - A set holds 3 origins at a time; a fourth is refused and approvers get one notice naming it and the three. A set sends at most 5 messages an hour per approver, and all sets together 40.
 - Turn Pseudo IPv4 off for the zone. With it on, IPv6 clients arrive as 240.0.0.0/4 addresses, which are refused.
 - `deploy` rewrites a live set only when its keys match stdin and one Worker version, the one `--url` serves, takes all traffic. `check` from outside `allow` prints `SKIP rec`.

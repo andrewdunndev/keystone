@@ -394,7 +394,7 @@ export default {
         if (env.CF_VERSION_METADATA?.id) res.headers.set('keystone-version', env.CF_VERSION_METADATA.id);
         const tag = await (set.tag ??= policyTag({ ...set, exch: set.exch.jwk }));
         if (tag) res.headers.set('keystone-policy', tag);
-        if (set.approvers && !gateBound(env)) res.headers.set('keystone-gate', 'unavailable');
+        if ((set.gated && !env.GATE) || (set.approvers && !gateBound(env))) res.headers.set('keystone-gate', 'unavailable');
       }
       return res;
     }

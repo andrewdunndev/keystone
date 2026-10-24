@@ -203,6 +203,16 @@ test('a refusal mails a refused alert under the alert caps, logs once a minute, 
   } finally { mock.timers.reset(); }
 });
 
+test('an allow-only set without GATE says so to a probed adv; with GATE, and unprobed, it does not', async () => {
+  const gateHeader = async (e, headers) => (await call('/ask/adv', { headers }, e)).headers.get('keystone-gate');
+  const full = gateEnv({ TANG_KEY_ASK: setText({ allow: ['192.0.2.0/24'] }) });
+  const e = fresh({ ...full, GATE: undefined });
+  assert.equal(await gateHeader(e, { 'keystone-probe': '1' }), 'unavailable');
+  assert.equal(await gateHeader(e, {}), null);
+  assert.equal(await gateHeader(full, { 'keystone-probe': '1' }), null);
+  assert.equal(await gateHeader(fresh({ TANG_KEY_ASK: setText() }), { 'keystone-probe': '1' }), null);
+});
+
 test('approvers without GATE, ALERT or ALERT_FROM fail closed: 403, one error per set per isolate, a probed adv says so; allow still admits', async () => {
   const gateHeader = async (e, headers) => (await call('/ask/adv', { headers }, e)).headers.get('keystone-gate');
   for (const missing of ['GATE', 'ALERT', 'ALERT_FROM']) {
