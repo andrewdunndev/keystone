@@ -13,7 +13,7 @@ head_sampling_rate = 1
 
 [observability.logs]
 enabled = true
-invocation_logs = true
+invocation_logs = false
 
 # Pending approvals for sets with approvers. Declared whether or not any set uses it: Cloudflare refuses a rollback
 # across a Durable Object class change, so no version that ignores allow and approvers can be rolled back to.

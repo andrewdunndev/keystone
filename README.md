@@ -20,7 +20,7 @@ An internet-facing Tang server unlocks a stolen disk from anywhere it can be rea
 
 - `rec` (key recovery) is gated per set. A set with neither `allow` nor `approvers` answers any client, as `tangd` does. A gated set serves origins inside `allow`, holds others until an approver approves by mail, and refuses the rest. `adv` (the advertisement) is public by design and carries only public keys.
 - A held host unlocks only because its client keeps retrying, as `clevis-luks-askpass` does. One-shot clients (udisks2, `clevis luks unlock`) just fail.
-- Whoever reads an approver's mailbox or Workers Logs holds approval power until a request expires, deny or not. Knowing a set's name lets anyone fill its slots and spend its share of the mail cap; an `allow` edit and the passphrase still work.
+- Whoever reads an approver's mailbox, or Workers Logs while invocation logs are on, holds approval power until a request expires, deny or not. Knowing a set's name lets anyone fill its slots and spend its share of the mail cap; an `allow` edit and the passphrase still work.
 - Hosts that egress through WARP or a Worker (AS13335) are always refused by a gated set.
 - A revoked set answers 404, and its disks stop unlocking from then on. A host that already unlocked keeps its disk key.
 - Private keys live in Worker secrets, which the API cannot read back once written. Any Worker version the account deploys can read them, so whoever controls the Cloudflare account controls the keys. Protect it like the disks.
