@@ -486,7 +486,7 @@ test('check fails an allow-only set whose Worker lacks GATE, and passes with it'
   const stdin = withPolicy(A, { allow: ['192.0.2.0/24'] });
   let r = await run(['check', URL, 'a-1'], { live: { ...VERSION, TANG_KEY_A_1: stdin }, stdin });
   assert.equal(r.code, 1);
-  assert.match(r.err, /^FAIL adv a-1: approvals unavailable: bind GATE$/m);
+  assert.match(r.err, /^FAIL adv a-1: gate unavailable: bind GATE$/m);
   r = await run(['check', URL, 'a-1'], { live: { ...VERSION, ...GATED, TANG_KEY_A_1: stdin }, stdin });
   assert.equal(r.code, 0, r.err);
 });
