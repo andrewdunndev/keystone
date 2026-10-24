@@ -84,7 +84,7 @@ import Failure from '../../figures/13-failure.astro';
       <h2 id="deploy">keyset deploy</h2>
       <p data-step="1"><code>keyset deploy</code> reads the key store on stdin as one JSON object, a set or null per name, and gives each entry a verdict against the live Worker.</p>
       <p data-step="2">Any REFUSE stops the run with exit 1; without <code>--apply</code> it ends at the plan.</p>
-      <p data-step="3">With <code>--apply</code>, wrangler uploads only the <code>--new</code> sets, then <code>keyset</code> checks each set's signed adv and a real rec, and each tombstone for a 404. The commands are in <a href="/setup/">Install</a>.</p>
+      <p data-step="3">With <code>--apply</code>, wrangler uploads the <code>--new</code> sets and policy edits, then <code>keyset</code> checks each set's signed adv and a real rec, and each tombstone for a 404. The commands are in <a href="/setup/">Install</a>.</p>
       <div slot="figure" class="figure-pair"><Deploy /></div>
     </DiagramTrack>
 
