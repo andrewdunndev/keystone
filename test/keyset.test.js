@@ -482,6 +482,15 @@ test('a policy edit is planned as policy and written with the keys exactly as st
   assert.match(r.err, /^FAIL adv a-1: approvals unavailable: bind GATE, ALERT and ALERT_FROM$/m);
 });
 
+test('check fails an allow-only set whose Worker lacks GATE, and passes with it', async () => {
+  const stdin = withPolicy(A, { allow: ['192.0.2.0/24'] });
+  let r = await run(['check', URL, 'a-1'], { live: { ...VERSION, TANG_KEY_A_1: stdin }, stdin });
+  assert.equal(r.code, 1);
+  assert.match(r.err, /^FAIL adv a-1: approvals unavailable: bind GATE$/m);
+  r = await run(['check', URL, 'a-1'], { live: { ...VERSION, ...GATED, TANG_KEY_A_1: stdin }, stdin });
+  assert.equal(r.code, 0, r.err);
+});
+
 test('a live policy other than stdin\'s, a rolled-back one included, is reported as policy; other keys still refuse', async () => {
   const live = { ...VERSION, TANG_KEY_A_1: withPolicy(A, { approvers: ['old@example.org'] }) };
   for (const stdin of [withPolicy(A, { approvers: ['new@example.org'] }), withPolicy(A, { allow: ['198.51.100.0/24'] })]) {
