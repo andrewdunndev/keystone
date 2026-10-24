@@ -151,7 +151,7 @@ mutant "a probed adv hides an unbound Gate" "/res.headers.set('keystone-gate', '
 mutant "an allow-only set's adv hides an unbound GATE" "s/if ((set.gated \&\& !env.GATE) || (set.approvers/if ((false) || (set.approvers/"
 mutant "an ungated set's adv reports an unbound GATE" "s/if ((set.gated \&\& !env.GATE)/if ((!env.GATE)/"
 mutant "check names ALERT for an allow-only set" "s/\${set.approvers ? 'GATE, ALERT and ALERT_FROM' : 'GATE'}/GATE, ALERT and ALERT_FROM/" bin/keyset.mjs
-mutant "an ungated set's adv reports the Gate" "s/if (set.approvers \&\& !gateBound(env)) res.headers.set/if (!gateBound(env)) res.headers.set/"
+mutant "an ungated set's adv reports the Gate" "s/|| (set.approvers \&\& !gateBound(env))/|| (!gateBound(env))/"
 mutant "Gate answers not cached" 's/  if ((answered.get(at)?.until ?? 0) > now)/  if (false)/'
 mutant "capped answers cached per set" "s/answered.set(at,/answered.set(why === 'capped' ? name : at,/; s/  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;/  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;/"
 mutant "answers cached for a minute" 's/const ANSWER_TTL = 5000;/const ANSWER_TTL = 60000;/'
