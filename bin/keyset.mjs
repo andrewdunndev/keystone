@@ -13,7 +13,7 @@ import { b64u, thumbprint, parseSet, policyTag, secretName, NAME, CURVES } from 
 const WRANGLER = fileURLToPath(new URL('../node_modules/.bin/wrangler', import.meta.url));
 const USAGE = `usage: keyset new [--curve P-256|P-521, default P-521] > set
        keyset check <url> <name> < set
-       keyset deploy --url <base> [--new <name>]... [--drop-policy] [--apply] [-- <wrangler args>] < {"TANG_KEY_<NAME>": set | null, ...}
+       keyset deploy --url <base> [--new <name>]... [--drop-policy <name>]... [--apply] [-- <wrangler args>] < {"TANG_KEY_<NAME>": set | null, ...}
        keyset revoke <name> --url <base> [--apply] [-- <wrangler args>]
 `;
 const enc = new TextEncoder();
@@ -124,12 +124,12 @@ async function serving(io, extra) {
 }
 
 async function deploy(argv, io) {
-  const { o, pos, extra } = args(argv, { url: { type: 'string' }, apply: { type: 'boolean' }, new: { type: 'string', multiple: true }, 'drop-policy': { type: 'boolean' } });
+  const { o, pos, extra } = args(argv, { url: { type: 'string' }, apply: { type: 'boolean' }, new: { type: 'string', multiple: true }, 'drop-policy': { type: 'string', multiple: true } });
   if (!o.url || pos.length) throw new Error(`deploy takes --url and stdin\n${USAGE}`);
   let input;
   try { input = JSON.parse(await readAll(io.stdin)); } catch { input = null; }
   if (input?.constructor !== Object) throw new Error('stdin is not a JSON object of TANG_KEY_<NAME> secrets');
-  const news = new Set(o.new);
+  const news = new Set(o.new), drops = new Set(o['drop-policy']);
   const sets = [], tombs = [];
   let refused = 0;
   const say = (verdict, what, why) => {
@@ -166,10 +166,10 @@ async function deploy(argv, io) {
     else if (isNew) say('REFUSE', name, 'live; --new names only absent sets');
     else if (await res.json().then(advertised).catch(() => null) !== set.roles) say('REFUSE', name, 'live with other keys; keys are never rewritten, rotate to a new name');
     else if (listed && !held) say('REFUSE', name, `live at --url, yet the wrangler target lacks ${secret}`);
-    else if (res.headers.get('keystone-policy') && !set.tag && !o['drop-policy']) say('REFUSE', name, 'live with a policy, stdin has none; pass --drop-policy to write it without');
+    else if (res.headers.get('keystone-policy') && !set.tag && !drops.has(name)) say('REFUSE', name, 'live with a policy, stdin has none; pass --drop-policy <name> to write it without');
     else if (res.headers.get('keystone-policy') !== set.tag) {
       Object.assign(s, { policy: true, version: res.headers.get('keystone-version') });
-      say('policy', name, 'keys unchanged, policy will be written');
+      say('policy', name, set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed');
     } else say('ok', name, 'live and unchanged');
   }
   // A policy write redeploys the Worker; it goes ahead only over the one version --url is seen serving.

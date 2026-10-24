@@ -286,6 +286,9 @@ mutant "revoke deletes a secret the wrangler target lacks" 's/if (!listed.has(se
 mutant "revoke apply skips the 404 poll" 's/if (await adv() === 404) {/if (true) {/' $k
 mutant "revoke omits the tombstone reminder" 's/, revoked; keep .* stays revoked/, revoked/' $k
 mutant "check skips the signature verification" 's/if (!await crypto.subtle.verify(/if (false \&\& !await crypto.subtle.verify(/' $k
+mutant "a policy drop covers every set" "s/!set.tag \&\& !drops.has(name))/!set.tag \&\& !drops.size)/" bin/keyset.mjs
+mutant "a policy drop is not checked by name" "s/!set.tag \&\& !drops.has(name))/!set.tag \&\& false)/" bin/keyset.mjs
+mutant "a policy strip is reported as a write" "s/set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed'/'keys unchanged, policy will be written'/" bin/keyset.mjs
 mutant "check passes an unbound Gate" "/=== 'unavailable') throw new Error/d" $k
 mutant "check accepts an adv carrying a private key" "s/if (keys.some((k) => 'd' in k)) return null;//" $k
 mutant "rec proof compares against S, not ECDH(r, S)" 's/if (got !== want)/if (got !== set.exch.x)/' $k
