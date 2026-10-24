@@ -426,6 +426,56 @@ test('a probed miss never reaches the Gate, a throwing Gate fails closed, and a 
   assert.deepEqual(subjects(), ['keystone: recovery request from a new source for ask']);
 }));
 
+test('a probed rec outside a set\'s allow list is refused in every gate state, and mails no refusal alert where an unprobed one does', withClock(async () => {
+  const probe = { 'keystone-probe': '1' };
+  const gated = (extra) => gateEnv({ TANG_KEY_ASK: setText({ allow: ['192.0.2.0/24'], approvers: APPROVERS, ...extra }) });
+  const approved = gated();
+  await rec(approved, 'ask', { ip: HOME });
+  await post(approved, await link(approved, NET), { decision: 'approve', confirm: 'ask' });
+  assert.equal((await rec(approved, 'ask', { ip: HOME })).status, 200);
+  const throwing = gated();
+  throwing.store.get = async () => { throw new Error('storage down'); };
+  const states = {
+    allowOnly: fresh({ ...alerting(), TANG_KEY_ASK: setText({ allow: ['192.0.2.0/24'] }) }),
+    gate: gated(),
+    approved,
+    unbound: fresh({ ...alerting(), GATE: undefined, TANG_KEY_ASK: setText({ allow: ['192.0.2.0/24'], approvers: APPROVERS }) }),
+    throwing,
+  };
+  for (const [state, e] of Object.entries(states)) {
+    for (const [ip, asn] of [[HOME, 64500], ['203.0.113.9', 64500], ['198.51.100.9', 13335], [undefined, 64500]]) {
+      await refusedReply(await rec(e, 'ask', { ip, asn, headers: probe }));
+    }
+    assert.equal((await rec(e, 'ask', { ip: '192.0.2.9', headers: probe })).status, 200, `${state}: an allowed origin is served as unprobed`);
+  }
+  for (const [state, e] of [['allowOnly', states.allowOnly], ['gate', gated()]]) {
+    for (const ip of ['198.51.100.9', undefined]) {
+      sent = [];
+      await rec(e, 'ask', { ip, asn: ip ? 64500 : 13335, headers: probe });
+      assert.equal(sent.length, 0, `${state}: probed`);
+    }
+  }
+  for (const [ip, asn, why] of [['198.51.100.9', 64500, 'allow'], ['198.51.100.9', 13335, 'origin']]) {
+    const e = fresh({ ...alerting(), TANG_KEY_ASK: setText({ allow: ['192.0.2.0/24'] }) });
+    await rec(e, 'ask', { ip, asn });
+    assert.deepEqual(subjects(), ['keystone: refused a recovery request from a new source for ask'], why);
+  }
+}));
+
+test('a Gate call that never answers is refused as unavailable, not left hanging', { timeout: 5000 }, async () => {
+  mock.timers.enable({ apis: ['setTimeout', 'Date'], now: T0 });
+  try {
+    const e = gateEnv();
+    e.GATE = { idFromName: () => 'gate', get: () => ({ miss: () => new Promise(() => {}) }) };
+    const pending = rec(e, 'ask', { ip: HOME });
+    await new Promise((r) => setImmediate(r));
+    mock.timers.tick(60000);
+    await refusedReply(await pending);
+    assert.match(errors[0], /^ask: approvals unavailable, refusing new origins: /);
+    assert.equal(sent.length, 0);
+  } finally { mock.timers.reset(); }
+});
+
 const linkIn = (m) => m.raw.match(/^https:\/\/tang\.example\.org(\/[a-z0-9-]+\/approve\/\S+)\r$/m)?.[1];
 const mailTo = (e, fn) => { e.ALERT = { send: fn }; return e; };
 const payload = (path) => JSON.parse(Buffer.from(path.split('.')[1], 'base64url'));

@@ -484,13 +484,28 @@ test('a policy edit is planned as policy and written with the keys exactly as st
 
 test('a live policy other than stdin\'s, a rolled-back one included, is reported as policy; other keys still refuse', async () => {
   const live = { ...VERSION, TANG_KEY_A_1: withPolicy(A, { approvers: ['old@example.org'] }) };
-  for (const stdin of [withPolicy(A, { approvers: ['new@example.org'] }), withPolicy(A, { allow: ['198.51.100.0/24'] }), A.text]) {
+  for (const stdin of [withPolicy(A, { approvers: ['new@example.org'] }), withPolicy(A, { allow: ['198.51.100.0/24'] })]) {
     const r = await deploy({ TANG_KEY_A_1: stdin }, [], { live });
     assert.match(r.out, /^policy +a-1:/m, stdin);
   }
   const r = await deploy({ TANG_KEY_A_1: withPolicy(B, { approvers: ['old@example.org'] }) }, [], { live });
   assert.equal(r.code, 1);
   assert.match(r.out, /^REFUSE +a-1: live with other keys/m);
+});
+
+test('a set whose live policy stdin lacks is refused unless --drop-policy, and nothing is written', async () => {
+  const live = { ...VERSION, ...GATED, TANG_KEY_A_1: withPolicy(A, { approvers: ['old@example.org'] }) }, seen = [];
+  let r = await deploy({ TANG_KEY_A_1: A.text }, ['--apply'], { live, wrangler: cf(live, { seen }) });
+  assert.equal(r.code, 1);
+  assert.match(r.out, /^REFUSE +a-1: live with a policy, stdin has none; pass --drop-policy/m);
+  assert.ok(!r.calls.some((a) => a[0] === 'deploy'));
+  assert.equal(seen.length, 0);
+  r = await deploy({ TANG_KEY_A_1: A.text }, ['--drop-policy'], { live });
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /^policy +a-1: keys unchanged, policy will be written$/m);
+  r = await deploy({ TANG_KEY_A_1: A.text }, ['--apply', '--drop-policy'], { live, wrangler: cf(live, { seen }) });
+  assert.equal(r.code, 0, r.err);
+  assert.deepEqual(seen[0].body, { TANG_KEY_A_1: A.text });
 });
 
 test('a policy write refuses a split deployment, a version other than --url serves, and a Worker without the version header', async () => {

@@ -117,6 +117,8 @@ To upgrade, update the clone, run `npm ci` and merge the example config's new bi
 
 When a `rec` succeeds from a new source, keystone mails one alert through a Cloudflare Email Sending `send_email` binding. A source is the client's /24 or /48 with its ASN and country. A failed alert is logged and never changes the unlock. Each set sends at most one alert an hour; up to five sources met meanwhile wait for the hourly digest.
 
+Any client may send `keystone-probe: 1`, as `keyset check` does. It mutes only the refusal alert for that request, and a probed `rec` is never served unless its origin is in `allow` or the set has no gate, exactly as without the header. A probed `adv` also reveals the set's policy tag and whether a gated set lacks its bindings, so a probe shows that a set is gated.
+
 1. Create the namespace: `npx wrangler kv namespace create UNLOCKS`.
 2. Onboard a subdomain such as `mail.example.org` in Email Sending, which needs Workers Paid. The apex domain's mail is untouched.
 3. Uncomment all four blocks in `deploy/wrangler.toml`: the `UNLOCKS` namespace id, the `ALERT` binding, `ALERT_FROM` and `ALERT_TO`, and the hourly cron. `ALERT_FROM` must be on that subdomain.
@@ -129,7 +131,7 @@ A set may name who can recover it. A set with neither field answers any client.
 - `allow`: 1 to 32 prefixes, IPv4 `/8` to `/32` or IPv6 `/16` to `/128`, host bits zero. An origin inside one is served unattended.
 - `approvers`: 1 to 5 addresses. Any other origin's `rec` is held and each approver is mailed a link to approve or deny it. Approval lets any machine in that /24 or /48 recover the set for 10 minutes; the held host is served within about 15 seconds. Removing an approver retires their links.
 
-Both fields live in the set's secret beside its keys. Edit them in the key store, then deploy; the plan reads `policy`.
+Both fields live in the set's secret beside its keys. Edit them in the key store, then deploy; the plan reads `policy`. Input with neither field for a set whose live policy has one is refused; pass `--drop-policy` to write the set without a policy.
 
 ```sh
 entry=$(pass tang/server-1 | jq -ce '.allow = ["198.51.100.7/32"] | .approvers = ["you@example.org"]') &&
