@@ -24,7 +24,7 @@ An internet-facing Tang server unlocks a stolen disk from anywhere it can be rea
 - Hosts that egress through WARP or a Worker (AS13335) are always refused by a gated set.
 - A revoked set answers 404, and its disks stop unlocking from then on. A host that already unlocked keeps its disk key.
 - Private keys live in Worker secrets, which the API cannot read back once written. Any Worker version the account deploys can read them, so whoever controls the Cloudflare account controls the keys. Protect it like the disks.
-- Worker versions carry their secrets. A rollback past a revoke serves the revoked set again, and one past a policy edit serves the older policy; `wrangler secret list` shows neither. Never roll back across a revoke or a policy edit. A `null` entry for the set (a tombstone) in the deploy input makes `keyset deploy` detect and drop a revoked set, and `keyset deploy` reports a rolled-back policy as `policy`.
+- Worker versions carry their secrets. A rollback past a revoke serves the revoked set again, and one past a policy edit serves the older policy; `wrangler secret list` shows neither. Never roll back across either. [Setup](docs/setup.md#rotate-and-revoke) covers the tombstone that detects it.
 - On the Free plan every request counts toward the daily Workers quota. A flood can exhaust it, and bound hosts fall back to their passphrase until it resets. A WAF rate limit mitigates.
 - The unlock alert is a tripwire, not an audit log. Workers Logs records every successful `rec`.
 - To split trust, bind with `clevis sss` across keystone and a second server.
