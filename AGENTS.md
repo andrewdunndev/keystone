@@ -10,6 +10,7 @@ revokes its key sets.
 - `src/index.js`: the Worker: `/<name>/adv`, `/<name>/rec/<kid>` and its admission, `/<name>/approve/<token>`, unlock
   alerts.
 - `src/origin.js`: addresses, prefixes and the /24 or /48 an origin is keyed by.
+- `src/bounded.js`: the empty-at-limit rule for the Worker's and the Gate's per-isolate caches.
 - `src/gate.js`: the `Gate` Durable Object holding pending approvals, approval tokens, and the mail.
 - `bin/keyset.mjs`: `new`, `check`, `deploy`, `revoke`. `main(argv, io)` takes fetch, the wrangler runner, stdio and process
   injected, so tests run it in-process.

@@ -4,6 +4,7 @@ import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.j
 import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
 import { approveKey, send, verify, when, GRANT } from './gate.js';
 import { AUTH_CSS } from './auth-css.js';
+import { bounded } from './bounded.js';
 
 export { Gate } from './gate.js';
 
@@ -159,10 +160,7 @@ export function resetAlertState() {
 
 const sendMail = (env, subject, text) => send(env, env.ALERT_TO, subject, text);
 
-function add(set, k) {
-  if (set.size >= SEEN_MAX) set.clear();
-  set.add(k);
-}
+const add = (set, k) => bounded(set, SEEN_MAX).add(k);
 
 // A recovery request from a (/24 or /48, ASN, country) not seen before mails once per set per cooldown. The kid is
 // public, so a request proves nothing about an unlock. Sources met during the cooldown or while a mail is in flight are
@@ -346,8 +344,7 @@ async function admit(set, name, ip, request, env) {
   } catch (e) { return closed(name, e.message); } finally { clearTimeout(timer); }
   if (why === 'served') return null;
   if (!['held', 'denied', 'capped'].includes(why)) return closed(name, `unexpected Gate answer ${clip(why)}`);
-  if (answered.size >= SEEN_MAX) answered.clear();
-  answered.set(at, { why, until: now + ANSWER_TTL });
+  bounded(answered, SEEN_MAX).set(at, { why, until: now + ANSWER_TTL });
   return why;
 }
 
@@ -364,8 +361,7 @@ function refuse(request, env, ctx, name, why) {
   const ip = request.headers.get('CF-Connecting-IP');
   const key = `${name}:${sourceNet(ip) ?? ip}`;
   if (why !== 'held' && (loggedAt.get(key) ?? 0) <= Date.now()) {
-    if (loggedAt.size >= SEEN_MAX) loggedAt.clear();
-    loggedAt.set(key, Date.now() + 60000);
+    bounded(loggedAt, SEEN_MAX).set(key, Date.now() + 60000);
     const { asn = null, country = null } = request.cf ?? {};
     console.log(JSON.stringify({ event: 'refused', name, ip, asn, country, why }));
   }

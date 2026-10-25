@@ -4,6 +4,7 @@
 // messages sent that hour, m:<hour>:<name> those of one set.
 import { EmailMessage } from 'cloudflare:email';
 import { DurableObject } from 'cloudflare:workers';
+import { bounded } from './bounded.js';
 import { b64u, derivedKey, parseSet, secretName } from './jwk.js';
 
 const enc = new TextEncoder();
@@ -51,9 +52,8 @@ const loaded = new Map();
 function gated(env, name) {
   const raw = env[secretName(name)];
   if (!loaded.has(raw)) {
-    if (loaded.size >= 100) loaded.clear();
     const { exch, approvers } = parseSet(raw);
-    loaded.set(raw, { approvers, key: approveKey(exch) });
+    bounded(loaded, 100).set(raw, { approvers, key: approveKey(exch) });
   }
   return loaded.get(raw);
 }

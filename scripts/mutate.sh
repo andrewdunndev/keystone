@@ -179,6 +179,8 @@ mutant "a denied origin reopened" "s/      if (p.state === 'denied') return 'den
 mutant "a held origin reopened" "s/      if (p.state === 'open') {/      if (false) {/" $g
 mutant "a grant never ends" "s/      if (p.grantUntil > now) return 'served';/      if (p.grantUntil) return 'served';/" $g
 mutant "a grant live at its end" 's/if (p.grantUntil > now)/if (p.grantUntil >= now)/' $g
+mutant "a bounded cache cleared one entry late" 's/cache.size >= max/cache.size > max/' src/bounded.js
+mutant "a bounded cache never cleared" '/cache.clear();/d' src/bounded.js
 mutant "a grant of 11 minutes" 's/export const GRANT = 10 \* 60 \* 1000;/export const GRANT = 11 * 60 * 1000;/' $g
 mutant "a pending lives 13 hours" 's/^const PENDING_TTL = 12 \* 3600 \* 1000;/const PENDING_TTL = 13 * 3600 * 1000;/' $g
 mutant "an expired pending kept" 's/    if (p?.expires > now) {/    if (p) {/' $g
