@@ -32,3 +32,10 @@ export async function rec(e, name, { fx, ip, asn = 64500, headers = {}, body = f
   await Promise.all(pending);
   return r;
 }
+
+// Polls until cond() holds or the wall-clock deadline passes, yielding to the event loop between checks.
+// performance.now is not among the clocks the tests mock.
+export async function until(cond, ms = 3000) {
+  const end = performance.now() + ms;
+  while (!cond() && performance.now() < end) await new Promise((r) => setImmediate(r));
+}

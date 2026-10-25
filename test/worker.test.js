@@ -5,7 +5,7 @@ import worker, { resetAlertState } from '../src/index.js';
 import { sourceNet } from '../src/origin.js';
 import { b64u, thumbprint, parseSet, CURVES } from '../src/jwk.js';
 import { EmailMessage } from 'cloudflare:email';
-import { FX, setOf, be, kv, rec as recover } from './helpers.mjs';
+import { FX, setOf, be, kv, rec as recover, until } from './helpers.mjs';
 
 const NOBLE = { 'P-256': p256, 'P-521': p521 };
 const OTHER = { 'P-256': 'P-521', 'P-521': 'P-256' };
@@ -462,7 +462,7 @@ test('a send that never answers is cut off after ten seconds and leaves the sour
   mock.timers.enable({ apis: ['setTimeout'] });
   try {
     const done = unlock(e, '198.51.100.9');
-    for (let i = 0; i < 100 && !fm.calls.length; i++) await new Promise((r) => setImmediate(r));
+    await until(() => fm.calls.length);
     assert.equal(fm.calls.length, 1);
     mock.timers.tick(9999);
     await new Promise((r) => setImmediate(r));

@@ -4,7 +4,7 @@ import worker, { resetAlertState } from '../src/index.js';
 import { derivedKey, parseSet, policyTag } from '../src/jwk.js';
 import { format, parseCidr, parseIp, unadmittable } from '../src/origin.js';
 import { Gate, approveKey, sign } from '../src/gate.js';
-import { FX, setOf, kv, rec as recover } from './helpers.mjs';
+import { FX, setOf, kv, rec as recover, until } from './helpers.mjs';
 
 const fx = FX['P-256'];
 const setText = (extra) => setOf(fx, extra);
@@ -458,9 +458,10 @@ test('a Gate call that never answers is refused as unavailable, not left hanging
   mock.timers.enable({ apis: ['setTimeout', 'Date'], now: T0 });
   try {
     const e = gateEnv();
-    e.GATE = { idFromName: () => 'gate', get: () => ({ miss: () => new Promise(() => {}) }) };
+    let asked = false;
+    e.GATE = { idFromName: () => 'gate', get: () => ({ miss: () => { asked = true; return new Promise(() => {}); } }) };
     const pending = rec(e, 'ask', { ip: HOME });
-    await new Promise((r) => setImmediate(r));
+    await until(() => asked);
     mock.timers.tick(60000);
     await refusedReply(await pending);
     assert.match(errors[0], /^ask: approvals unavailable, refusing new origins: /);
@@ -657,7 +658,7 @@ test('a send that times out keeps its unit of the hourly cap, since it may yet b
   const e = mailTo(gateEnv(), () => { calls++; return new Promise(() => {}); });
   const held = rec(e, 'ask', { ip: HOME });
   for (const n of [1, 2]) {
-    for (let i = 0; calls < n && i < 1000; i++) await new Promise(setImmediate);
+    await until(() => calls >= n);
     mock.timers.tick(10000);
   }
   await held;
