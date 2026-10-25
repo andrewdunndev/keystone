@@ -101,6 +101,11 @@ import Failure from '../../figures/13-failure.astro';
     </Split>
 
     <Split>
+      <h2 id="gate">Origin gate</h2>
+      <p>A set's secret may carry <code>allow</code>, a list of prefixes, and <code>approvers</code>, a list of addresses. A rec from an origin inside <code>allow</code> is served at once. With no approvers, any other origin gets 403. With approvers, the origin, the client's /24 or /48, is passed to the Gate, one Durable Object that opens a pending for that set and origin and mails each approver a link. The link is a token whose MAC, under a key derived from the set's exchange key, names the set, origin and approver. The approval page asks for the set's name before it approves. An approval opens a grant of 10 minutes from the click, covering any machine in that origin; a pending left undecided lapses after 12 hours. A set holds 3 pendings at once, and a fourth origin is refused with one notice to the approvers. Origins on Cloudflare's own network, with no ASN, or in 240.0.0.0/4 are never admitted, and a request marked <code>keystone-probe</code> is never served from outside <code>allow</code>. Removing an approver retires their links.</p>
+    </Split>
+
+    <Split>
       <h2 id="alerts">Alerts</h2>
       <p>When alerts are set up, each successful rec asks whether its source, a /24 or /48 network plus ASN and country, is new for the set. The first new source in an hour sends one alert; up to five more wait in KV for the hourly digest, and the host never waits on the mail. The kid is public, so an alert shows a request was made; it does not prove an unlock. The Workers log stays the full record.</p>
       <div slot="aside" class="figure-pair"><Alerts /></div>
@@ -109,6 +114,7 @@ import Failure from '../../figures/13-failure.astro';
     <Split>
       <h2 id="failure">Failure</h2>
       <p>If keystone is unreachable or the day's request quota is spent, clevis gets no key and LUKS asks for the passphrase, so losing keystone costs a typed passphrase per disk; the data is untouched as long as each disk keeps its passphrase slot. If a disk is stolen, revoking its set makes rec answer 404, and the disk stays locked from then on.</p>
+      <p>Without the <code>GATE</code> binding, a set with only <code>allow</code> still serves its listed origins, a set with approvers refuses every other origin, approval pages answer 503, and a probed adv carries <code>keystone-gate: unavailable</code>. If a mail fails, the approver is mailed again on a later request from the held origin, after 5 minutes at first and up to an hour apart, and each send is cut off after 10 seconds. When a pending lapses, the next request from that origin opens a new one and mails a new link; the old link then shows nothing to decide. Revoking the set deletes its secret, so every route, approval links included, answers 404.</p>
       <div slot="aside" class="figure-pair"><Failure /></div>
     </Split>
   </article>
