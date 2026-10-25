@@ -26,8 +26,8 @@ bash scripts/interop.sh
 
 ## Releases
 
-1. Add a `## vX.Y.Z - date` entry to `CHANGELOG.md`, replacing "Unreleased".
-2. Set `version` in `package.json` to match.
+1. Run `npm version X.Y.Z --no-git-tag-version`.
+2. Add a `## vX.Y.Z - date` entry to `CHANGELOG.md`.
 3. Commit, then create an annotated tag `vX.Y.Z` and push it.
 
 The tag pipeline publishes the entry as the GitLab release.
