@@ -46,6 +46,6 @@ binding = "CF_VERSION_METADATA"
 # ALERT_FROM = "unlock@mail.example.org"
 # ALERT_TO = "you@example.org"
 
-# Hourly trigger that mails the digest of held sources.
+# Hourly trigger that mails the digest of held sources and a change of the serving Worker version.
 # [triggers]
 # crons = ["0 * * * *"]
