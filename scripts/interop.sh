@@ -110,7 +110,7 @@ export CURL_CA_BUNDLE="$work/dev.pem"
 echo -n "secret g-1" | clevis encrypt tang "{\"url\":\"$G/g-1\",\"thp\":\"$(cat "$work/g-1.thp")\"}" > "$work/g-1.jwe"
 ok "clevis encrypt g-1" 0 "$?"
 # A booting host: clevis retries until the approval lands or a minute passes.
-( for _ in $(seq 30); do clevis decrypt < "$work/g-1.jwe" > "$work/g-1.out" 2>/dev/null && exit 0; sleep 2; done; exit 1 ) &
+( for _ in $(seq 30); do timeout 15 clevis decrypt < "$work/g-1.jwe" > "$work/g-1.out" 2>/dev/null && exit 0; sleep 2; done; exit 1 ) &
 boot=$!
 mail=
 for _ in $(seq 30); do mail=$(grep -o '/[^ ]*\.eml' "$work/wrangler.log" | tail -1); [ -n "$mail" ] && break; sleep 1; done
