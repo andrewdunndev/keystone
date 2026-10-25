@@ -52,7 +52,14 @@ Authenticate with `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN` (the "Edit
 
    `keyset` deploys, then checks the advertisement signature and a real recovery.
 
-6. Bind the disk. This reads the `thp` from the live advertisement.
+6. Install clevis on the host.
+
+   ```sh
+   sudo dnf install clevis clevis-luks clevis-dracut         # Fedora and RHEL
+   sudo apt install clevis clevis-luks clevis-initramfs      # Debian and Ubuntu
+   ```
+
+7. Bind the disk. This reads the `thp` from the live advertisement.
 
    ```sh
    curl -s https://tang.example.org/server-1/adv | jose fmt -j- -g payload -y -o- |
@@ -60,26 +67,38 @@ Authenticate with `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN` (the "Edit
    sudo clevis luks bind -d /dev/sdXN tang '{"url":"https://tang.example.org/server-1","thp":"<thp>"}'
    ```
 
-7. Build the initramfs. It needs network, DNS and a CA bundle to reach the Worker.
+8. Build the initramfs. It needs network, DNS and a CA bundle to reach the Worker.
 
    Fedora and RHEL (dracut):
 
    ```sh
-   sudo dnf install clevis clevis-luks clevis-dracut
    echo 'kernel_cmdline="rd.neednet=1"' | sudo tee /etc/dracut.conf.d/clevis.conf
    sudo dracut -f
    ```
 
-   Debian and Ubuntu (initramfs-tools):
+   `lsinitrd` lists the image. If it lacks a CA bundle or DNS libraries, put `install_items+=" /etc/pki/tls/certs/ca-bundle.crt "` in a file under `/etc/dracut.conf.d` and rerun `dracut -f`.
+
+   Debian and Ubuntu (initramfs-tools) ship no CA bundle in the initramfs, so add a hook, and bring the network up from the kernel command line. clevis reads the sixth `ip=` field as the interface name, so plain `ip=dhcp` waits for an interface named `dhcp`.
 
    ```sh
-   sudo apt install clevis clevis-luks clevis-initramfs
+   sudo tee /etc/initramfs-tools/hooks/cabundle <<'HOOK'
+   #!/bin/sh
+   PREREQ=""
+   prereqs() { echo "$PREREQ"; }
+   case "$1" in prereqs) prereqs; exit 0;; esac
+   . /usr/share/initramfs-tools/hook-functions
+   mkdir -p "${DESTDIR}/etc/ssl/certs"
+   cp /etc/ssl/certs/ca-certificates.crt "${DESTDIR}/etc/ssl/certs/"
+   HOOK
+   sudo chmod +x /etc/initramfs-tools/hooks/cabundle
+   sudo sed -i 's/^GRUB_CMDLINE_LINUX="/&ip=::::::dhcp /' /etc/default/grub
+   sudo update-grub
    sudo update-initramfs -u
    ```
 
-   `lsinitrd` and `lsinitramfs` list the image. If it lacks a CA bundle or DNS libraries, add them: on Fedora put `install_items+=" /etc/pki/tls/certs/ca-bundle.crt "` in a file under `/etc/dracut.conf.d` and rerun `dracut -f`. On Debian set `GRUB_CMDLINE_LINUX="ip=dhcp"` in `/etc/default/grub`, run `update-grub`.
+   `lsinitramfs /boot/initrd.img-$(uname -r) | grep ca-certificates` confirms the bundle.
 
-8. Reboot. The disk unlocks without a passphrase.
+9. Reboot. The disk unlocks without a passphrase.
 
 ## Rotate and revoke
 
