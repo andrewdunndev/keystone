@@ -532,6 +532,43 @@ test('the cron digest skips held sources already seen and keeps held ones when t
   } finally { fm.restore(); }
 });
 
+test('the cron mails once per change of serving version, names a rollback, and retries a failed mail', async () => {
+  const v = (id, timestamp) => ({ CF_VERSION_METADATA: { id, timestamp, tag: '' } });
+  const e = alertEnv(v('v2', '2026-10-02T00:00:00Z'));
+  let fm = mailer();
+  try {
+    await worker.scheduled({}, e);
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 0);
+    Object.assign(e, v('v3', '2026-10-03T00:00:00Z'));
+    await worker.scheduled({}, e);
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 1);
+    assert.equal(header(fm.calls[0].raw, 'Subject'), 'keystone: a new Worker version is serving');
+    assert.match(body(fm.calls[0].raw), /^Worker version v3, uploaded 2026-10-03T00:00:00Z, serves in place of v2, uploaded 2026-10-02T00:00:00Z\./);
+    Object.assign(e, v('v1', '2026-10-01T00:00:00Z'));
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 2);
+    assert.equal(header(fm.calls[1].raw, 'Subject'), 'keystone: rolled back to an earlier Worker version');
+    assert.match(body(fm.calls[1].raw), /a set revoked or a policy edited since is live again/);
+  } finally { fm.restore(); }
+  Object.assign(e, v('v3', '2026-10-03T00:00:00Z'));
+  fm = mailer({ fail: true });
+  try {
+    await assert.rejects(worker.scheduled({}, e));
+    assert.equal(JSON.parse(e.UNLOCKS.m.get('serving')).id, 'v1');
+  } finally { fm.restore(); }
+  fm = mailer();
+  try {
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 1);
+    delete e.CF_VERSION_METADATA;
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 1);
+    assert.equal(JSON.parse(e.UNLOCKS.m.get('serving')).id, 'v3');
+  } finally { fm.restore(); }
+});
+
 test('a failing alert leaves the unlock response untouched and the source unrecorded', async () => {
   const fm = mailer({ fail: true }); const e = alertEnv();
   const errs = []; const log = console.error; console.error = (...a) => errs.push(a.join(' '));

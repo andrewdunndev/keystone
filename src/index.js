@@ -242,6 +242,23 @@ async function sendDigest(env) {
   }
 }
 
+// Mails once when another Worker version serves the cron trigger. One uploaded before the last seen is a rollback.
+async function versionChange(env) {
+  const { id, timestamp } = env.CF_VERSION_METADATA ?? {};
+  if (!id) return;
+  const last = JSON.parse(await env.UNLOCKS.get('serving') ?? 'null');
+  if (last?.id === id) return;
+  if (last) {
+    const back = timestamp < last.timestamp;
+    await sendMail(env, back ? 'keystone: rolled back to an earlier Worker version' : 'keystone: a new Worker version is serving',
+      `Worker version ${id}, uploaded ${timestamp}, serves in place of ${last.id}, uploaded ${last.timestamp}.\n\n` + (back
+        ? 'A version serves the secrets it was deployed with, so a set revoked or a policy edited since is live again. ' +
+          'Plan keyset deploy over the whole key store to see which; --apply redeploys from the current secrets.\n'
+        : 'If you did not deploy it, check the Worker\'s deployments in Cloudflare.\n'));
+  }
+  await env.UNLOCKS.put('serving', JSON.stringify({ id, timestamp }));
+}
+
 const PAGE_HEADERS = {
   'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin',
   'x-content-type-options': 'nosniff',
@@ -419,6 +436,8 @@ export default {
     return reply(404, 'not found\n');
   },
   async scheduled(event, env) {
-    if (alertsOn(env)) await sendDigest(env);
+    if (!alertsOn(env)) return;
+    await versionChange(env);
+    await sendDigest(env);
   },
 };
