@@ -1,24 +1,27 @@
 #!/bin/bash
 # clevis interop against `wrangler dev` with sets minted by keyset (a-1 on P-521, b-1 on P-256), then revocation. Run
-# from the repo root after npm ci, with tang, clevis, jose and curl. `interop.sh luks` adds, as root in a throwaway
+# from the repo root after npm ci, with tang, clevis, jose and curl, on deploy/wrangler.toml (copied from the example when
+# absent), so the bindings are the shipped ones. `interop.sh luks` adds, as root in a throwaway
 # container with clevis-luks, cryptsetup, socat and python3, a cross-check with stock tangd on the same keys and a LUKS2
 # bind and unlock.
 set -u
 luks=${1:-}
 W=http://127.0.0.1:8787 T=http://127.0.0.1:8788
-[ -e .dev.vars ] && { echo ".dev.vars exists; move it aside first"; exit 1; }
+cfg=deploy/wrangler.toml vars=deploy/.dev.vars copied=
+[ -e $vars ] && { echo "$vars exists; move it aside first"; exit 1; }
+[ -e $cfg ] || { cp deploy/wrangler.toml.example $cfg; copied=1; }
 curl -s -o /dev/null $W/ && { echo "$W is taken"; exit 1; }
 work=$(mktemp -d) pid=
 # wrangler dev runs as its own process group, workerd included; only that group is stopped.
 stop() { [ -n "$pid" ] && kill -- -"$pid" 2>/dev/null && wait "$pid" 2>/dev/null; pid=; }
-trap 'stop; rm -f .dev.vars; rm -rf "$work"' EXIT
+trap 'stop; rm -f $vars; [ -n "$copied" ] && rm -f $cfg; rm -rf "$work"' EXIT
 keyset() { node bin/keyset.mjs "$@"; }
 keyset new > "$work/a-1.json" 2> "$work/a-1.thp"
 keyset new --curve P-256 > "$work/b-1.json" 2> "$work/b-1.thp"
-devvars() { for n in "$@"; do echo "TANG_KEY_$(echo $n | tr a-z- A-Z_)='$(cat "$work/$n.json")'"; done > .dev.vars; }
+devvars() { for n in "$@"; do echo "TANG_KEY_$(echo $n | tr a-z- A-Z_)='$(cat "$work/$n.json")'"; done > $vars; }
 worker() {
   stop; sleep 1
-  WRANGLER_SEND_METRICS=false setsid nohup node_modules/.bin/wrangler dev --port 8787 --ip 127.0.0.1 > "$work/wrangler.log" 2>&1 < /dev/null &
+  WRANGLER_SEND_METRICS=false setsid nohup node_modules/.bin/wrangler dev --config $cfg --port 8787 --ip 127.0.0.1 > "$work/wrangler.log" 2>&1 < /dev/null &
   pid=$!
   for _ in $(seq 60); do curl -s -o /dev/null $W/ && return; sleep 1; done; echo "wrangler dev did not start"; tail -5 "$work/wrangler.log"; exit 1
 }
