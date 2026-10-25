@@ -10,7 +10,7 @@ import Failure from '../figures/13-failure.astro';
   <Hero title="keystone" eyebrow="disk unlock server">
     <p>An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
     <p>keystone lets a computer with an encrypted disk unlock it at startup with no one typing a passphrase. At boot the computer gets its part of the key from keystone over the internet. keystone supplies the <a href="#secrets">missing half</a> of a second key the computer keeps on the disk, so the disk opens without the passphrase. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
-    <p>You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If the computer is stolen, delete its key set before it next starts, and the disk stays locked. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk.</p>
+    <p>You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If the computer is stolen, delete its key set before it next starts, and the disk stays locked. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk, unless the key set limits <a href="#origin-gate">who can ask</a>.</p>
     <Fragment slot="actions">
       <a class="cta-primary" href="/setup/">Install</a>
       <a class="cta-secondary" href="/architecture/">Architecture</a>
@@ -53,6 +53,13 @@ import Failure from '../figures/13-failure.astro';
       <p class="section-prose">keystone never receives the disk's passphrase or its second key. The LUKS header keeps a value that gives the second key only with keystone's private key.</p>
       <p class="section-prose">keystone keeps each key set's private keys as one secret in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by the set's exchange key, and the computer removes the random number to get the second key. keystone alone holds nothing that opens a disk. It answers anyone who asks, and its alert comes after an unlock, so a thief who starts the computer before you delete the key set gets in.</p>
       <p class="section-prose">Cloudflare, and anyone who can deploy keystone in your account, can read the key sets. With the disk or a copy of its header, a copied key set opens it even after a delete. <a href="/architecture/#rollback">Rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
+    </div>
+  </section>
+
+  <section class="section" id="origin-gate">
+    <SectionLabel label="Who can ask" />
+    <div class="flow">
+      <p class="section-prose">A key set can name the networks allowed to unlock it and who approves the rest. A request from any other network is held while the approvers are mailed a link; when one approves, any machine on that network can unlock the set for 10 minutes. A held request waits up to 12 hours for an answer. Listed networks are never held, so a server that restarts by itself needs no approval. The <a href="/architecture/#gate">architecture</a> page has the mechanism.</p>
     </div>
   </section>
 
