@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.1 - 2026-10-24
+
+- `keyset deploy` refuses to drop a live policy: input with neither `allow` nor `approvers` for a set whose live policy has one is refused unless `--drop-policy <name>` names the set.
+- `keyset deploy` refuses when `--url` serves a newer keystone release than the clone. The Worker sends its release as `keystone-release` on a probed `adv`; a Worker without the header does not block.
+- A probed `adv` reports `keystone-gate: unavailable` for any gated set without `GATE`, and for a set with `approvers` without `ALERT` and `ALERT_FROM`; `keyset check` fails on it.
+- The hourly alert run, with `CF_VERSION_METADATA` bound, mails once when another Worker version serves and names a rollback. Nothing changes where it is unbound.
+- The Gate call is bounded at 30 s.
+- Copy `invocation_logs = false` from the example config into `deploy/wrangler.toml`.
+- A set with a member other than `keys`, `allow` and `approvers` has been refused by the Worker (500) and `keyset` since v0.2.0. Plan `keyset deploy` over the whole store before upgrading.
+
 ## v0.2.0 - 2026-10-12
 
 - Origin gate: a set may carry `allow` (prefixes served unattended) and `approvers` (addresses mailed a link to approve or deny any other origin). A set mails at most 5 messages an hour per approver, and all sets together 40. A set with neither behaves as before.
@@ -24,7 +34,7 @@ encryption, running as a Cloudflare Worker. It speaks the protocol of
 stock `tangd` on P-521 or P-256, chosen per key set.
 
 The compatibility contract is the key set format and its secret name.
-Later versions keep reading every set this one reads, from the same
+Later versions keep reading every set of this form, from the same
 secret, on the same routes; changing that is a breaking release:
 
 - A set lives only in the Worker secret `TANG_KEY_<NAME>`, `<NAME>`
