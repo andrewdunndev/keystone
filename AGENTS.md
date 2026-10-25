@@ -29,7 +29,7 @@ revokes its key sets.
 ## Rules
 
 - Keys are write-once and named: rotation is a new name, and only a set's `allow` and `approvers` are rewritten live.
-  Every keyset verb plans unless given `--apply`; only `keyset revoke <name> --apply` deletes, one set at a time.
+  `keyset deploy` and `revoke` plan unless given `--apply`; only `keyset revoke <name> --apply` deletes, one set at a time.
 - Private keys are never printed, logged or written, except by `keyset new` to stdout and in the 0600 secrets file
   `deploy --apply` hands wrangler and removes.
 - No real hostnames, domains or accounts anywhere: examples use reserved example domains and `server-1`.
