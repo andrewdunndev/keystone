@@ -62,6 +62,8 @@ async function advertised(jws) {
 
 const base = (url) => url.replace(/\/+$/, '');
 const PROBE = { 'keystone-probe': '1' };
+// The status of /<name>/adv, or 'unreachable'.
+const advStatus = (io, url, name) => io.fetch(`${base(url)}/${name}/adv`).then((r) => r.status, () => 'unreachable');
 const probe = (url, name, { fetch }) => fetch(`${base(url)}/${name}/adv`, { headers: PROBE });
 
 // One set against the live Worker: its adv is signed by the set's signing key, advertises exactly the set's public
@@ -240,7 +242,7 @@ async function deploy(argv, io) {
   }
   for (const { name } of tombs) {
     let status;
-    const adv = () => io.fetch(`${base(o.url)}/${name}/adv`).then((r) => r.status, () => 'unreachable');
+    const adv = () => advStatus(io, o.url, name);
     for (let i = 1; (status = await adv()) !== 404 && i < io.tries; i++) await io.wait();
     if (status === 404) io.stdout.write(`OK  revoked ${name}: 404\n`);
     else {
@@ -255,7 +257,7 @@ async function revoke(argv, io) {
   const { o, pos: [name, ...more], extra } = args(argv, { url: { type: 'string' }, apply: { type: 'boolean' } });
   if (!o.url || !NAME.test(name ?? '') || more.length) throw new Error(`revoke takes one set name and --url\n${USAGE}`);
   const secret = secretName(name);
-  const adv = () => io.fetch(`${base(o.url)}/${name}/adv`).then((r) => r.status, () => 'unreachable');
+  const adv = () => advStatus(io, o.url, name);
   const status = await adv();
   if (!o.apply) {
     io.stdout.write(`would delete ${secret} (adv ${name}: ${status})\n`);
