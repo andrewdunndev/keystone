@@ -43,7 +43,7 @@ export async function send(env, to, subject, text) {
 }
 
 const ascii = (s) => String(s).replace(/[^\x20-\x7e]/g, '?');
-const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
+export const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 const about = (o) => ascii(`${o.origin}  AS${o.info.asn} ${o.info.org}  ${o.info.city}, ${o.info.country}  since ${when(o.created)}`);
 
 // The set's approvers and approve key as the Gate's own environment holds them, parsed once per secret text.
