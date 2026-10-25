@@ -163,6 +163,7 @@ mutant "a POST from anywhere decides" "s/  if (request.headers.get('Origin') !==
 mutant "any method decides" "s/if (request.method !== 'GET' \&\& request.method !== 'POST') return reply(405/if (false) return reply(405/"
 mutant "the approval page over http" "s|  if (new URL(request.url).protocol !== 'https:') return reply(403|  if (false) return reply(403|"
 mutant "links follow the request scheme and port" 's|base: `https://${new URL(request.url).hostname}`,|base: new URL(request.url).origin,|'
+mutant "an approval link decides without a bound GATE" 's/if (!env.GATE) return page(503/if (false) return page(503/'
 mutant "a removed approver's link works" 's/if (!t || !set.approvers.includes(t.a)) return/if (!t) return/'
 mutant "an unexpected Gate answer admits" "/  if (!\['held', 'denied', 'capped'\].includes(why)) return closed/d"
 mutant "an origin refusal advises allow" "s/(refused === 'origin'/(false/"

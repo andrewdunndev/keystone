@@ -318,6 +318,18 @@ test('an approval in a pending\'s last minutes still grants the full 10 minutes'
   assert.equal(pending(e, NET).state, 'approved');
 }));
 
+test('an approval link on a Worker whose GATE is unbound answers 503 and decides nothing', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  const path = await link(e, NET);
+  e.GATE = undefined;
+  assert.equal((await open(e, path)).status, 503);
+  const r = await post(e, path, { decision: 'approve', confirm: 'ask' });
+  assert.equal(r.status, 503);
+  assert.match(await r.text(), /Approvals are unavailable/);
+  assert.equal(pending(e, NET).state, 'open');
+}));
+
 test('a decided or replaced pending answers 409, an expired token 410; deny holds, and approve still works after it', withClock(async () => {
   const e = gateEnv();
   await rec(e, 'ask', { ip: HOME });
