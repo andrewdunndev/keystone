@@ -544,6 +544,35 @@ test('a policy write refuses a split deployment, a version other than --url serv
   assert.match(r.out, /^REFUSE +a-1: wrangler deployments status shows no single version/m);
 });
 
+test('deploy refuses a Worker serving a newer release than this clone; an older, equal or absent release deploys', async () => {
+  const { version } = JSON.parse(readFileSync(new globalThis.URL('../package.json', import.meta.url)));
+  const [x, y, z] = version.split('.').map(Number);
+  const before = z ? `${x}.${y}.${z - 1}` : y ? `${x}.${y - 1}.9` : `${x - 1}.9.9`;
+  // The real Worker, its keystone-release header replaced, or removed as a Worker older than the header sends it.
+  const serving = (live, release) => async (url, init) => {
+    const res = await toWorker(live)(url, init);
+    if (release === null) res.headers.delete('keystone-release');
+    else if (release) res.headers.set('keystone-release', release);
+    return res;
+  };
+  const stdin = { TANG_KEY_A_1: A.text, TANG_KEY_B_1: B.text };
+  for (const newer of [`${x}.${y}.${z + 1}`, `${x}.${y + 1}.0`, `${x + 1}.0.0`]) {
+    const live = { TANG_KEY_A_1: A.text }, seen = [];
+    let r = await deploy(stdin, ['--new', 'b-1'], { live, fetch: serving(live, newer) });
+    assert.equal(r.code, 1, newer);
+    assert.ok(r.out.includes(`REFUSE  Worker: --url serves keystone ${newer}, this clone is ${version}; update the clone and run npm ci\n`), r.out);
+    r = await deploy(stdin, ['--new', 'b-1', '--apply'], { live, fetch: serving(live, newer), wrangler: cf(live, { seen }) });
+    assert.equal(r.code, 1, newer);
+    assert.equal(seen.length, 0);
+  }
+  for (const release of [before, version, null, undefined]) {
+    const live = { TANG_KEY_A_1: A.text }, seen = [];
+    const r = await deploy(stdin, ['--new', 'b-1', '--apply'], { live, fetch: serving(live, release), wrangler: cf(live, { seen }) });
+    assert.equal(r.code, 0, `${release}: ${r.out}`);
+    assert.equal(seen.length, 1);
+  }
+});
+
 test('deploy --apply fails when the written policy never shows; check fails on a live policy other than the set\'s', async () => {
   const live = { ...VERSION, TANG_KEY_A_1: A.text };
   let r = await deploy({ TANG_KEY_A_1: withPolicy(A, { approvers: ['ops@example.org'] }) }, ['--apply'], { live, wrangler: cf(live, { install: false }) });

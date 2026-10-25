@@ -2,7 +2,7 @@
 // Mint, check, deploy and revoke key sets, whose keys are write-once. deploy and revoke only plan unless given --apply,
 // and nothing is ever deleted except the one set `revoke <name> --apply` names. Private keys reach stdout only from `new`.
 import { spawn } from 'node:child_process';
-import { realpathSync, rmSync } from 'node:fs';
+import { readFileSync, realpathSync, rmSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { constants, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +11,13 @@ import { parseArgs } from 'node:util';
 import { b64u, thumbprint, parseSet, policyTag, secretName, NAME, CURVES } from '../src/jwk.js';
 
 const WRANGLER = fileURLToPath(new URL('../node_modules/.bin/wrangler', import.meta.url));
+const RELEASE = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
+// Whether release a precedes b, compared as x.y.z numbers.
+const older = (a, b) => {
+  const [p, q] = [a, b].map((v) => v.split('.').map(Number));
+  const i = p.findIndex((x, k) => x !== q[k]);
+  return i >= 0 && p[i] < q[i];
+};
 const USAGE = `usage: keyset new [--curve P-256|P-521, default P-521] > set
        keyset check <url> <name> < set
        keyset deploy --url <base> [--new <name>]... [--drop-policy <name>]... [--apply] [-- <wrangler args>] < {"TANG_KEY_<NAME>": set | null, ...}
@@ -156,9 +163,12 @@ async function deploy(argv, io) {
 
   // --url and the wrangler target are named apart, so the target's secrets must agree with what --url serves.
   const listed = o.apply || io.env.CLOUDFLARE_API_TOKEN ? await secrets(io, extra) : null;
+  let newer;
   for (const s of sets) {
     const { name, secret, set, isNew } = s;
     const res = await probe(o.url, name, io).catch(() => null);
+    const release = res?.headers.get('keystone-release');
+    if (release && older(RELEASE, release)) newer = release;
     const held = listed?.has(secret);
     if (res?.status === 404) {
       if (!isNew) say('REFUSE', name, 'absent (never deployed, or revoked); --new only for a freshly minted set');
@@ -174,6 +184,8 @@ async function deploy(argv, io) {
       say('policy', name, set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed');
     } else say('ok', name, 'live and unchanged');
   }
+  // --apply redeploys this clone's code, so it never replaces a newer release; a Worker sending none predates the header.
+  if (newer) say('REFUSE', 'Worker', `--url serves keystone ${newer}, this clone is ${RELEASE}; update the clone and run npm ci`);
   // A policy write redeploys the Worker; it goes ahead only over the one version --url is seen serving.
   const writes = sets.filter((s) => s.policy);
   if (writes.length && (o.apply || io.env.CLOUDFLARE_API_TOKEN)) {

@@ -5,6 +5,7 @@ import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
 import { approveKey, send, verify, when, GRANT } from './gate.js';
 import { AUTH_CSS } from './auth-css.js';
 import { bounded } from './bounded.js';
+import pkg from '../package.json' with { type: 'json' };
 
 export { Gate } from './gate.js';
 
@@ -50,7 +51,7 @@ function load(raw, secret) {
   return prepared.get(raw);
 }
 
-// keyset's header: only then does an adv carry the version and policy headers, and a gated rec refuses a miss quietly.
+// keyset's header: only then does an adv carry its keystone-* headers, and a gated rec refuses a miss quietly.
 const probed = (request) => request.headers.get('keystone-probe') === '1';
 
 const reply = (status, body, type = 'text/plain') =>
@@ -387,6 +388,7 @@ export default {
       if (!res) return reply(404, 'no such key\n');
       if (probed(request)) {
         if (env.CF_VERSION_METADATA?.id) res.headers.set('keystone-version', env.CF_VERSION_METADATA.id);
+        res.headers.set('keystone-release', pkg.version);
         const tag = await (set.tag ??= policyTag({ ...set, exch: set.exch.jwk }));
         if (tag) res.headers.set('keystone-policy', tag);
         if ((set.gated && !env.GATE) || (set.approvers && !gateBound(env))) res.headers.set('keystone-gate', 'unavailable');

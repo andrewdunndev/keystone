@@ -134,6 +134,7 @@ mutant "no MIME-Version header" "s/'MIME-Version: 1.0'/'X-V: 1'/" src/gate.js
 mutant "alerts on without the binding" 's/env.UNLOCKS \&\& env.ALERT \&\& /env.UNLOCKS \&\& /'
 mutant "adv headers without the probe" 's/      if (probed(request)) {/      if (true) {/'
 mutant "no version header" "/res.headers.set('keystone-version'/d"
+mutant "no release header" "/res.headers.set('keystone-release'/d"
 mutant "no policy header" "/if (tag) res.headers.set('keystone-policy', tag);/d"
 mutant "origin check skipped" 's/      if (set.gated \&\& unadmittable(ip, request.cf?.asn)) return refuse/      if (false) return refuse/'
 mutant "admission skipped" 's/        const why = await admit(set, name, ip, request, env);/        const why = null;/'
@@ -292,6 +293,9 @@ mutant "check skips the signature verification" 's/if (!await crypto.subtle.veri
 mutant "a policy drop covers every set" "s/!set.tag \&\& !drops.has(name))/!set.tag \&\& !drops.size)/" bin/keyset.mjs
 mutant "a policy drop is not checked by name" "s/ \&\& !drops.has(name))/)/" bin/keyset.mjs
 mutant "a policy strip is reported as a write" "s/set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed'/'keys unchanged, policy will be written'/" bin/keyset.mjs
+mutant "deploy over a newer release" 's/  if (newer) say(/  if (false) say(/' $k
+mutant "a release compared by its major alone" 's/const i = p.findIndex((x, k) => x !== q\[k\]);/const i = 0;/' $k
+mutant "an older release refuses" 's/return i >= 0 \&\& p\[i\] < q\[i\];/return i >= 0 \&\& p[i] > q[i];/' $k
 mutant "check passes an unbound Gate" "/=== 'unavailable') throw new Error/d" $k
 mutant "check accepts an adv carrying a private key" "s/if (keys.some((k) => 'd' in k)) return null;//" $k
 mutant "rec proof compares against S, not ECDH(r, S)" 's/if (got !== want)/if (got !== set.exch.x)/' $k

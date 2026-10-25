@@ -1,5 +1,6 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { p256, p521 } from '@noble/curves/nist.js';
 import worker, { resetAlertState } from '../src/index.js';
 import { sourceNet } from '../src/origin.js';
@@ -76,6 +77,13 @@ eachCurve('a changed key secret is served at once, never the previous key set', 
   assert.equal((await rec('lab', fx.kid, fx.client, e)).status, 404);
   assert.equal((await rec('lab', await thumbprint(fresh), fx.client, e)).status, 200);
   assert.equal((await rec('lab', fx.kid, fx.client)).status, 200);
+});
+
+test('a probed adv names the release in package.json; an unprobed one does not', async () => {
+  const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url)));
+  assert.match(version, /^\d+\.\d+\.\d+$/);
+  assert.equal((await call('/lab/adv', { headers: { 'keystone-probe': '1' } })).headers.get('keystone-release'), version);
+  assert.equal((await call('/lab/adv')).headers.get('keystone-release'), null);
 });
 
 eachCurve('adv/<thp> answers for the signing key thumbprint alone; any other thp is 404', async () => {
