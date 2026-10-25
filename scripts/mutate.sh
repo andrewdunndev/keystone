@@ -117,7 +117,7 @@ mutant "digest mails an already seen source" 's/if (await env.UNLOCKS.get(seenKe
 mutant "digest forgets the held queue" 's/    await env.UNLOCKS.delete(v.name);//'
 mutant "failed send is not held for the digest" 's/      await hold().catch(() => {});//'
 mutant "digest list unbounded" 's/, limit: DIGEST_MAX//'
-mutant "cron skips the version check" '/  await versionChange(env);/d'
+mutant "cron skips the version check" 's/Promise.allSettled(\[versionChange(env), /Promise.allSettled([null, /'
 mutant "an unchanged version mails every run" '/  if (last?.id === id) return;/d'
 mutant "a rollback mailed as a deploy" 's/const back = timestamp < last.timestamp;/const back = false;/'
 mutant "held writes uncapped" 's/    if (c.n >= HELD_CAP) return;//'
@@ -157,7 +157,7 @@ mutant "an ungated set's adv reports an unbound GATE" "s/if ((set.gated \&\& !en
 mutant "check names ALERT for an allow-only set" "s/: 'gate unavailable: bind GATE'}/: 'approvals unavailable: bind GATE, ALERT and ALERT_FROM'}/" bin/keyset.mjs
 mutant "an ungated set's adv reports the Gate" "s/|| (set.approvers \&\& !gateBound(env))/|| (!gateBound(env))/"
 mutant "Gate answers not cached" 's/  if ((answered.get(at)?.until ?? 0) > now)/  if (false)/'
-mutant "capped answers cached per set" "s/answered.set(at,/answered.set(why === 'capped' ? name : at,/; s/  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;/  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;/"
+mutant "capped answers cached per set" "s/bounded(answered, SEEN_MAX).set(at,/bounded(answered, SEEN_MAX).set(why === 'capped' ? name : at,/; s/  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;/  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;/"
 mutant "answers cached for a minute" 's/const ANSWER_TTL = 5000;/const ANSWER_TTL = 60000;/'
 mutant "a decision leaves the cached answer" '/  answered.delete(`${name} ${t.o}`);/d'
 mutant "a grant refused" "s/  if (why === 'served') return null;/  if (false) return null;/"
