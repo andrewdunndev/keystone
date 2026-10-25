@@ -523,12 +523,12 @@ test('the cron digest skips held sources already seen and keeps held ones when t
     assert.equal(fm.calls.length, 0);
     assert.ok(!e.UNLOCKS.m.has('held:host1:192.0.2.0/24:1:US'));
   } finally { fm.restore(); }
-  await e.UNLOCKS.put('held:host1:192.0.3.0/24:1:US', JSON.stringify({ host: 'host1', net: '192.0.3.0/24', asn: 1, country: 'US', time: 't' }));
+  await e.UNLOCKS.put('held:host1:198.51.100.0/24:1:US', JSON.stringify({ host: 'host1', net: '198.51.100.0/24', asn: 1, country: 'US', time: 't' }));
   fm = mailer({ fail: true });
   try {
     await assert.rejects(worker.scheduled({}, e));
-    assert.ok(e.UNLOCKS.m.has('held:host1:192.0.3.0/24:1:US'));
-    assert.ok(!e.UNLOCKS.m.has('seen:host1:192.0.3.0/24:1:US'));
+    assert.ok(e.UNLOCKS.m.has('held:host1:198.51.100.0/24:1:US'));
+    assert.ok(!e.UNLOCKS.m.has('seen:host1:198.51.100.0/24:1:US'));
   } finally { fm.restore(); }
 });
 
@@ -537,7 +537,7 @@ test('a failed version mail does not hold back the digest of held sources, and t
   const fm = mailer();
   try {
     await worker.scheduled({}, e);
-    await e.UNLOCKS.put('held:host1:192.0.3.0/24:1:US', JSON.stringify({ host: 'host1', net: '192.0.3.0/24', asn: 1, country: 'US', time: 't' }));
+    await e.UNLOCKS.put('held:host1:198.51.100.0/24:1:US', JSON.stringify({ host: 'host1', net: '198.51.100.0/24', asn: 1, country: 'US', time: 't' }));
     Object.assign(e, { CF_VERSION_METADATA: { id: 'v3', timestamp: '2026-10-03T00:00:00Z', tag: '' } });
     current = async (msg) => {
       fm.calls.push(msg);
@@ -545,7 +545,7 @@ test('a failed version mail does not hold back the digest of held sources, and t
     };
     await assert.rejects(worker.scheduled({}, e));
     assert.equal(fm.calls.length, 2);
-    assert.ok(!e.UNLOCKS.m.has('held:host1:192.0.3.0/24:1:US'));
+    assert.ok(!e.UNLOCKS.m.has('held:host1:198.51.100.0/24:1:US'));
   } finally { fm.restore(); }
 });
 
