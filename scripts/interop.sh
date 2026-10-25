@@ -1,29 +1,32 @@
 #!/bin/bash
-# clevis interop against `wrangler dev` with sets minted by keyset (a-1 on P-521, b-1 on P-256), then revocation. Run
-# from the repo root after npm ci, with tang, clevis, jose and curl, on deploy/wrangler.toml (copied from the example when
-# absent), so the bindings are the shipped ones. `interop.sh luks` adds, as root in a throwaway
-# container with clevis-luks, cryptsetup, socat and python3, a cross-check with stock tangd on the same keys and a LUKS2
-# bind and unlock.
+# clevis interop against `wrangler dev` with sets minted by keyset (a-1 on P-521, b-1 on P-256), then revocation, then
+# the origin gate over https: clevis held, approved from the local mail, then decrypting. Run from the repo root after
+# npm ci, with tang, clevis, jose and curl, on deploy/wrangler.toml (copied from the example when absent), so the bindings
+# are the shipped ones. `interop.sh luks` adds, as root in a throwaway container with clevis-luks, cryptsetup, socat and
+# python3, a cross-check with stock tangd on the same keys and a LUKS2 bind and unlock.
 set -u
 luks=${1:-}
 W=http://127.0.0.1:8787 T=http://127.0.0.1:8788
-cfg=deploy/wrangler.toml vars=deploy/.dev.vars copied=
-[ -e $vars ] && { echo "$vars exists; move it aside first"; exit 1; }
+cfg=deploy/wrangler.toml gcfg=deploy/wrangler.gate.toml vars=deploy/.dev.vars copied=
+for f in $vars $gcfg; do [ -e $f ] && { echo "$f exists; move it aside first"; exit 1; }; done
 [ -e $cfg ] || { cp deploy/wrangler.toml.example $cfg; copied=1; }
 curl -s -o /dev/null $W/ && { echo "$W is taken"; exit 1; }
 work=$(mktemp -d) pid=
 # wrangler dev runs as its own process group, workerd included; only that group is stopped.
 stop() { [ -n "$pid" ] && kill -- -"$pid" 2>/dev/null && wait "$pid" 2>/dev/null; pid=; }
-trap 'stop; rm -f $vars; [ -n "$copied" ] && rm -f $cfg; rm -rf "$work"' EXIT
+trap 'stop; rm -f $vars $gcfg; [ -n "$copied" ] && rm -f $cfg; rm -rf "$work"' EXIT
 keyset() { node bin/keyset.mjs "$@"; }
 keyset new > "$work/a-1.json" 2> "$work/a-1.thp"
 keyset new --curve P-256 > "$work/b-1.json" 2> "$work/b-1.thp"
 devvars() { for n in "$@"; do echo "TANG_KEY_$(echo $n | tr a-z- A-Z_)='$(cat "$work/$n.json")'"; done > $vars; }
+# worker [config] [http|https]
 worker() {
   stop; sleep 1
-  WRANGLER_SEND_METRICS=false setsid nohup node_modules/.bin/wrangler dev --config $cfg --port 8787 --ip 127.0.0.1 > "$work/wrangler.log" 2>&1 < /dev/null &
+  WRANGLER_SEND_METRICS=false setsid nohup node_modules/.bin/wrangler dev --config "${1:-$cfg}" --port 8787 --ip 127.0.0.1 \
+    --local-protocol "${2:-http}" --persist-to "$work/state" > "$work/wrangler.log" 2>&1 < /dev/null &
   pid=$!
-  for _ in $(seq 60); do curl -s -o /dev/null $W/ && return; sleep 1; done; echo "wrangler dev did not start"; tail -5 "$work/wrangler.log"; exit 1
+  for _ in $(seq 60); do curl -sk -o /dev/null "${2:-http}://127.0.0.1:8787/" && return; sleep 1; done
+  echo "wrangler dev did not start"; tail -5 "$work/wrangler.log"; exit 1
 }
 tangd() { setsid socat TCP-LISTEN:8788,reuseaddr,fork,bind=127.0.0.1 EXEC:"/usr/libexec/tangd $work/tangd" </dev/null >/dev/null 2>&1 & sleep 0.5; }
 thp() { curl -s "$1/adv" | jose fmt -j- -g payload -y -o- | jose fmt -j- -g keys -A -g 0 -o- | jose jwk thp -i-; }
@@ -89,6 +92,37 @@ if [ "$luks" = luks ]; then
   cryptsetup close ks-restored 2>/dev/null
   losetup -d "$vol"
 fi
+
+echo "== origin gate over https: clevis held, approved from the mailed link, then decrypting"
+# The example config with ALERT and ALERT_FROM bound; ALERT_TO stays unset, so the only mail is the approval.
+sed -e 's/^# \[\[send_email\]\]$/[[send_email]]/' -e 's/^# name = "ALERT"$/name = "ALERT"/' -e 's/^# \[vars\]$/[vars]/' \
+  -e 's/^# ALERT_FROM = /ALERT_FROM = /' $cfg > $gcfg
+ok "gate config binds ALERT and ALERT_FROM" 2 "$(grep -cE '^(name = "ALERT"|ALERT_FROM = )' $gcfg)"
+keyset new 2> "$work/g-1.thp" | node -e 'const s = JSON.parse(require("fs").readFileSync(0));
+  console.log(JSON.stringify({ ...s, allow: ["192.0.2.0/24"], approvers: ["ops@example.org"] }))' > "$work/g-1.json"
+devvars g-1; worker $gcfg https
+G=https://127.0.0.1:8787
+# clevis's curl trusts the dev server's self-signed certificate, issued for 127.0.0.1, through CURL_CA_BUNDLE.
+node -e 'const s = require("tls").connect(8787, "127.0.0.1", { rejectUnauthorized: false }, () => {
+  const b64 = s.getPeerCertificate().raw.toString("base64").match(/.{1,64}/g).join("\n");
+  console.log(`-----BEGIN CERTIFICATE-----\n${b64}\n-----END CERTIFICATE-----`); s.end(); })' > "$work/dev.pem"
+export CURL_CA_BUNDLE="$work/dev.pem"
+echo -n "secret g-1" | clevis encrypt tang "{\"url\":\"$G/g-1\",\"thp\":\"$(cat "$work/g-1.thp")\"}" > "$work/g-1.jwe"
+ok "clevis encrypt g-1" 0 "$?"
+# A booting host: clevis retries until the approval lands or a minute passes.
+( for _ in $(seq 30); do clevis decrypt < "$work/g-1.jwe" > "$work/g-1.out" 2>/dev/null && exit 0; sleep 2; done; exit 1 ) &
+boot=$!
+mail=
+for _ in $(seq 30); do mail=$(grep -o '/[^ ]*\.eml' "$work/wrangler.log" | tail -1); [ -n "$mail" ] && break; sleep 1; done
+ok "the held rec mailed the approver" yes "$(runs test -s "$mail")"
+ok "g-1 held" yes "$(runs grep -q '"event":"held","name":"g-1"' "$work/wrangler.log")"
+ok "clevis decrypt g-1 before approval" no "$(runs test -s "$work/g-1.out")"
+link=$(grep -o 'https://[^ ]*/g-1/approve/[^ ]*' "$mail" 2>/dev/null | tr -d '\r')
+ap=$G/${link#https://*/}
+ok "approval page" 200 "$(code "$ap")"
+ok "approve with the typed name" 200 "$(code -H "Origin: $G" --data 'decision=approve&confirm=g-1' "$ap")"
+wait $boot
+ok "clevis decrypt g-1 after approval" "secret g-1" "$(cat "$work/g-1.out")"
 
 echo "failures: $fails"
 [ "$fails" -eq 0 ]

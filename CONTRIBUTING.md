@@ -15,7 +15,7 @@ npm run mutate
 
 `npm run mutate` applies sed mutants to `src/` and `bin/`. Every mutant must fail the suite, and the run must report `survived: 0`.
 
-The interop job runs `keyset` and clevis against `wrangler dev`, then revocation:
+The interop job runs `keyset` and clevis against `wrangler dev`, then revocation, then a gated set held, approved from the local mail and decrypted:
 
 ```sh
 dnf -y install tang jose clevis curl procps-ng util-linux-core nodejs npm

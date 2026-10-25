@@ -18,8 +18,8 @@ revokes its key sets.
 - `test/keyset.test.js`: keyset against the real Worker through an injected fetch, wrangler faked.
 - `test/gate.test.js`: the origin gate, the Gate on a Map-backed storage, approval and mail.
 - `scripts/mutate.sh`: sed mutants of `src/` and `bin/`; each must apply and fail the suite.
-- `scripts/interop.sh`: keyset and stock clevis against `wrangler dev`, then revocation; `luks` adds, as root, a tangd
-  cross-check and a LUKS2 bind and unlock.
+- `scripts/interop.sh`: keyset and stock clevis against `wrangler dev`, then revocation, then the origin gate; `luks`
+  adds, as root, a tangd cross-check and a LUKS2 bind and unlock.
 
 ## Rules
 
