@@ -1,14 +1,13 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import worker, { resetAlertState } from '../src/index.js';
 import { derivedKey, parseSet, policyTag } from '../src/jwk.js';
 import { format, parseCidr, parseIp, unadmittable } from '../src/origin.js';
 import { Gate, approveKey, sign } from '../src/gate.js';
+import { FX, setOf, kv, rec as recover, until } from './helpers.mjs';
 
-const FX = JSON.parse(readFileSync(new URL('./tangd-fixture.json', import.meta.url)));
 const fx = FX['P-256'];
-const setText = (extra = {}) => JSON.stringify({ keys: [fx.sig, fx.exch], ...extra });
+const setText = (extra) => setOf(fx, extra);
 const APPROVERS = ['ops@example.org', 'oncall@example.org'];
 const call = (path, init = {}, e = {}) => worker.fetch(new Request('http://w' + path, init), e, { waitUntil() {} });
 const logged = [];
@@ -16,30 +15,13 @@ console.log = (line) => logged.push(JSON.parse(line));
 const errors = [];
 console.error = (...a) => errors.push(a.join(' '));
 
-const kv = () => {
-  const m = new Map();
-  return {
-    m, get: async (k) => m.get(k) ?? null, put: async (k, v) => void m.set(k, v), delete: async (k) => void m.delete(k),
-    list: async ({ prefix }) => ({ keys: [...m.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }),
-  };
-};
 let sent = [];
 const subjects = () => sent.map((m) => m.raw.match(/^Subject: (.*)$/m)[1]);
 const alerting = () => ({ UNLOCKS: kv(), ALERT: { send: async (m) => { sent.push(m); } }, ALERT_FROM: 'keystone@example.org', ALERT_TO: 'me@example.org' });
 // A fresh isolate: alert state, logs and mail cleared.
 const fresh = (e) => { resetAlertState(); logged.length = 0; errors.length = 0; sent = []; return e; };
 
-async function rec(e, name, { ip, asn = 64500, headers = {}, body = fx.client, cf = {}, base = 'https://tang.example.org' } = {}) {
-  const pending = [];
-  const req = new Request(`${base}/${name}/rec/${fx.kid}`, {
-    method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body),
-    headers: { 'content-type': 'application/jwk+json', ...(ip && { 'CF-Connecting-IP': ip }), ...headers },
-  });
-  Object.defineProperty(req, 'cf', { value: { asn, country: 'US', ...cf } });
-  const r = await worker.fetch(req, e, { waitUntil: (p) => pending.push(p) });
-  await Promise.all(pending);
-  return r;
-}
+const rec = (e, name, o = {}) => recover(e, name, { fx, ...o });
 // Counts ECDH derivations, the only use of a set's exchange key.
 function spyDerive() {
   const subtle = crypto.subtle, real = subtle.deriveBits, spy = { n: 0 };
@@ -336,6 +318,18 @@ test('an approval in a pending\'s last minutes still grants the full 10 minutes'
   assert.equal(pending(e, NET).state, 'approved');
 }));
 
+test('an approval link on a Worker whose GATE is unbound answers 503 and decides nothing', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  const path = await link(e, NET);
+  e.GATE = undefined;
+  assert.equal((await open(e, path)).status, 503);
+  const r = await post(e, path, { decision: 'approve', confirm: 'ask' });
+  assert.equal(r.status, 503);
+  assert.match(await r.text(), /Approvals are unavailable/);
+  assert.equal(pending(e, NET).state, 'open');
+}));
+
 test('a decided or replaced pending answers 409, an expired token 410; deny holds, and approve still works after it', withClock(async () => {
   const e = gateEnv();
   await rec(e, 'ask', { ip: HOME });
@@ -476,9 +470,10 @@ test('a Gate call that never answers is refused as unavailable, not left hanging
   mock.timers.enable({ apis: ['setTimeout', 'Date'], now: T0 });
   try {
     const e = gateEnv();
-    e.GATE = { idFromName: () => 'gate', get: () => ({ miss: () => new Promise(() => {}) }) };
+    let asked = false;
+    e.GATE = { idFromName: () => 'gate', get: () => ({ miss: () => { asked = true; return new Promise(() => {}); } }) };
     const pending = rec(e, 'ask', { ip: HOME });
-    await new Promise((r) => setImmediate(r));
+    await until(() => asked);
     mock.timers.tick(60000);
     await refusedReply(await pending);
     assert.match(errors[0], /^ask: approvals unavailable, refusing new origins: /);
@@ -675,7 +670,7 @@ test('a send that times out keeps its unit of the hourly cap, since it may yet b
   const e = mailTo(gateEnv(), () => { calls++; return new Promise(() => {}); });
   const held = rec(e, 'ask', { ip: HOME });
   for (const n of [1, 2]) {
-    for (let i = 0; calls < n && i < 1000; i++) await new Promise(setImmediate);
+    await until(() => calls >= n);
     mock.timers.tick(10000);
   }
   await held;

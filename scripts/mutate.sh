@@ -117,6 +117,9 @@ mutant "digest mails an already seen source" 's/if (await env.UNLOCKS.get(seenKe
 mutant "digest forgets the held queue" 's/    await env.UNLOCKS.delete(v.name);//'
 mutant "failed send is not held for the digest" 's/      await hold().catch(() => {});//'
 mutant "digest list unbounded" 's/, limit: DIGEST_MAX//'
+mutant "cron skips the version check" 's/Promise.allSettled(\[versionChange(env), /Promise.allSettled([null, /'
+mutant "an unchanged version mails every run" '/  if (last?.id === id) return;/d'
+mutant "a rollback mailed as a deploy" 's/const back = timestamp < last.timestamp;/const back = false;/'
 mutant "held writes uncapped" 's/    if (c.n >= HELD_CAP) return;//'
 mutant "mail claims an unlock" 's/received a recovery request/was unlocked/'
 mutant "alert failure escapes to the response path" 's/\.catch((e) => console.error(.unlock alert failed:., e.message))//'
@@ -134,6 +137,7 @@ mutant "no MIME-Version header" "s/'MIME-Version: 1.0'/'X-V: 1'/" src/gate.js
 mutant "alerts on without the binding" 's/env.UNLOCKS \&\& env.ALERT \&\& /env.UNLOCKS \&\& /'
 mutant "adv headers without the probe" 's/      if (probed(request)) {/      if (true) {/'
 mutant "no version header" "/res.headers.set('keystone-version'/d"
+mutant "no release header" "/res.headers.set('keystone-release'/d"
 mutant "no policy header" "/if (tag) res.headers.set('keystone-policy', tag);/d"
 mutant "origin check skipped" 's/      if (set.gated \&\& unadmittable(ip, request.cf?.asn)) return refuse/      if (false) return refuse/'
 mutant "admission skipped" 's/        const why = await admit(set, name, ip, request, env);/        const why = null;/'
@@ -153,7 +157,7 @@ mutant "an ungated set's adv reports an unbound GATE" "s/if ((set.gated \&\& !en
 mutant "check names ALERT for an allow-only set" "s/: 'gate unavailable: bind GATE'}/: 'approvals unavailable: bind GATE, ALERT and ALERT_FROM'}/" bin/keyset.mjs
 mutant "an ungated set's adv reports the Gate" "s/|| (set.approvers \&\& !gateBound(env))/|| (!gateBound(env))/"
 mutant "Gate answers not cached" 's/  if ((answered.get(at)?.until ?? 0) > now)/  if (false)/'
-mutant "capped answers cached per set" "s/answered.set(at,/answered.set(why === 'capped' ? name : at,/; s/  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;/  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;/"
+mutant "capped answers cached per set" "s/bounded(answered, SEEN_MAX).set(at,/bounded(answered, SEEN_MAX).set(why === 'capped' ? name : at,/; s/  if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;/  for (const k of [at, name]) if ((answered.get(k)?.until ?? 0) > now) return answered.get(k).why;/"
 mutant "answers cached for a minute" 's/const ANSWER_TTL = 5000;/const ANSWER_TTL = 60000;/'
 mutant "a decision leaves the cached answer" '/  answered.delete(`${name} ${t.o}`);/d'
 mutant "a grant refused" "s/  if (why === 'served') return null;/  if (false) return null;/"
@@ -163,6 +167,7 @@ mutant "a POST from anywhere decides" "s/  if (request.headers.get('Origin') !==
 mutant "any method decides" "s/if (request.method !== 'GET' \&\& request.method !== 'POST') return reply(405/if (false) return reply(405/"
 mutant "the approval page over http" "s|  if (new URL(request.url).protocol !== 'https:') return reply(403|  if (false) return reply(403|"
 mutant "links follow the request scheme and port" 's|base: `https://${new URL(request.url).hostname}`,|base: new URL(request.url).origin,|'
+mutant "an approval link decides without a bound GATE" 's/if (!env.GATE) return page(503/if (false) return page(503/'
 mutant "a removed approver's link works" 's/if (!t || !set.approvers.includes(t.a)) return/if (!t) return/'
 mutant "an unexpected Gate answer admits" "/  if (!\['held', 'denied', 'capped'\].includes(why)) return closed/d"
 mutant "an origin refusal advises allow" "s/(refused === 'origin'/(false/"
@@ -179,8 +184,10 @@ mutant "a denied origin reopened" "s/      if (p.state === 'denied') return 'den
 mutant "a held origin reopened" "s/      if (p.state === 'open') {/      if (false) {/" $g
 mutant "a grant never ends" "s/      if (p.grantUntil > now) return 'served';/      if (p.grantUntil) return 'served';/" $g
 mutant "a grant live at its end" 's/if (p.grantUntil > now)/if (p.grantUntil >= now)/' $g
+mutant "a bounded cache cleared one entry late" 's/cache.size >= max/cache.size > max/' src/bounded.js
+mutant "a bounded cache never cleared" '/cache.clear();/d' src/bounded.js
 mutant "a grant of 11 minutes" 's/export const GRANT = 10 \* 60 \* 1000;/export const GRANT = 11 * 60 * 1000;/' $g
-mutant "a pending lives 13 hours" 's/export const PENDING_TTL = 12 \* 3600 \* 1000;/export const PENDING_TTL = 13 * 3600 * 1000;/' $g
+mutant "a pending lives 13 hours" 's/^const PENDING_TTL = 12 \* 3600 \* 1000;/const PENDING_TTL = 13 * 3600 * 1000;/' $g
 mutant "an expired pending kept" 's/    if (p?.expires > now) {/    if (p) {/' $g
 mutant "4 open pendings per set" 's/const OPEN_MAX = 3;/const OPEN_MAX = 4;/' $g
 mutant "decided pendings count toward the cap" "s/.filter((\[, p\]) => p.state === 'open' \&\& p.expires > now)/.filter(([, p]) => p.expires > now)/" $g
@@ -289,6 +296,14 @@ mutant "check skips the signature verification" 's/if (!await crypto.subtle.veri
 mutant "a policy drop covers every set" "s/!set.tag \&\& !drops.has(name))/!set.tag \&\& !drops.size)/" bin/keyset.mjs
 mutant "a policy drop is not checked by name" "s/ \&\& !drops.has(name))/)/" bin/keyset.mjs
 mutant "a policy strip is reported as a write" "s/set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed'/'keys unchanged, policy will be written'/" bin/keyset.mjs
+mutant "deploy over a newer release" 's/  if (newer) say(/  if (false) say(/' $k
+mutant "a release compared by its major alone" 's/const i = p.findIndex((x, k) => x !== q\[k\]);/const i = 0;/' $k
+mutant "an older release refuses" 's/return i >= 0 \&\& p\[i\] < q\[i\];/return i >= 0 \&\& p[i] > q[i];/' $k
+mutant "releases compared as strings" 's/return i >= 0 \&\& p\[i\] < q\[i\];/return a < b;/' $k
+mutant "a failed version mail is swallowed" "s/    if (a.status === 'rejected') throw a.reason;//"
+mutant "the digest is skipped" 's/, sendDigest(env)\]/, Promise.resolve({})]/'
+mutant "a probe of an absent set sends no release" 's/  if (probed(request)) res.headers.set(.keystone-release., pkg.version);//'
+mutant "a tombstone is checked without its release" '/{ name, secret } of tombs) {/{n;n;d;}' $k
 mutant "check passes an unbound Gate" "/=== 'unavailable') throw new Error/d" $k
 mutant "check accepts an adv carrying a private key" "s/if (keys.some((k) => 'd' in k)) return null;//" $k
 mutant "rec proof compares against S, not ECDH(r, S)" 's/if (got !== want)/if (got !== set.exch.x)/' $k

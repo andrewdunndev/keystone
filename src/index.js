@@ -2,8 +2,10 @@
 // One write-once key set per name: /<name>/adv, /<name>/adv/<thp>, /<name>/rec/<kid>, /<name>/approve/<token>.
 import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
 import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
-import { approveKey, send, verify, GRANT } from './gate.js';
+import { approveKey, send, verify, when, GRANT } from './gate.js';
 import { AUTH_CSS } from './auth-css.js';
+import { bounded } from './bounded.js';
+import pkg from '../package.json' with { type: 'json' };
 
 export { Gate } from './gate.js';
 
@@ -12,7 +14,7 @@ const enc = new TextEncoder();
 const coordCap = (coord) => Math.ceil((coord * 2 * 4) / 3);
 const MAX_BODY = 4096;
 
-const toBig = (b) => BigInt('0x' + ([...b].map((x) => x.toString(16).padStart(2, '0')).join('') || '0'));
+const toBig = (b) => BigInt('0x' + [...b].map((x) => x.toString(16).padStart(2, '0')).join(''));
 const hex = (n, coord) => n.toString(16).padStart(coord * 2, '0');
 const fromHex = (h) => Uint8Array.from(h.match(/../g), (x) => parseInt(x, 16));
 const field = (p) => {
@@ -49,11 +51,18 @@ function load(raw, secret) {
   return prepared.get(raw);
 }
 
-// keyset's header: only then does an adv carry the version and policy headers, and a gated rec refuses a miss quietly.
+// keyset's header: only then does an adv carry its keystone-* headers, and a gated rec refuses a miss quietly.
 const probed = (request) => request.headers.get('keystone-probe') === '1';
 
 const reply = (status, body, type = 'text/plain') =>
   new Response(body, { status, headers: { 'content-type': type, 'cache-control': 'no-store' } });
+
+// A probe learns the release even from an adv that is absent.
+const absent = (request, why) => {
+  const res = reply(404, why);
+  if (probed(request)) res.headers.set('keystone-release', pkg.version);
+  return res;
+};
 
 async function advert(set, thp) {
   if (thp && !(await kidMatches(set.sign.jwk, thp, set.sign.kids))) return null;
@@ -159,10 +168,7 @@ export function resetAlertState() {
 
 const sendMail = (env, subject, text) => send(env, env.ALERT_TO, subject, text);
 
-function add(set, k) {
-  if (set.size >= SEEN_MAX) set.clear();
-  set.add(k);
-}
+const add = (set, k) => bounded(set, SEEN_MAX).add(k);
 
 // A recovery request from a (/24 or /48, ASN, country) not seen before mails once per set per cooldown. The kid is
 // public, so a request proves nothing about an unlock. Sources met during the cooldown or while a mail is in flight are
@@ -243,13 +249,29 @@ async function sendDigest(env) {
   }
 }
 
+// Mails once when another Worker version serves the cron trigger. One uploaded before the last seen is a rollback.
+async function versionChange(env) {
+  const { id, timestamp } = env.CF_VERSION_METADATA ?? {};
+  if (!id) return;
+  const last = JSON.parse(await env.UNLOCKS.get('serving') ?? 'null');
+  if (last?.id === id) return;
+  if (last) {
+    const back = timestamp < last.timestamp;
+    await sendMail(env, back ? 'keystone: rolled back to an earlier Worker version' : 'keystone: a new Worker version is serving',
+      `Worker version ${id}, uploaded ${timestamp}, serves in place of ${last.id}, uploaded ${last.timestamp}.\n\n` + (back
+        ? 'A version serves the secrets it was deployed with, so a set revoked or a policy edited since is live again. ' +
+          'Plan keyset deploy over the whole key store to see which; --apply redeploys from the current secrets.\n'
+        : 'If you did not deploy it, check the Worker\'s deployments in Cloudflare.\n'));
+  }
+  await env.UNLOCKS.put('serving', JSON.stringify({ id, timestamp }));
+}
+
 const PAGE_HEADERS = {
   'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin',
   'x-content-type-options': 'nosniff',
   'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
 };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 const MARK = '<svg viewBox="0 0 64 64" aria-hidden="true"><g stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
   '<path d="M8 45 A24 24 0 0 1 27.01 21.52" stroke-width="2"/><path d="M36.99 21.52 A24 24 0 0 1 56 45" stroke-width="2"/>' +
   '<path d="M18 45 A14 14 0 0 1 29.09 31.31" stroke-width="2"/><path d="M34.91 31.31 A14 14 0 0 1 46 45" stroke-width="2"/>' +
@@ -347,8 +369,7 @@ async function admit(set, name, ip, request, env) {
   } catch (e) { return closed(name, e.message); } finally { clearTimeout(timer); }
   if (why === 'served') return null;
   if (!['held', 'denied', 'capped'].includes(why)) return closed(name, `unexpected Gate answer ${clip(why)}`);
-  if (answered.size >= SEEN_MAX) answered.clear();
-  answered.set(at, { why, until: now + ANSWER_TTL });
+  bounded(answered, SEEN_MAX).set(at, { why, until: now + ANSWER_TTL });
   return why;
 }
 
@@ -365,8 +386,7 @@ function refuse(request, env, ctx, name, why) {
   const ip = request.headers.get('CF-Connecting-IP');
   const key = `${name}:${sourceNet(ip) ?? ip}`;
   if (why !== 'held' && (loggedAt.get(key) ?? 0) <= Date.now()) {
-    if (loggedAt.size >= SEEN_MAX) loggedAt.clear();
-    loggedAt.set(key, Date.now() + 60000);
+    bounded(loggedAt, SEEN_MAX).set(key, Date.now() + 60000);
     const { asn = null, country = null } = request.cf ?? {};
     console.log(JSON.stringify({ event: 'refused', name, ip, asn, country, why }));
   }
@@ -383,15 +403,16 @@ export default {
     const [name, op, arg] = seg;
     if (!name || !NAME.test(name) || seg.length > 3) return reply(404, 'not found\n');
     const secret = secretName(name), raw = env[secret];
-    if (!raw) return reply(404, 'unknown key set\n');
+    if (!raw) return op === 'adv' ? absent(request, 'unknown key set\n') : reply(404, 'unknown key set\n');
     const set = load(raw, secret);
     if (!set) return reply(500, 'unreadable key set\n');
     if (op === 'adv') {
       if (request.method !== 'GET') return reply(405, 'method not allowed\n');
       const res = await advert(set, arg);
-      if (!res) return reply(404, 'no such key\n');
+      if (!res) return absent(request, 'no such key\n');
       if (probed(request)) {
         if (env.CF_VERSION_METADATA?.id) res.headers.set('keystone-version', env.CF_VERSION_METADATA.id);
+        res.headers.set('keystone-release', pkg.version);
         const tag = await (set.tag ??= policyTag({ ...set, exch: set.exch.jwk }));
         if (tag) res.headers.set('keystone-policy', tag);
         if ((set.gated && !env.GATE) || (set.approvers && !gateBound(env))) res.headers.set('keystone-gate', 'unavailable');
@@ -422,6 +443,10 @@ export default {
     return reply(404, 'not found\n');
   },
   async scheduled(event, env) {
-    if (alertsOn(env)) await sendDigest(env);
+    if (!alertsOn(env)) return;
+    const [a, b] = await Promise.allSettled([versionChange(env), sendDigest(env)]);
+    if (a.status === 'rejected' && b.status === 'rejected') console.error('digest failed:', b.reason.message);
+    if (a.status === 'rejected') throw a.reason;
+    if (b.status === 'rejected') throw b.reason;
   },
 };

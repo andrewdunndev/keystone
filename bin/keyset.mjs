@@ -2,7 +2,7 @@
 // Mint, check, deploy and revoke key sets, whose keys are write-once. deploy and revoke only plan unless given --apply,
 // and nothing is ever deleted except the one set `revoke <name> --apply` names. Private keys reach stdout only from `new`.
 import { spawn } from 'node:child_process';
-import { realpathSync, rmSync } from 'node:fs';
+import { readFileSync, realpathSync, rmSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { constants, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +11,13 @@ import { parseArgs } from 'node:util';
 import { b64u, thumbprint, parseSet, policyTag, secretName, NAME, CURVES } from '../src/jwk.js';
 
 const WRANGLER = fileURLToPath(new URL('../node_modules/.bin/wrangler', import.meta.url));
+const RELEASE = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
+// Whether release a precedes b, compared as x.y.z numbers.
+const older = (a, b) => {
+  const [p, q] = [a, b].map((v) => v.split('.').map(Number));
+  const i = p.findIndex((x, k) => x !== q[k]);
+  return i >= 0 && p[i] < q[i];
+};
 const USAGE = `usage: keyset new [--curve P-256|P-521, default P-521] > set
        keyset check <url> <name> < set
        keyset deploy --url <base> [--new <name>]... [--drop-policy <name>]... [--apply] [-- <wrangler args>] < {"TANG_KEY_<NAME>": set | null, ...}
@@ -62,6 +69,8 @@ async function advertised(jws) {
 
 const base = (url) => url.replace(/\/+$/, '');
 const PROBE = { 'keystone-probe': '1' };
+// The status of /<name>/adv, or 'unreachable'.
+const advStatus = (io, url, name) => io.fetch(`${base(url)}/${name}/adv`).then((r) => r.status, () => 'unreachable');
 const probe = (url, name, { fetch }) => fetch(`${base(url)}/${name}/adv`, { headers: PROBE });
 
 // One set against the live Worker: its adv is signed by the set's signing key, advertises exactly the set's public
@@ -154,9 +163,12 @@ async function deploy(argv, io) {
 
   // --url and the wrangler target are named apart, so the target's secrets must agree with what --url serves.
   const listed = o.apply || io.env.CLOUDFLARE_API_TOKEN ? await secrets(io, extra) : null;
+  let newer;
+  const release = (res) => { const r = res?.headers.get('keystone-release'); return r && older(RELEASE, r) ? r : null; };
   for (const s of sets) {
     const { name, secret, set, isNew } = s;
     const res = await probe(o.url, name, io).catch(() => null);
+    newer = release(res) ?? newer;
     const held = listed?.has(secret);
     if (res?.status === 404) {
       if (!isNew) say('REFUSE', name, 'absent (never deployed, or revoked); --new only for a freshly minted set');
@@ -185,7 +197,8 @@ async function deploy(argv, io) {
   // A null value is a tombstone: the set was revoked, and a Worker version rolled back past the revoke serves it again
   // while the target's secret list no longer shows it. A deploy from the current secrets drops it.
   for (const { name, secret } of tombs) {
-    const res = await io.fetch(`${base(o.url)}/${name}/adv`).catch(() => null);
+    const res = await probe(o.url, name, io).catch(() => null);
+    newer = release(res) ?? newer;
     const kept = listed?.has(secret);
     if (res?.status === 404 && !kept) say('revoked', name, '404');
     else if (kept) say('REFUSE', name, res?.status === 404 ? `absent at --url, yet the wrangler target holds ${secret}` : `revoked ${name} is a live secret; run keyset revoke ${name}`);
@@ -193,6 +206,9 @@ async function deploy(argv, io) {
     else if (!listed) say('REFUSE', name, `revoked ${name} is served; cannot tell rollback from live secret without the target's secret list`);
     else say('REVOKED-LIVE', name, 'served by a rolled-back version; --apply redeploys from current secrets to drop it');
   }
+
+  // --apply redeploys this clone's code, so it never replaces a newer release; a Worker sending none predates the header.
+  if (newer) say('REFUSE', 'Worker', `--url serves keystone ${newer}, this clone is ${RELEASE}; update the clone and run npm ci`);
 
   if (listed) for (const s of [...listed].filter((s) => s.startsWith('TANG_KEY_') && !(s in input)).sort()) say('drift', s, 'live, absent from stdin; left in place');
   else if (o.apply) say('REFUSE', 'wrangler target', 'wrangler secret list gave no list to match --url against');
@@ -240,7 +256,7 @@ async function deploy(argv, io) {
   }
   for (const { name } of tombs) {
     let status;
-    const adv = () => io.fetch(`${base(o.url)}/${name}/adv`).then((r) => r.status, () => 'unreachable');
+    const adv = () => advStatus(io, o.url, name);
     for (let i = 1; (status = await adv()) !== 404 && i < io.tries; i++) await io.wait();
     if (status === 404) io.stdout.write(`OK  revoked ${name}: 404\n`);
     else {
@@ -255,7 +271,7 @@ async function revoke(argv, io) {
   const { o, pos: [name, ...more], extra } = args(argv, { url: { type: 'string' }, apply: { type: 'boolean' } });
   if (!o.url || !NAME.test(name ?? '') || more.length) throw new Error(`revoke takes one set name and --url\n${USAGE}`);
   const secret = secretName(name);
-  const adv = () => io.fetch(`${base(o.url)}/${name}/adv`).then((r) => r.status, () => 'unreachable');
+  const adv = () => advStatus(io, o.url, name);
   const status = await adv();
   if (!o.apply) {
     io.stdout.write(`would delete ${secret} (adv ${name}: ${status})\n`);

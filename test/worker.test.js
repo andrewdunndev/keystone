@@ -6,12 +6,10 @@ import worker, { resetAlertState } from '../src/index.js';
 import { sourceNet } from '../src/origin.js';
 import { b64u, thumbprint, parseSet, CURVES } from '../src/jwk.js';
 import { EmailMessage } from 'cloudflare:email';
+import { FX, setOf, be, kv, rec as recover, until } from './helpers.mjs';
 
-// Built by gen-fixture.mjs from stock tangd, one fixture per curve with that tangd's keys: tangd is the oracle.
-const FX = JSON.parse(readFileSync(new URL('./tangd-fixture.json', import.meta.url)));
 const NOBLE = { 'P-256': p256, 'P-521': p521 };
 const OTHER = { 'P-256': 'P-521', 'P-521': 'P-256' };
-const setOf = (f) => JSON.stringify({ keys: [f.sig, f.exch] });
 const envOf = (f) => ({ TANG_KEY_LAB: setOf(f), TANG_KEY_HOST1: setOf(f) });
 // fx and env are the default curve's, P-521; a test made by eachCurve runs once per curve with that curve's.
 let fx = FX['P-521'], env = envOf(fx);
@@ -31,7 +29,7 @@ const ip = (v) => ({ 'CF-Connecting-IP': v, 'content-type': 'application/jwk+jso
 const rec = (name, kid, body, e = env) => call(`/${name}/rec/${kid}`,
   { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body), headers: { 'content-type': 'application/jwk+json' } }, e);
 const decode = (x) => JSON.parse(new TextDecoder().decode(b64u.dec(x)));
-const coordOf = (n, c) => b64u.enc(Uint8Array.from(n.toString(16).padStart(c.coord * 2, '0').match(/../g).map((x) => parseInt(x, 16))));
+const coordOf = (n, c) => b64u.enc(be(n, c.coord));
 
 test('CURVES are P-256 and P-521 as noble defines them', () => {
   assert.deepEqual(Object.keys(CURVES), ['P-256', 'P-521']);
@@ -79,6 +77,13 @@ eachCurve('a changed key secret is served at once, never the previous key set', 
   assert.equal((await rec('lab', fx.kid, fx.client, e)).status, 404);
   assert.equal((await rec('lab', await thumbprint(fresh), fx.client, e)).status, 200);
   assert.equal((await rec('lab', fx.kid, fx.client)).status, 200);
+});
+
+test('a probed adv names the release in package.json; an unprobed one does not', async () => {
+  const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url)));
+  assert.match(version, /^\d+\.\d+\.\d+$/);
+  assert.equal((await call('/lab/adv', { headers: { 'keystone-probe': '1' } })).headers.get('keystone-release'), version);
+  assert.equal((await call('/lab/adv')).headers.get('keystone-release'), null);
 });
 
 eachCurve('adv/<thp> answers for the signing key thumbprint alone; any other thp is 404', async () => {
@@ -299,18 +304,6 @@ test('a recovery logs one rec line with the set name and source, and no key mate
   assert.deepEqual(logged, []);
 });
 
-const kv = (lag = 0) => {
-  const m = new Map();
-  const ttl = new Map();
-  return {
-    m, ttl, reads: [],
-    get: async function (k) { this.reads.push(k); const v = m.get(k) ?? null; if (lag) await new Promise((r) => setTimeout(r, lag)); return v; },
-    put: async (k, v, o) => { m.set(k, v); o?.expirationTtl ? ttl.set(k, o.expirationTtl) : ttl.delete(k); },
-    delete: async (k) => void m.delete(k),
-    list: async ({ prefix }) => ({ keys: [...m.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }),
-  };
-};
-
 // A stand-in for the send_email binding: records every message; `fail` rejects like an unverified sender would, and
 // `hang` never answers.
 let current;
@@ -330,14 +323,7 @@ const alertEnv = (extra = {}) => (resetAlertState(), {
 });
 const header = (raw, name) => raw.match(new RegExp(`^${name}: (.*)$`, 'm'))?.[1];
 const body = (raw) => raw.split('\r\n\r\n').slice(1).join('\r\n\r\n');
-async function unlock(e, ipv, cf = { asn: 64500, country: 'US' }, host = 'host1') {
-  const pending = [];
-  const req = new Request(`http://w/${host}/rec/${fx.kid}`, { method: 'POST', body: JSON.stringify(fx.client), headers: ip(ipv) });
-  Object.defineProperty(req, 'cf', { value: cf });
-  const r = await worker.fetch(req, e, { waitUntil: (p) => pending.push(p) });
-  await Promise.all(pending);
-  return r;
-}
+const unlock = (e, ipv, cf, host = 'host1') => recover(e, host, { fx, ip: ipv, cf, base: 'http://w' });
 
 test('sourceNet: /24 for IPv4, /48 for IPv6, null otherwise', () => {
   assert.equal(sourceNet('203.0.113.77'), '203.0.113.0/24');
@@ -484,7 +470,7 @@ test('a send that never answers is cut off after ten seconds and leaves the sour
   mock.timers.enable({ apis: ['setTimeout'] });
   try {
     const done = unlock(e, '198.51.100.9');
-    for (let i = 0; i < 100 && !fm.calls.length; i++) await new Promise((r) => setImmediate(r));
+    await until(() => fm.calls.length);
     assert.equal(fm.calls.length, 1);
     mock.timers.tick(9999);
     await new Promise((r) => setImmediate(r));
@@ -537,12 +523,66 @@ test('the cron digest skips held sources already seen and keeps held ones when t
     assert.equal(fm.calls.length, 0);
     assert.ok(!e.UNLOCKS.m.has('held:host1:192.0.2.0/24:1:US'));
   } finally { fm.restore(); }
-  await e.UNLOCKS.put('held:host1:192.0.3.0/24:1:US', JSON.stringify({ host: 'host1', net: '192.0.3.0/24', asn: 1, country: 'US', time: 't' }));
+  await e.UNLOCKS.put('held:host1:198.51.100.0/24:1:US', JSON.stringify({ host: 'host1', net: '198.51.100.0/24', asn: 1, country: 'US', time: 't' }));
   fm = mailer({ fail: true });
   try {
     await assert.rejects(worker.scheduled({}, e));
-    assert.ok(e.UNLOCKS.m.has('held:host1:192.0.3.0/24:1:US'));
-    assert.ok(!e.UNLOCKS.m.has('seen:host1:192.0.3.0/24:1:US'));
+    assert.ok(e.UNLOCKS.m.has('held:host1:198.51.100.0/24:1:US'));
+    assert.ok(!e.UNLOCKS.m.has('seen:host1:198.51.100.0/24:1:US'));
+  } finally { fm.restore(); }
+});
+
+test('a failed version mail does not hold back the digest of held sources, and the run still fails to retry', async () => {
+  const e = alertEnv({ CF_VERSION_METADATA: { id: 'v2', timestamp: '2026-10-02T00:00:00Z', tag: '' } });
+  const fm = mailer();
+  try {
+    await worker.scheduled({}, e);
+    await e.UNLOCKS.put('held:host1:198.51.100.0/24:1:US', JSON.stringify({ host: 'host1', net: '198.51.100.0/24', asn: 1, country: 'US', time: 't' }));
+    Object.assign(e, { CF_VERSION_METADATA: { id: 'v3', timestamp: '2026-10-03T00:00:00Z', tag: '' } });
+    current = async (msg) => {
+      fm.calls.push(msg);
+      if (header(msg.raw, 'Subject') === 'keystone: a new Worker version is serving') throw new Error('E_SENDER_NOT_VERIFIED');
+    };
+    await assert.rejects(worker.scheduled({}, e));
+    assert.equal(fm.calls.length, 2);
+    assert.ok(!e.UNLOCKS.m.has('held:host1:198.51.100.0/24:1:US'));
+  } finally { fm.restore(); }
+});
+
+test('the cron mails once per change of serving version, names a rollback, and retries a failed mail', async () => {
+  const v = (id, timestamp) => ({ CF_VERSION_METADATA: { id, timestamp, tag: '' } });
+  const e = alertEnv(v('v2', '2026-10-02T00:00:00Z'));
+  let fm = mailer();
+  try {
+    await worker.scheduled({}, e);
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 0);
+    Object.assign(e, v('v3', '2026-10-03T00:00:00Z'));
+    await worker.scheduled({}, e);
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 1);
+    assert.equal(header(fm.calls[0].raw, 'Subject'), 'keystone: a new Worker version is serving');
+    assert.match(body(fm.calls[0].raw), /^Worker version v3, uploaded 2026-10-03T00:00:00Z, serves in place of v2, uploaded 2026-10-02T00:00:00Z\./);
+    Object.assign(e, v('v1', '2026-10-01T00:00:00Z'));
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 2);
+    assert.equal(header(fm.calls[1].raw, 'Subject'), 'keystone: rolled back to an earlier Worker version');
+    assert.match(body(fm.calls[1].raw), /a set revoked or a policy edited since is live again/);
+  } finally { fm.restore(); }
+  Object.assign(e, v('v3', '2026-10-03T00:00:00Z'));
+  fm = mailer({ fail: true });
+  try {
+    await assert.rejects(worker.scheduled({}, e));
+    assert.equal(JSON.parse(e.UNLOCKS.m.get('serving')).id, 'v1');
+  } finally { fm.restore(); }
+  fm = mailer();
+  try {
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 1);
+    delete e.CF_VERSION_METADATA;
+    await worker.scheduled({}, e);
+    assert.equal(fm.calls.length, 1);
+    assert.equal(JSON.parse(e.UNLOCKS.m.get('serving')).id, 'v3');
   } finally { fm.restore(); }
 });
 

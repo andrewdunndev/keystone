@@ -15,7 +15,7 @@ npm run mutate
 
 `npm run mutate` applies sed mutants to `src/` and `bin/`. Every mutant must fail the suite, and the run must report `survived: 0`.
 
-The interop job runs `keyset` and clevis against `wrangler dev`, then revocation:
+The interop job runs `keyset` and clevis against `wrangler dev`, then revocation, then a gated set held, approved from the local mail and decrypted:
 
 ```sh
 dnf -y install tang jose clevis curl procps-ng util-linux-core nodejs npm
@@ -26,8 +26,8 @@ bash scripts/interop.sh
 
 ## Releases
 
-1. Add a `## vX.Y.Z - date` entry to `CHANGELOG.md`, replacing "Unreleased".
-2. Set `version` in `package.json` to match.
+1. Run `npm version X.Y.Z --no-git-tag-version`.
+2. Add a `## vX.Y.Z - date` entry to `CHANGELOG.md`.
 3. Commit, then create an annotated tag `vX.Y.Z` and push it.
 
 The tag pipeline publishes the entry as the GitLab release.

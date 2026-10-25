@@ -4,10 +4,11 @@
 // messages sent that hour, m:<hour>:<name> those of one set.
 import { EmailMessage } from 'cloudflare:email';
 import { DurableObject } from 'cloudflare:workers';
+import { bounded } from './bounded.js';
 import { b64u, derivedKey, parseSet, secretName } from './jwk.js';
 
 const enc = new TextEncoder();
-export const PENDING_TTL = 12 * 3600 * 1000;
+const PENDING_TTL = 12 * 3600 * 1000;
 export const GRANT = 10 * 60 * 1000;
 const OPEN_MAX = 3;
 const MAIL_MAX = 40;
@@ -43,7 +44,7 @@ export async function send(env, to, subject, text) {
 }
 
 const ascii = (s) => String(s).replace(/[^\x20-\x7e]/g, '?');
-const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
+export const when = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 const about = (o) => ascii(`${o.origin}  AS${o.info.asn} ${o.info.org}  ${o.info.city}, ${o.info.country}  since ${when(o.created)}`);
 
 // The set's approvers and approve key as the Gate's own environment holds them, parsed once per secret text.
@@ -51,10 +52,8 @@ const loaded = new Map();
 function gated(env, name) {
   const raw = env[secretName(name)];
   if (!loaded.has(raw)) {
-    if (loaded.size >= 100) loaded.clear();
     const { exch, approvers } = parseSet(raw);
-    if (!approvers) throw new Error(`${name} has no approvers`);
-    loaded.set(raw, { approvers, key: approveKey(exch) });
+    bounded(loaded, 100).set(raw, { approvers, key: approveKey(exch) });
   }
   return loaded.get(raw);
 }

@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import worker from '../src/index.js';
 import { b64u, parseSet, thumbprint } from '../src/jwk.js';
 import { main } from '../bin/keyset.mjs';
+import { FX, setOf } from './helpers.mjs';
 
 const URL = 'https://tang.example';
 console.log = () => {};
@@ -19,9 +20,8 @@ const mint = async (...flags) => {
   return { text: mint.out.trim(), thp: mint.err.trim() };
 };
 const A = await mint(), B = await mint(), C = await mint(), D = await mint('--curve', 'P-256');
-// One stock pair per curve, built by gen-fixture.mjs: P-521 from tangd-keygen, P-256 from jose.
-const FX = JSON.parse(readFileSync(`${import.meta.dirname}/tangd-fixture.json`, 'utf8'));
-const stock = Object.fromEntries(Object.entries(FX).map(([crv, f]) => [crv, JSON.stringify({ keys: [f.sig, f.exch] })]));
+// One stock pair per curve: P-521 from tangd-keygen, P-256 from jose.
+const stock = Object.fromEntries(Object.entries(FX).map(([crv, f]) => [crv, setOf(f)]));
 for (const f of Object.values(FX)) privates.push(f.sig.d, f.exch.d);
 
 const toWorker = (env) => (url, init) => worker.fetch(new Request(url, init), env, { waitUntil() {} });
@@ -542,6 +542,50 @@ test('a policy write refuses a split deployment, a version other than --url serv
   const r = await deploy({ TANG_KEY_A_1: edited }, [], { live: { TANG_KEY_A_1: A.text }, env: { CLOUDFLARE_API_TOKEN: 't' },
     wrangler: cf({ TANG_KEY_A_1: A.text }, { versions: 'nope' }) });
   assert.match(r.out, /^REFUSE +a-1: wrangler deployments status shows no single version/m);
+});
+
+test('deploy refuses a Worker serving a newer release than this clone; an older, equal or absent release deploys', async () => {
+  const { version } = JSON.parse(readFileSync(new globalThis.URL('../package.json', import.meta.url)));
+  const [x, y, z] = version.split('.').map(Number);
+  const before = z ? `${x}.${y}.${z - 1}` : y ? `${x}.${y - 1}.9` : `${x - 1}.9.9`;
+  // The real Worker, its keystone-release header replaced, or removed as a Worker older than the header sends it.
+  const serving = (live, release) => async (url, init) => {
+    const res = await toWorker(live)(url, init);
+    if (release === null) res.headers.delete('keystone-release');
+    else if (release) res.headers.set('keystone-release', release);
+    return res;
+  };
+  const stdin = { TANG_KEY_A_1: A.text, TANG_KEY_B_1: B.text };
+  for (const newer of [`${x}.${y}.${z + 1}`, `${x}.${y + 1}.0`, `${x + 1}.0.0`]) {
+    const live = { TANG_KEY_A_1: A.text }, seen = [];
+    let r = await deploy(stdin, ['--new', 'b-1'], { live, fetch: serving(live, newer) });
+    assert.equal(r.code, 1, newer);
+    assert.ok(r.out.includes(`REFUSE  Worker: --url serves keystone ${newer}, this clone is ${version}; update the clone and run npm ci\n`), r.out);
+    r = await deploy(stdin, ['--new', 'b-1', '--apply'], { live, fetch: serving(live, newer), wrangler: cf(live, { seen }) });
+    assert.equal(r.code, 1, newer);
+    assert.equal(seen.length, 0);
+  }
+  // A set absent at --url, or only revoked, is probed without a live adv to carry the header: the 404 still does.
+  for (const newer of [`${x}.${y}.${z + 1}`, `${x}.${y + 10}.0`]) {
+    const live = { TANG_KEY_A_1: A.text }, seen = [];
+    const fetch = async (url, init) => {
+      const res = await toWorker(live)(url, init);
+      if (res.headers.has('keystone-release')) res.headers.set('keystone-release', newer);
+      return res;
+    };
+    for (const only of [{ TANG_KEY_B_1: B.text }, { TANG_KEY_B_1: null }]) {
+      const r = await deploy(only, only.TANG_KEY_B_1 ? ['--new', 'b-1', '--apply'] : ['--apply'], { live, fetch, wrangler: cf(live, { seen }) });
+      assert.equal(r.code, 1, r.out);
+      assert.ok(r.out.includes(`REFUSE  Worker: --url serves keystone ${newer}, this clone is ${version}; update the clone and run npm ci\n`), r.out);
+    }
+    assert.equal(seen.length, 0);
+  }
+  for (const release of [before, version, null, undefined]) {
+    const live = { TANG_KEY_A_1: A.text }, seen = [];
+    const r = await deploy(stdin, ['--new', 'b-1', '--apply'], { live, fetch: serving(live, release), wrangler: cf(live, { seen }) });
+    assert.equal(r.code, 0, `${release}: ${r.out}`);
+    assert.equal(seen.length, 1);
+  }
 });
 
 test('deploy --apply fails when the written policy never shows; check fails on a live policy other than the set\'s', async () => {
