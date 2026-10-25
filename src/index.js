@@ -444,7 +444,8 @@ export default {
   },
   async scheduled(event, env) {
     if (!alertsOn(env)) return;
-    await versionChange(env);
-    await sendDigest(env);
+    const [a, b] = await Promise.allSettled([versionChange(env), sendDigest(env)]);
+    if (a.status === 'rejected') throw a.reason;
+    if (b.status === 'rejected') throw b.reason;
   },
 };

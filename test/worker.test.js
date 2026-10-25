@@ -532,6 +532,23 @@ test('the cron digest skips held sources already seen and keeps held ones when t
   } finally { fm.restore(); }
 });
 
+test('a failed version mail does not hold back the digest of held sources, and the run still fails to retry', async () => {
+  const e = alertEnv({ CF_VERSION_METADATA: { id: 'v2', timestamp: '2026-10-02T00:00:00Z', tag: '' } });
+  const fm = mailer();
+  try {
+    await worker.scheduled({}, e);
+    await e.UNLOCKS.put('held:host1:192.0.3.0/24:1:US', JSON.stringify({ host: 'host1', net: '192.0.3.0/24', asn: 1, country: 'US', time: 't' }));
+    Object.assign(e, { CF_VERSION_METADATA: { id: 'v3', timestamp: '2026-10-03T00:00:00Z', tag: '' } });
+    current = async (msg) => {
+      fm.calls.push(msg);
+      if (header(msg.raw, 'Subject') === 'keystone: a new Worker version is serving') throw new Error('E_SENDER_NOT_VERIFIED');
+    };
+    await assert.rejects(worker.scheduled({}, e));
+    assert.equal(fm.calls.length, 2);
+    assert.ok(!e.UNLOCKS.m.has('held:host1:192.0.3.0/24:1:US'));
+  } finally { fm.restore(); }
+});
+
 test('the cron mails once per change of serving version, names a rollback, and retries a failed mail', async () => {
   const v = (id, timestamp) => ({ CF_VERSION_METADATA: { id, timestamp, tag: '' } });
   const e = alertEnv(v('v2', '2026-10-02T00:00:00Z'));
