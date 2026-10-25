@@ -20,7 +20,7 @@ revokes its key sets.
 - `test/gate.test.js`: the origin gate, the Gate on a Map-backed storage, approval and mail.
 - `test/auth-css.test.js`, `test/bounded.test.js`: the generated stylesheet is current; the bounded caches.
 - `test/helpers.mjs`: the `kv`, fixture, set-builder and `rec` helpers the suites share; `test/register.mjs` and the `cloudflare-*.mjs` files stand in for the Workers-only modules; `test/hex.mjs` is a byte helper.
-- `deploy/wrangler.toml.example`: the shipped Worker config, copied to the git-ignored `deploy/wrangler.toml`; interop and CI dry-runs use it.
+- `deploy/wrangler.toml.example`: the shipped Worker config, copied to the git-ignored `deploy/wrangler.toml` for a deploy and the CI dry-run; interop runs on its own copy.
 - `site/`: the Astro site at keystone.dunn.dev, built and deployed apart from the Worker.
 - `scripts/mutate.sh`: sed mutants of `src/` and `bin/`; each must apply and fail the suite.
 - `scripts/interop.sh`: keyset and stock clevis against `wrangler dev`, then revocation, then the origin gate; `luks`
