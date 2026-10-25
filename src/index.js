@@ -57,6 +57,13 @@ const probed = (request) => request.headers.get('keystone-probe') === '1';
 const reply = (status, body, type = 'text/plain') =>
   new Response(body, { status, headers: { 'content-type': type, 'cache-control': 'no-store' } });
 
+// A probe learns the release even from an adv that is absent.
+const absent = (request, why) => {
+  const res = reply(404, why);
+  if (probed(request)) res.headers.set('keystone-release', pkg.version);
+  return res;
+};
+
 async function advert(set, thp) {
   if (thp && !(await kidMatches(set.sign.jwk, thp, set.sign.kids))) return null;
   if (!set.adv) {
@@ -396,13 +403,13 @@ export default {
     const [name, op, arg] = seg;
     if (!name || !NAME.test(name) || seg.length > 3) return reply(404, 'not found\n');
     const secret = secretName(name), raw = env[secret];
-    if (!raw) return reply(404, 'unknown key set\n');
+    if (!raw) return op === 'adv' ? absent(request, 'unknown key set\n') : reply(404, 'unknown key set\n');
     const set = load(raw, secret);
     if (!set) return reply(500, 'unreadable key set\n');
     if (op === 'adv') {
       if (request.method !== 'GET') return reply(405, 'method not allowed\n');
       const res = await advert(set, arg);
-      if (!res) return reply(404, 'no such key\n');
+      if (!res) return absent(request, 'no such key\n');
       if (probed(request)) {
         if (env.CF_VERSION_METADATA?.id) res.headers.set('keystone-version', env.CF_VERSION_METADATA.id);
         res.headers.set('keystone-release', pkg.version);

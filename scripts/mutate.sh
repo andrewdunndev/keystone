@@ -299,6 +299,9 @@ mutant "a policy strip is reported as a write" "s/set.tag ? 'keys unchanged, pol
 mutant "deploy over a newer release" 's/  if (newer) say(/  if (false) say(/' $k
 mutant "a release compared by its major alone" 's/const i = p.findIndex((x, k) => x !== q\[k\]);/const i = 0;/' $k
 mutant "an older release refuses" 's/return i >= 0 \&\& p\[i\] < q\[i\];/return i >= 0 \&\& p[i] > q[i];/' $k
+mutant "releases compared as strings" 's/return i >= 0 \&\& p\[i\] < q\[i\];/return a < b;/' $k
+mutant "a probe of an absent set sends no release" 's/  if (probed(request)) res.headers.set(.keystone-release., pkg.version);//'
+mutant "a tombstone is checked without its release" '/{ name, secret } of tombs) {/{n;n;d;}' $k
 mutant "check passes an unbound Gate" "/=== 'unavailable') throw new Error/d" $k
 mutant "check accepts an adv carrying a private key" "s/if (keys.some((k) => 'd' in k)) return null;//" $k
 mutant "rec proof compares against S, not ECDH(r, S)" 's/if (got !== want)/if (got !== set.exch.x)/' $k

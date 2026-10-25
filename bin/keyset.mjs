@@ -164,11 +164,11 @@ async function deploy(argv, io) {
   // --url and the wrangler target are named apart, so the target's secrets must agree with what --url serves.
   const listed = o.apply || io.env.CLOUDFLARE_API_TOKEN ? await secrets(io, extra) : null;
   let newer;
+  const release = (res) => { const r = res?.headers.get('keystone-release'); return r && older(RELEASE, r) ? r : null; };
   for (const s of sets) {
     const { name, secret, set, isNew } = s;
     const res = await probe(o.url, name, io).catch(() => null);
-    const release = res?.headers.get('keystone-release');
-    if (release && older(RELEASE, release)) newer = release;
+    newer = release(res) ?? newer;
     const held = listed?.has(secret);
     if (res?.status === 404) {
       if (!isNew) say('REFUSE', name, 'absent (never deployed, or revoked); --new only for a freshly minted set');
@@ -184,8 +184,6 @@ async function deploy(argv, io) {
       say('policy', name, set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed');
     } else say('ok', name, 'live and unchanged');
   }
-  // --apply redeploys this clone's code, so it never replaces a newer release; a Worker sending none predates the header.
-  if (newer) say('REFUSE', 'Worker', `--url serves keystone ${newer}, this clone is ${RELEASE}; update the clone and run npm ci`);
   // A policy write redeploys the Worker; it goes ahead only over the one version --url is seen serving.
   const writes = sets.filter((s) => s.policy);
   if (writes.length && (o.apply || io.env.CLOUDFLARE_API_TOKEN)) {
@@ -199,7 +197,8 @@ async function deploy(argv, io) {
   // A null value is a tombstone: the set was revoked, and a Worker version rolled back past the revoke serves it again
   // while the target's secret list no longer shows it. A deploy from the current secrets drops it.
   for (const { name, secret } of tombs) {
-    const res = await io.fetch(`${base(o.url)}/${name}/adv`).catch(() => null);
+    const res = await probe(o.url, name, io).catch(() => null);
+    newer = release(res) ?? newer;
     const kept = listed?.has(secret);
     if (res?.status === 404 && !kept) say('revoked', name, '404');
     else if (kept) say('REFUSE', name, res?.status === 404 ? `absent at --url, yet the wrangler target holds ${secret}` : `revoked ${name} is a live secret; run keyset revoke ${name}`);
@@ -207,6 +206,9 @@ async function deploy(argv, io) {
     else if (!listed) say('REFUSE', name, `revoked ${name} is served; cannot tell rollback from live secret without the target's secret list`);
     else say('REVOKED-LIVE', name, 'served by a rolled-back version; --apply redeploys from current secrets to drop it');
   }
+
+  // --apply redeploys this clone's code, so it never replaces a newer release; a Worker sending none predates the header.
+  if (newer) say('REFUSE', 'Worker', `--url serves keystone ${newer}, this clone is ${RELEASE}; update the clone and run npm ci`);
 
   if (listed) for (const s of [...listed].filter((s) => s.startsWith('TANG_KEY_') && !(s in input)).sort()) say('drift', s, 'live, absent from stdin; left in place');
   else if (o.apply) say('REFUSE', 'wrangler target', 'wrangler secret list gave no list to match --url against');

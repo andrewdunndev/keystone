@@ -565,6 +565,21 @@ test('deploy refuses a Worker serving a newer release than this clone; an older,
     assert.equal(r.code, 1, newer);
     assert.equal(seen.length, 0);
   }
+  // A set absent at --url, or only revoked, is probed without a live adv to carry the header: the 404 still does.
+  for (const newer of [`${x}.${y}.${z + 1}`, `${x}.${y + 10}.0`]) {
+    const live = { TANG_KEY_A_1: A.text }, seen = [];
+    const fetch = async (url, init) => {
+      const res = await toWorker(live)(url, init);
+      if (res.headers.has('keystone-release')) res.headers.set('keystone-release', newer);
+      return res;
+    };
+    for (const only of [{ TANG_KEY_B_1: B.text }, { TANG_KEY_B_1: null }]) {
+      const r = await deploy(only, only.TANG_KEY_B_1 ? ['--new', 'b-1', '--apply'] : ['--apply'], { live, fetch, wrangler: cf(live, { seen }) });
+      assert.equal(r.code, 1, r.out);
+      assert.ok(r.out.includes(`REFUSE  Worker: --url serves keystone ${newer}, this clone is ${version}; update the clone and run npm ci\n`), r.out);
+    }
+    assert.equal(seen.length, 0);
+  }
   for (const release of [before, version, null, undefined]) {
     const live = { TANG_KEY_A_1: A.text }, seen = [];
     const r = await deploy(stdin, ['--new', 'b-1', '--apply'], { live, fetch: serving(live, release), wrangler: cf(live, { seen }) });
