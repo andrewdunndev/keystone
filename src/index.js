@@ -445,6 +445,7 @@ export default {
   async scheduled(event, env) {
     if (!alertsOn(env)) return;
     const [a, b] = await Promise.allSettled([versionChange(env), sendDigest(env)]);
+    if (a.status === 'rejected' && b.status === 'rejected') console.error('digest failed:', b.reason.message);
     if (a.status === 'rejected') throw a.reason;
     if (b.status === 'rejected') throw b.reason;
   },
