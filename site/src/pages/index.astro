@@ -10,7 +10,7 @@ import Failure from '../figures/13-failure.astro';
   <Hero title="keystone" eyebrow="disk unlock server">
     <p>An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
     <p>keystone lets a computer with an encrypted disk unlock it at startup with no one typing a passphrase. At boot the computer gets its part of the key from keystone over the internet. keystone supplies the <a href="#secrets">missing half</a> of a second key the computer keeps on the disk, so the disk opens without the passphrase. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
-    <p>You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If the computer is stolen, delete its key set before it next starts, and the disk stays locked. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk.</p>
+    <p>You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If the computer is stolen, delete its key set before it next starts, and the disk stays locked. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk, unless the key set limits <a href="#origin-gate">who can ask</a>.</p>
     <Fragment slot="actions">
       <a class="cta-primary" href="/setup/">Install</a>
       <a class="cta-secondary" href="/architecture/">Architecture</a>
