@@ -1,17 +1,14 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { p256, p521 } from '@noble/curves/nist.js';
 import worker, { resetAlertState } from '../src/index.js';
 import { sourceNet } from '../src/origin.js';
 import { b64u, thumbprint, parseSet, CURVES } from '../src/jwk.js';
 import { EmailMessage } from 'cloudflare:email';
+import { FX, setOf, be, kv, rec as recover } from './helpers.mjs';
 
-// Built by gen-fixture.mjs from stock tangd, one fixture per curve with that tangd's keys: tangd is the oracle.
-const FX = JSON.parse(readFileSync(new URL('./tangd-fixture.json', import.meta.url)));
 const NOBLE = { 'P-256': p256, 'P-521': p521 };
 const OTHER = { 'P-256': 'P-521', 'P-521': 'P-256' };
-const setOf = (f) => JSON.stringify({ keys: [f.sig, f.exch] });
 const envOf = (f) => ({ TANG_KEY_LAB: setOf(f), TANG_KEY_HOST1: setOf(f) });
 // fx and env are the default curve's, P-521; a test made by eachCurve runs once per curve with that curve's.
 let fx = FX['P-521'], env = envOf(fx);
@@ -31,7 +28,7 @@ const ip = (v) => ({ 'CF-Connecting-IP': v, 'content-type': 'application/jwk+jso
 const rec = (name, kid, body, e = env) => call(`/${name}/rec/${kid}`,
   { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body), headers: { 'content-type': 'application/jwk+json' } }, e);
 const decode = (x) => JSON.parse(new TextDecoder().decode(b64u.dec(x)));
-const coordOf = (n, c) => b64u.enc(Uint8Array.from(n.toString(16).padStart(c.coord * 2, '0').match(/../g).map((x) => parseInt(x, 16))));
+const coordOf = (n, c) => b64u.enc(be(n, c.coord));
 
 test('CURVES are P-256 and P-521 as noble defines them', () => {
   assert.deepEqual(Object.keys(CURVES), ['P-256', 'P-521']);
@@ -299,18 +296,6 @@ test('a recovery logs one rec line with the set name and source, and no key mate
   assert.deepEqual(logged, []);
 });
 
-const kv = (lag = 0) => {
-  const m = new Map();
-  const ttl = new Map();
-  return {
-    m, ttl, reads: [],
-    get: async function (k) { this.reads.push(k); const v = m.get(k) ?? null; if (lag) await new Promise((r) => setTimeout(r, lag)); return v; },
-    put: async (k, v, o) => { m.set(k, v); o?.expirationTtl ? ttl.set(k, o.expirationTtl) : ttl.delete(k); },
-    delete: async (k) => void m.delete(k),
-    list: async ({ prefix }) => ({ keys: [...m.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }),
-  };
-};
-
 // A stand-in for the send_email binding: records every message; `fail` rejects like an unverified sender would, and
 // `hang` never answers.
 let current;
@@ -330,14 +315,7 @@ const alertEnv = (extra = {}) => (resetAlertState(), {
 });
 const header = (raw, name) => raw.match(new RegExp(`^${name}: (.*)$`, 'm'))?.[1];
 const body = (raw) => raw.split('\r\n\r\n').slice(1).join('\r\n\r\n');
-async function unlock(e, ipv, cf = { asn: 64500, country: 'US' }, host = 'host1') {
-  const pending = [];
-  const req = new Request(`http://w/${host}/rec/${fx.kid}`, { method: 'POST', body: JSON.stringify(fx.client), headers: ip(ipv) });
-  Object.defineProperty(req, 'cf', { value: cf });
-  const r = await worker.fetch(req, e, { waitUntil: (p) => pending.push(p) });
-  await Promise.all(pending);
-  return r;
-}
+const unlock = (e, ipv, cf, host = 'host1') => recover(e, host, { fx, ip: ipv, cf, base: 'http://w' });
 
 test('sourceNet: /24 for IPv4, /48 for IPv6, null otherwise', () => {
   assert.equal(sourceNet('203.0.113.77'), '203.0.113.0/24');

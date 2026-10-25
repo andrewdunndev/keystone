@@ -1,14 +1,13 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import worker, { resetAlertState } from '../src/index.js';
 import { derivedKey, parseSet, policyTag } from '../src/jwk.js';
 import { format, parseCidr, parseIp, unadmittable } from '../src/origin.js';
 import { Gate, approveKey, sign } from '../src/gate.js';
+import { FX, setOf, kv, rec as recover } from './helpers.mjs';
 
-const FX = JSON.parse(readFileSync(new URL('./tangd-fixture.json', import.meta.url)));
 const fx = FX['P-256'];
-const setText = (extra = {}) => JSON.stringify({ keys: [fx.sig, fx.exch], ...extra });
+const setText = (extra) => setOf(fx, extra);
 const APPROVERS = ['ops@example.org', 'oncall@example.org'];
 const call = (path, init = {}, e = {}) => worker.fetch(new Request('http://w' + path, init), e, { waitUntil() {} });
 const logged = [];
@@ -16,30 +15,13 @@ console.log = (line) => logged.push(JSON.parse(line));
 const errors = [];
 console.error = (...a) => errors.push(a.join(' '));
 
-const kv = () => {
-  const m = new Map();
-  return {
-    m, get: async (k) => m.get(k) ?? null, put: async (k, v) => void m.set(k, v), delete: async (k) => void m.delete(k),
-    list: async ({ prefix }) => ({ keys: [...m.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }),
-  };
-};
 let sent = [];
 const subjects = () => sent.map((m) => m.raw.match(/^Subject: (.*)$/m)[1]);
 const alerting = () => ({ UNLOCKS: kv(), ALERT: { send: async (m) => { sent.push(m); } }, ALERT_FROM: 'keystone@example.org', ALERT_TO: 'me@example.org' });
 // A fresh isolate: alert state, logs and mail cleared.
 const fresh = (e) => { resetAlertState(); logged.length = 0; errors.length = 0; sent = []; return e; };
 
-async function rec(e, name, { ip, asn = 64500, headers = {}, body = fx.client, cf = {}, base = 'https://tang.example.org' } = {}) {
-  const pending = [];
-  const req = new Request(`${base}/${name}/rec/${fx.kid}`, {
-    method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body),
-    headers: { 'content-type': 'application/jwk+json', ...(ip && { 'CF-Connecting-IP': ip }), ...headers },
-  });
-  Object.defineProperty(req, 'cf', { value: { asn, country: 'US', ...cf } });
-  const r = await worker.fetch(req, e, { waitUntil: (p) => pending.push(p) });
-  await Promise.all(pending);
-  return r;
-}
+const rec = (e, name, o = {}) => recover(e, name, { fx, ...o });
 // Counts ECDH derivations, the only use of a set's exchange key.
 function spyDerive() {
   const subtle = crypto.subtle, real = subtle.deriveBits, spy = { n: 0 };

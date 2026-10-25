@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import worker from '../src/index.js';
 import { b64u, parseSet, thumbprint } from '../src/jwk.js';
 import { main } from '../bin/keyset.mjs';
+import { FX, setOf } from './helpers.mjs';
 
 const URL = 'https://tang.example';
 console.log = () => {};
@@ -19,9 +20,8 @@ const mint = async (...flags) => {
   return { text: mint.out.trim(), thp: mint.err.trim() };
 };
 const A = await mint(), B = await mint(), C = await mint(), D = await mint('--curve', 'P-256');
-// One stock pair per curve, built by gen-fixture.mjs: P-521 from tangd-keygen, P-256 from jose.
-const FX = JSON.parse(readFileSync(`${import.meta.dirname}/tangd-fixture.json`, 'utf8'));
-const stock = Object.fromEntries(Object.entries(FX).map(([crv, f]) => [crv, JSON.stringify({ keys: [f.sig, f.exch] })]));
+// One stock pair per curve: P-521 from tangd-keygen, P-256 from jose.
+const stock = Object.fromEntries(Object.entries(FX).map(([crv, f]) => [crv, setOf(f)]));
 for (const f of Object.values(FX)) privates.push(f.sig.d, f.exch.d);
 
 const toWorker = (env) => (url, init) => worker.fetch(new Request(url, init), env, { waitUntil() {} });

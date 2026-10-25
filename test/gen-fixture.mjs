@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { p256, p521 } from '@noble/curves/nist.js';
 import { b64u, CURVES } from '../src/jwk.js';
+import { be } from './hex.mjs';
 
 const NOBLE = { 'P-256': p256, 'P-521': p521 };
 const OTHER = { 'P-256': 'P-521', 'P-521': 'P-256' };
@@ -24,7 +25,6 @@ const KEYS = {
   }),
 };
 
-const be = (n, len) => Uint8Array.from(n.toString(16).padStart(len * 2, '0').match(/../g).map((x) => parseInt(x, 16)));
 const bytes = (n) => Math.ceil(n.toString(16).length / 2);
 const randPoint = (n) => n.Point.BASE.multiply(n.Point.Fn.fromBytes(n.utils.randomSecretKey())).toAffine();
 
