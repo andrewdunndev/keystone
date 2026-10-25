@@ -53,7 +53,6 @@ function gated(env, name) {
   if (!loaded.has(raw)) {
     if (loaded.size >= 100) loaded.clear();
     const { exch, approvers } = parseSet(raw);
-    if (!approvers) throw new Error(`${name} has no approvers`);
     loaded.set(raw, { approvers, key: approveKey(exch) });
   }
   return loaded.get(raw);
