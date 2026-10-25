@@ -12,7 +12,7 @@ const enc = new TextEncoder();
 const coordCap = (coord) => Math.ceil((coord * 2 * 4) / 3);
 const MAX_BODY = 4096;
 
-const toBig = (b) => BigInt('0x' + ([...b].map((x) => x.toString(16).padStart(2, '0')).join('') || '0'));
+const toBig = (b) => BigInt('0x' + [...b].map((x) => x.toString(16).padStart(2, '0')).join(''));
 const hex = (n, coord) => n.toString(16).padStart(coord * 2, '0');
 const fromHex = (h) => Uint8Array.from(h.match(/../g), (x) => parseInt(x, 16));
 const field = (p) => {

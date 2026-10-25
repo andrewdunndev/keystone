@@ -7,7 +7,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { b64u, derivedKey, parseSet, secretName } from './jwk.js';
 
 const enc = new TextEncoder();
-export const PENDING_TTL = 12 * 3600 * 1000;
+const PENDING_TTL = 12 * 3600 * 1000;
 export const GRANT = 10 * 60 * 1000;
 const OPEN_MAX = 3;
 const MAIL_MAX = 40;

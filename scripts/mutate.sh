@@ -180,7 +180,7 @@ mutant "a held origin reopened" "s/      if (p.state === 'open') {/      if (fal
 mutant "a grant never ends" "s/      if (p.grantUntil > now) return 'served';/      if (p.grantUntil) return 'served';/" $g
 mutant "a grant live at its end" 's/if (p.grantUntil > now)/if (p.grantUntil >= now)/' $g
 mutant "a grant of 11 minutes" 's/export const GRANT = 10 \* 60 \* 1000;/export const GRANT = 11 * 60 * 1000;/' $g
-mutant "a pending lives 13 hours" 's/export const PENDING_TTL = 12 \* 3600 \* 1000;/export const PENDING_TTL = 13 * 3600 * 1000;/' $g
+mutant "a pending lives 13 hours" 's/^const PENDING_TTL = 12 \* 3600 \* 1000;/const PENDING_TTL = 13 * 3600 * 1000;/' $g
 mutant "an expired pending kept" 's/    if (p?.expires > now) {/    if (p) {/' $g
 mutant "4 open pendings per set" 's/const OPEN_MAX = 3;/const OPEN_MAX = 4;/' $g
 mutant "decided pendings count toward the cap" "s/.filter((\[, p\]) => p.state === 'open' \&\& p.expires > now)/.filter(([, p]) => p.expires > now)/" $g
