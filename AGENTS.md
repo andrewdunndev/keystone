@@ -12,11 +12,16 @@ revokes its key sets.
 - `src/origin.js`: addresses, prefixes and the /24 or /48 an origin is keyed by.
 - `src/bounded.js`: the empty-at-limit rule for the Worker's and the Gate's per-isolate caches.
 - `src/gate.js`: the `Gate` Durable Object holding pending approvals, approval tokens, and the mail.
+- `src/auth-css.js`: the approval pages' stylesheet, generated from `@dunn.dev/reference` by `scripts/auth-css.mjs` (`npm run auth-css`).
 - `bin/keyset.mjs`: `new`, `check`, `deploy`, `revoke`. `main(argv, io)` takes fetch, the wrangler runner, stdio and process
   injected, so tests run it in-process.
 - `test/worker.test.js`: the Worker against a fixture `test/gen-fixture.mjs` builds from stock tangd before each run.
 - `test/keyset.test.js`: keyset against the real Worker through an injected fetch, wrangler faked.
 - `test/gate.test.js`: the origin gate, the Gate on a Map-backed storage, approval and mail.
+- `test/auth-css.test.js`, `test/bounded.test.js`: the generated stylesheet is current; the bounded caches.
+- `test/helpers.mjs`: the `kv`, fixture, set-builder and `rec` helpers the suites share; `test/register.mjs` and the `cloudflare-*.mjs` files stand in for the Workers-only modules; `test/hex.mjs` is a byte helper.
+- `deploy/wrangler.toml.example`: the shipped Worker config, copied to the git-ignored `deploy/wrangler.toml`; interop and CI dry-runs use it.
+- `site/`: the Astro site at keystone.dunn.dev, built and deployed apart from the Worker.
 - `scripts/mutate.sh`: sed mutants of `src/` and `bin/`; each must apply and fail the suite.
 - `scripts/interop.sh`: keyset and stock clevis against `wrangler dev`, then revocation, then the origin gate; `luks`
   adds, as root, a tangd cross-check and a LUKS2 bind and unlock.
