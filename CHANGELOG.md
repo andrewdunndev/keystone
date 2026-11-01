@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.2 - 2026-11-01
+
+Documentation and housekeeping; the Worker and `keyset` behave as in v0.2.1.
+
+- Setup installs `clevis` before the bind, and gives Debian and Ubuntu a CA-bundle hook and `ip=::::::dhcp` for the initramfs.
+- The thumbprint command ends with a newline, and `jose` is listed with `clevis` rather than where `keyset` runs.
+- Alerts documents that a gradual deployment repeats the version mail hourly until one version takes all traffic.
+- Releases are published to the GitHub mirror.
+- Tests and mutants cover the bounded caches of the alert, Gate-answer, refusal-log and parsed-set memories.
+
 ## v0.2.1 - 2026-10-26
 
 - `keyset deploy` refuses to drop a live policy: input with neither `allow` nor `approvers` for a set whose live policy has one is refused unless `--drop-policy <name>` names the set.
