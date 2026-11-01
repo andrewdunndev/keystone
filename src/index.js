@@ -249,7 +249,7 @@ async function sendDigest(env) {
   }
 }
 
-// Mails once when another Worker version serves the cron trigger. One uploaded before the last seen is a rollback.
+// Mails when the version serving the cron trigger differs from the last seen. One uploaded before the last seen is a rollback.
 async function versionChange(env) {
   const { id, timestamp } = env.CF_VERSION_METADATA ?? {};
   if (!id) return;

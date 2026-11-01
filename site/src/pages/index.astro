@@ -59,7 +59,7 @@ import Failure from '../figures/13-failure.astro';
   <section class="section" id="origin-gate">
     <SectionLabel label="Who can ask" />
     <div class="flow">
-      <p class="section-prose">A key set can name the networks allowed to unlock it and who approves the rest. A request from any other network is held while the approvers are mailed a link; when one approves, any machine on that network can unlock the set for 10 minutes. A held request waits up to 12 hours for an answer. Listed networks are never held, so a server that restarts by itself needs no approval. The <a href="/architecture/#gate">architecture</a> page has the mechanism.</p>
+      <p class="section-prose">A key set can name the networks allowed to unlock it and who approves the rest. A request from any other network is held while the approvers are mailed a link; when one approves, any machine on that network can unlock the set for 10 minutes. A held host is refused until one approves, and its request lapses after 12 hours. Listed networks are never held, so a server that restarts by itself needs no approval. The <a href="/architecture/#gate">architecture</a> page has the mechanism.</p>
     </div>
   </section>
 
@@ -69,7 +69,7 @@ import Failure from '../figures/13-failure.astro';
       <ul class="section-prose">
         <li>A Linux computer with a LUKS disk and clevis installed.</li>
         <li>A Cloudflare account and a domain managed there. keystone runs as a Cloudflare Worker, Cloudflare's name for such a program. The free plan works with the smaller key type (<code>--curve P-256</code>); the default key type needs the paid Workers plan.</li>
-        <li>A computer with Node.js, git, jq and jose to create and deploy key sets.</li>
+        <li>A computer with Node.js, git and jq to create and deploy key sets.</li>
         <li>An offline place to keep key sets, such as pass on a machine you control.</li>
         <li>Each disk's passphrase, kept for the day keystone cannot answer.</li>
       </ul>

@@ -30,4 +30,4 @@ bash scripts/interop.sh
 2. Add a `## vX.Y.Z - date` entry to `CHANGELOG.md`.
 3. Commit, then create an annotated tag `vX.Y.Z` and push it.
 
-The tag pipeline publishes the entry as the GitLab release.
+The tag pipeline publishes the entry as the GitLab release and on the GitHub mirror.

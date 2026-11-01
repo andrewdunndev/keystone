@@ -15,7 +15,7 @@ survived=0
 mutant() {
   local f=${3:-src/index.js}
   cp "$root"/src/*.js src/; cp "$root"/bin/*.mjs bin/
-  sed -i "$2" "$f"
+  sed -i.bak "$2" "$f"; rm -f "$f.bak"
   if [ "$(< "$root/$f")" = "$(< "$f")" ]; then
     echo "NOT APPLIED  $1"; survived=$((survived + 1)); return
   fi
@@ -186,6 +186,10 @@ mutant "a grant never ends" "s/      if (p.grantUntil > now) return 'served';/  
 mutant "a grant live at its end" 's/if (p.grantUntil > now)/if (p.grantUntil >= now)/' $g
 mutant "a bounded cache cleared one entry late" 's/cache.size >= max/cache.size > max/' src/bounded.js
 mutant "a bounded cache never cleared" '/cache.clear();/d' src/bounded.js
+mutant "seen memory never cleared" 's/bounded(set, SEEN_MAX)\.add(k)/set.add(k)/'
+mutant "answered memory never cleared" 's/bounded(answered, SEEN_MAX)\.set(at,/answered.set(at,/'
+mutant "refusal log memory never cleared" 's/bounded(loggedAt, SEEN_MAX)\.set(key,/loggedAt.set(key,/'
+mutant "parsed Gate sets never cleared" 's/bounded(loaded, 100)\.set(raw,/loaded.set(raw,/' $g
 mutant "a grant of 11 minutes" 's/export const GRANT = 10 \* 60 \* 1000;/export const GRANT = 11 * 60 * 1000;/' $g
 mutant "a pending lives 13 hours" 's/^const PENDING_TTL = 12 \* 3600 \* 1000;/const PENDING_TTL = 13 * 3600 * 1000;/' $g
 mutant "an expired pending kept" 's/    if (p?.expires > now) {/    if (p) {/' $g

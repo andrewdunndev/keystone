@@ -6,5 +6,7 @@ test/tangd-fixture.json
 .env
 .env.*
 deploy/wrangler.toml
+deploy/wrangler.interop.toml
+deploy/wrangler.gate.toml
 site/dist/
 site/.astro/
