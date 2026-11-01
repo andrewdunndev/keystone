@@ -4,7 +4,6 @@
 
 Documentation and housekeeping; the Worker and `keyset` behave as in v0.2.1.
 
-- Setup installs `clevis` before the bind, and gives Debian and Ubuntu a CA-bundle hook and `ip=::::::dhcp` for the initramfs.
 - The thumbprint command ends with a newline, and `jose` is listed with `clevis` rather than where `keyset` runs.
 - Alerts documents that a gradual deployment repeats the version mail hourly until one version takes all traffic.
 - Releases are published to the GitHub mirror.
