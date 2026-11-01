@@ -15,7 +15,7 @@ survived=0
 mutant() {
   local f=${3:-src/index.js}
   cp "$root"/src/*.js src/; cp "$root"/bin/*.mjs bin/
-  sed -i "$2" "$f"
+  sed -i.bak "$2" "$f"; rm -f "$f.bak"
   if [ "$(< "$root/$f")" = "$(< "$f")" ]; then
     echo "NOT APPLIED  $1"; survived=$((survived + 1)); return
   fi
