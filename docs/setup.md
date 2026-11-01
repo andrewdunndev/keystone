@@ -63,7 +63,8 @@ Authenticate with `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN` (the "Edit
 
    ```sh
    curl -s https://tang.example.org/server-1/adv | jose fmt -j- -g payload -y -o- |
-     jose fmt -j- -g keys -A -g 0 -o- | jose jwk thp -i-; echo
+     jose fmt -j- -g keys -A -g 0 -o- | jose jwk thp -i-
+   echo
    sudo clevis luks bind -d /dev/sdXN tang '{"url":"https://tang.example.org/server-1","thp":"<thp>"}'
    ```
 
