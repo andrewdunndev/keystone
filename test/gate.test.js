@@ -791,3 +791,40 @@ test('a link names its approver: removing them kills it, reordering keeps attrib
   assert.match(await r.text(), new RegExp(`by ${oncall.replace('.', '\\.')}\\.`));
   assert.equal(logged.at(-1).approver, oncall);
 }));
+
+const manyIps = (i) => `${20 + (i >> 8)}.${i & 255}.0.1`;
+
+test('the Gate answers are kept for SEEN_MAX origins, then the first asks the Gate again', withClock(async () => {
+  let asked = 0;
+  const e = fresh({ ...alerting(), TANG_KEY_ASK: setText({ approvers: APPROVERS }),
+    GATE: { idFromName: () => 'gate', get: () => ({ miss: async () => { asked++; return 'held'; } }) } });
+  for (let i = 0; i <= 1000; i++) await rec(e, 'ask', { ip: manyIps(i) });
+  assert.equal(asked, 1001);
+  await rec(e, 'ask', { ip: manyIps(1000) });
+  assert.equal(asked, 1001);
+  await rec(e, 'ask', { ip: manyIps(0) });
+  assert.equal(asked, 1002);
+}));
+
+test('the refusal log keeps SEEN_MAX sources, then the first logs again within a minute', withClock(async () => {
+  const e = fresh({ TANG_KEY_PIN: setText({ allow: ['192.0.2.0/24'] }) });
+  for (let i = 0; i <= 1000; i++) await rec(e, 'pin', { ip: manyIps(i) });
+  logged.length = 0;
+  await rec(e, 'pin', { ip: manyIps(1000) });
+  assert.equal(logged.length, 0);
+  await rec(e, 'pin', { ip: manyIps(0) });
+  assert.deepEqual(logged.map((l) => l.event), ['refused']);
+}));
+
+test('the Gate keeps 100 parsed sets, then the first derives its approve key again', async () => {
+  const e = gateEnv({ ...Object.fromEntries(Array.from({ length: 101 }, (_, i) => [`TANG_KEY_S${i}`, setText({ approvers: [`a${i}@example.org`] })])) });
+  const info = { asn: '1', org: 'o', country: 'US', city: 'c', colo: 'x', base: 'https://tang.example.org' };
+  const subtle = crypto.subtle, real = subtle.importKey, spy = { n: 0 };
+  subtle.importKey = function (format, ...rest) { if (format === 'raw') spy.n++; return real.call(this, format, ...rest); };
+  const miss = async (i) => { const n = spy.n; await e.GATE.get().miss(`s${i}`, '203.0.113.0/24', info); return spy.n - n; };
+  try {
+    for (let i = 0; i <= 100; i++) assert.ok(await miss(i) >= 1, `s${i}`);
+    assert.equal(await miss(100), 0);
+    assert.ok(await miss(0) >= 1);
+  } finally { delete subtle.importKey; }
+});

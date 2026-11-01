@@ -667,3 +667,20 @@ test('held writes per set are capped within a cooldown, and another set is unaff
     assert.equal(fm.calls.length, 2);
   } finally { fm.restore(); }
 });
+
+test('the seen memory empties at SEEN_MAX sources, so the first source reads KV again', async () => {
+  const fm = mailer(); const e = alertEnv();
+  const ipOf = (i) => `${20 + (i >> 8)}.${i & 255}.0.1`;
+  try {
+    for (let i = 0; i <= 1000; i++) {
+      e.UNLOCKS.m.set(`seen:host1:${sourceNet(ipOf(i))}:64500:US`, 'x');
+      await unlock(e, ipOf(i));
+    }
+    e.UNLOCKS.reads.length = 0;
+    await unlock(e, ipOf(1000));
+    assert.deepEqual(e.UNLOCKS.reads, []);
+    await unlock(e, ipOf(0));
+    assert.ok(e.UNLOCKS.reads.includes(`seen:host1:${sourceNet(ipOf(0))}:64500:US`));
+    assert.equal(fm.calls.length, 0);
+  } finally { fm.restore(); }
+});
