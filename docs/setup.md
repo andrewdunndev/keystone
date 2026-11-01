@@ -5,7 +5,7 @@ A key set is one signing key and one exchange key on one curve. A pin's `thp` is
 ## Prerequisites
 
 - A Cloudflare account and a zone on Cloudflare DNS for the Worker's hostname.
-- Node 22.15 or later, git, `jq` and `jose` where `keyset` runs, and `clevis` on each host to bind.
+- Node 22.15 or later, git and `jq` where `keyset` runs, and `clevis` (which brings `jose`) on each host to bind.
 - An offline store for key sets, such as `pass`.
 
 ```sh
