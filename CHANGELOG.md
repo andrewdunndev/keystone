@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.1 - 2026-10-24
+## v0.2.1 - 2026-10-26
 
 - `keyset deploy` refuses to drop a live policy: input with neither `allow` nor `approvers` for a set whose live policy has one is refused unless `--drop-policy <name>` names the set.
 - `keyset deploy` refuses when `--url` serves a newer keystone release than the clone. The Worker sends its release as `keystone-release` on every probed `adv` reply, an absent set's 404 included, and `keyset` probes tombstoned sets too; a Worker without the header does not block.
