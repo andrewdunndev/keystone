@@ -35,4 +35,11 @@ An internet-facing Tang server unlocks a stolen disk from anywhere it can be rea
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The GitHub copy is a mirror.
+Issues and changes are welcome on either forge:
+
+- GitLab (canonical): https://gitlab.com/dunn.dev/keystone
+- GitHub (mirror): https://github.com/andrewdunndev/keystone
+
+GitHub pull requests land through GitLab; the mirror then marks them merged.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
