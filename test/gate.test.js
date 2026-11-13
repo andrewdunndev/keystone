@@ -606,6 +606,37 @@ test('at most 40 messages an hour across all sets, notices included; held mail g
   assert.ok(e.store.m.get('c:ask'));
 }));
 
+test('past 40 messages an hour, an approver of a set not yet mailed that hour still gets one message', withClock(async () => {
+  const five = ['a@example.org', 'b@example.org', 'c@example.org', 'd@example.org', 'e@example.org'];
+  const e = gateEnv({ TANG_KEY_ASK: setText({ approvers: five }), TANG_KEY_OTHER: setText({ approvers: five }), TANG_KEY_THIRD: setText({ approvers: five.slice(0, 2) }) });
+  for (const name of ['ask', 'other']) for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1', '2001:db8::1']) await rec(e, name, { ip });
+  assert.equal(sent.length, 40);
+  await rec(e, 'third', { ip: HOME });
+  assert.deepEqual(sent.slice(40).map((m) => m.to), five.slice(0, 2));
+  await rec(e, 'third', { ip: '203.0.113.1' });
+  assert.equal(sent.length, 42);
+  mock.timers.tick(3600e3);
+  await rec(e, 'third', { ip: '203.0.113.1' });
+  assert.deepEqual(sent.slice(42).map((m) => m.to), five.slice(0, 2));
+}));
+
+test('a floor send past 40 that fails is refunded to the hourly count and the approver\'s share, and their floor is available again', withClock(async () => {
+  const five = ['a@example.org', 'b@example.org', 'c@example.org', 'd@example.org', 'e@example.org'];
+  const e = gateEnv({ TANG_KEY_ASK: setText({ approvers: five }), TANG_KEY_OTHER: setText({ approvers: five }), TANG_KEY_THIRD: setText({ approvers: five.slice(0, 2) }) });
+  for (const name of ['ask', 'other']) for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1', '2001:db8::1']) await rec(e, name, { ip });
+  assert.equal(sent.length, 40);
+  const hour = T0 / 3600e3;
+  mailTo(e, async () => { throw new Error('E_DESTINATION_NOT_VERIFIED'); });
+  await rec(e, 'third', { ip: HOME });
+  assert.equal(sent.length, 40);
+  assert.equal(e.store.m.get(`m:${hour}`).n, 40);
+  for (const to of five.slice(0, 2)) assert.equal(e.store.m.get(`m:${hour}:third:${to}`).n, 0);
+  mailTo(e, async (m) => { sent.push(m); });
+  await rec(e, 'third', { ip: '203.0.113.1' });
+  assert.deepEqual(sent.slice(40).map((m) => m.to), five.slice(0, 2));
+  assert.equal(e.store.m.get(`m:${hour}`).n, 42);
+}));
+
 test('held mail that keeps failing is retried after 5, 10, 20, 40, then every 60 minutes while the pending lives', withClock(async () => {
   let up = false, tries = 0;
   const e = mailTo(gateEnv(), async (m) => { tries++; if (!up) throw new Error('E_DESTINATION_NOT_VERIFIED'); sent.push(m); });

@@ -233,7 +233,7 @@ mutant "a failed send recorded as delivered" 's/if (!ok || q?.pid !== p.pid) con
 mutant "a stale send marks the new pending" 's/if (!ok || q?.pid !== p.pid) continue;/if (!ok || !q) continue;/' $g
 mutant "a failed send keeps its unit" '/approval mail to ${to} for ${name} failed/{n;d;}' $g
 mutant "a failed notice keeps its unit" '/capped notice to ${to} for ${name} failed/{n;d;}' $g
-mutant "a refund refused at the cap" 's/if (d > 0 \&\& (all.n/if ((all.n/' $g
+mutant "a refund refused at the cap" 's/if (d > 0 \&\& ((all.n/if (((all.n/' $g
 mutant "a failed notice kept for 12 h" 's/    else await s.put(key, { expires: now + RETRY });//' $g
 mutant "a failed notice retried on every capped miss" 's/    else await s.put(key, { expires: now + RETRY });/    else await s.delete(key);/' $g
 mutant "the notice marker claimed after the sends" '/^    await s.put(key, { expires: now + PENDING_TTL });$/d; s/^    else await s.put(key, { expires: now + RETRY });$/    await s.put(key, { expires: now + (any ? PENDING_TTL : RETRY) });/' $g
@@ -250,6 +250,8 @@ mutant "a notice leaves out the refused origin" 's/  ${about(refused)}//' $g
 mutant "41 messages an hour" 's/const MAIL_MAX = 40;/const MAIL_MAX = 41;/' $g
 mutant "6 messages an hour per approver" 's/^const SHARE = 5;/const SHARE = 6;/' $g
 mutant "no per-approver share" 's/ || own.n >= SHARE//' $g
+mutant "no first message past the ceiling" 's/ \&\& own.n > 0)/)/' $g
+mutant "two messages past the ceiling" 's/own.n > 0)/own.n > 1)/' $g
 mutant "approvers share one count" 's/`m:${hour}:${name}:${to}`/`m:${hour}:${name}`/g' $g
 mutant "one share for every set" 's/`m:${hour}:${name}:${to}`/`m:${hour}:${to}`/g' $g
 mutant "a share that never renews" 's/`m:${hour}:${name}:${to}`/`m:${name}:${to}`/g' $g
