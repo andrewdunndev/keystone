@@ -163,7 +163,7 @@ pass tang/server-1 | jq -R '{TANG_KEY_SERVER_1: .}' |
 - Pin every family the host can egress on, its IPv4 /32 and its delegated IPv6 prefix, since clevis may use either at boot. Approval covers a renumber or a visit.
 - With `approvers` alone, every unlock needs an approval, and a Gate or mail outage, or a full set, leaves the disk's passphrase slot as the only way in; list the host's own prefixes in `allow` so it boots unattended.
 - Any set with `allow` or `approvers` needs `GATE`; `check` fails without it. `approvers` also needs `ALERT` without `destination_address` and `ALERT_FROM`; without them the set refuses every new origin.
-- A set holds 3 origins at a time; a fourth is refused and approvers get one notice naming it and the three. A set sends at most 5 messages an hour per approver, and all sets together 40.
+- A set holds 3 origins at a time; a fourth is refused and approvers get one notice naming it and the three. A set sends at most 5 messages an hour to each of its approvers, and all sets together 40.
 - Turn Pseudo IPv4 off for the zone. With it on, IPv6 clients arrive as 240.0.0.0/4 addresses, which are refused.
 - `deploy` rewrites a live set only when its keys match stdin and one Worker version, the one `--url` serves, takes all traffic. `check` from outside `allow` prints `SKIP rec`.
 

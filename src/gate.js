@@ -1,7 +1,7 @@
 // Approval of new origins for sets with approvers, and the mail it and the unlock alerts send. One Durable Object
 // instance holds every pending approval, so the mail cap has one point of serialization; only misses reach it. Storage
 // keys, each value carrying its own `expires`: p:<name>:<origin> a pending, c:<name> a capped notice sent, m:<hour> the
-// messages sent that hour, m:<hour>:<name> those of one set.
+// messages sent that hour, m:<hour>:<name>:<approver> those to one approver of one set.
 import { EmailMessage } from 'cloudflare:email';
 import { DurableObject } from 'cloudflare:workers';
 import { bounded } from './bounded.js';
@@ -111,7 +111,7 @@ export class Gate extends DurableObject {
     const others = (await this.open(name, now)).filter((o) => o.origin !== origin);
     const i = Object.fromEntries(Object.entries(p.info).map(([k, v]) => [k, ascii(v)])), where = `${origin} (${i.org}, ${i.city})`;
     for (const to of set.approvers) {
-      if (!due(p, to) || !(await this.budget(name, set, now))) continue;
+      if (!due(p, to) || !(await this.budget(name, to, now))) continue;
       const link = `${i.base}/${name}/approve/${await sign(set.key, name, { o: origin, p: p.pid, e: p.expires, a: to })}`;
       const text = `Key set ${name} was asked for from an origin it does not admit. The host is held: nothing changes ` +
         `until an approver presses a button on the page below.\n\nset: ${name}\norigin: ${origin}\nnetwork: AS${i.asn} ` +
@@ -122,7 +122,7 @@ export class Gate extends DurableObject {
         'moved, deny, and revoke the set.\n';
       const ok = await send(this.env, to, `keystone: unlock ${name} from ${where}?`, text).then(() => true, async (e) => {
         console.error(`approval mail to ${to} for ${name} failed: ${e.message}`);
-        await this.refund(name, set, now, e);
+        await this.refund(name, to, now, e);
         return false;
       });
       const q = await s.get(key);
@@ -139,7 +139,7 @@ export class Gate extends DurableObject {
     await s.put(key, { expires: now + PENDING_TTL });
     let any = false;
     for (const to of set.approvers) {
-      if (!(await this.budget(name, set, now))) break;
+      if (!(await this.budget(name, to, now))) continue;
       const items = await Promise.all(open.map(async (o) =>
         `  ${about(o)}\n  ${o.info.base}/${name}/approve/${await sign(set.key, name, { o: o.origin, p: o.pid, e: o.expires, a: to })}`));
       try {
@@ -150,28 +150,28 @@ export class Gate extends DurableObject {
         any = true;
       } catch (e) {
         console.error(`capped notice to ${to} for ${name} failed: ${e.message}`);
-        await this.refund(name, set, now, e);
+        await this.refund(name, to, now, e);
       }
     }
     if (any) console.log(JSON.stringify({ event: 'capped', name, open: open.length }));
     else await s.put(key, { expires: now + RETRY });
   }
 
-  // SHARE messages an hour per approver of the set, and MAIL_MAX across every set, counted before the send.
-  async budget(name, set, now, d = 1) {
+  // SHARE messages an hour to each approver of a set, and MAIL_MAX across every set, counted before the send.
+  async budget(name, to, now, d = 1) {
     const s = this.ctx.storage, hour = Math.floor(now / 3600000), expires = (hour + 1) * 3600000;
-    const all = (await s.get(`m:${hour}`)) ?? { n: 0, expires }, own = (await s.get(`m:${hour}:${name}`)) ?? { n: 0, expires };
-    if (d > 0 && (all.n >= MAIL_MAX || own.n >= SHARE * set.approvers.length)) return false;
+    const all = (await s.get(`m:${hour}`)) ?? { n: 0, expires }, own = (await s.get(`m:${hour}:${name}:${to}`)) ?? { n: 0, expires };
+    if (d > 0 && (all.n >= MAIL_MAX || own.n >= SHARE)) return false;
     all.n += d;
     own.n += d;
     await s.put(`m:${hour}`, all);
-    await s.put(`m:${hour}:${name}`, own);
+    await s.put(`m:${hour}:${name}:${to}`, own);
     return true;
   }
 
   // A failed send gives its unit back, unless it timed out and may yet be delivered.
-  async refund(name, set, now, e) {
-    if (e.message !== TIMED_OUT) await this.budget(name, set, now, -1);
+  async refund(name, to, now, e) {
+    if (e.message !== TIMED_OUT) await this.budget(name, to, now, -1);
   }
 
   // The pending a token names, null unless it is still the current one, and the set's other open origins.
