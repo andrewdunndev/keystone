@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.3 - unreleased
+
+- A set's hourly mail share is counted per approver, so one failing mailbox no longer uses up the others' share; the 40 an hour across all sets is unchanged. Alerts documents it.
+- The hourly cron run logs once per isolate when `UNLOCKS`, `ALERT`, `ALERT_FROM` and `ALERT_TO` are not all bound, instead of returning silently.
+- `keyset deploy` refuses when `--url` serves a release that is not an `x.y.z` number, quoting it and naming the same recovery as for a newer release.
+- CI checks every wrangler subcommand and flag `keyset` calls against the installed wrangler, offline, instead of only a deploy dry run.
+- Setup, Contributing and the pipeline no longer name Node or image versions in prose; `package.json` and `.gitlab-ci.yml` hold them.
+- Internal: `keyset deploy` is split into plan, apply and verify steps, the alert state machine moves to its own module, and the Gate timeout, JWK import and address read each have one implementation. Mutants and tests now cover the router, set names, record point shape, token shape, the Gate wait and the cron log.
+
 ## v0.2.2 - 2026-11-01
 
 Documentation and housekeeping; the Worker and `keyset` behave as in v0.2.1.
