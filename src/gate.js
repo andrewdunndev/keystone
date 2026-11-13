@@ -6,6 +6,7 @@ import { EmailMessage } from 'cloudflare:email';
 import { DurableObject } from 'cloudflare:workers';
 import { bounded } from './bounded.js';
 import { b64u, derivedKey, parseSet, secretName } from './jwk.js';
+import { withTimeout } from './timeout.js';
 
 const enc = new TextEncoder();
 const PENDING_TTL = 12 * 3600 * 1000;
@@ -34,13 +35,7 @@ function mime(from, to, subject, text) {
 // The send_email binding has no timeout of its own, so a stalled send is cut off here.
 export async function send(env, to, subject, text) {
   const msg = new EmailMessage(env.ALERT_FROM, to, mime(env.ALERT_FROM, to, subject, text));
-  let timer;
-  const limit = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(TIMED_OUT)), SEND_TIMEOUT); });
-  try {
-    await Promise.race([env.ALERT.send(msg), limit]);
-  } finally {
-    clearTimeout(timer);
-  }
+  await withTimeout(env.ALERT.send(msg), SEND_TIMEOUT, TIMED_OUT);
 }
 
 const ascii = (s) => String(s).replace(/[^\x20-\x7e]/g, '?');

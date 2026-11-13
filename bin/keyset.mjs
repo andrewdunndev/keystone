@@ -8,7 +8,7 @@ import { constants, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { b64u, thumbprint, parseSet, policyTag, secretName, NAME, CURVES } from '../src/jwk.js';
+import { b64u, importJwk, thumbprint, parseSet, policyTag, secretName, NAME, CURVES } from '../src/jwk.js';
 
 const WRANGLER = fileURLToPath(new URL('../node_modules/.bin/wrangler', import.meta.url));
 const RELEASE = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
@@ -51,7 +51,7 @@ const publicKey = (k, name) => crypto.subtle.importKey('jwk', { kty: k.kty, crv:
 async function loadSet(text) {
   const set = parseSet(text);
   for (const [k, name, use] of [[set.sign, 'ECDSA', 'sign'], [set.exch, 'ECDH', 'deriveBits']]) {
-    await crypto.subtle.importKey('jwk', { kty: k.kty, crv: k.crv, x: k.x, y: k.y, d: k.d }, { name, namedCurve: k.crv }, false, [use])
+    await importJwk(k, name, use)
       .catch(() => { throw new Error(`the ${k.alg} private key does not match its public key`); });
   }
   set.thp = { sign: await thumbprint(set.sign), exch: await thumbprint(set.exch) };

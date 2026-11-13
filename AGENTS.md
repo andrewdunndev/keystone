@@ -7,10 +7,11 @@ revokes its key sets.
 
 - `src/jwk.js`: the key set format: base64url, thumbprints, kid matching, `parseSet`, the set name rule and its
   `TANG_KEY_<NAME>` secret. The format lives here alone; the Worker and keyset import it.
-- `src/index.js`: the Worker: `/<name>/adv`, `/<name>/rec/<kid>` and its admission, `/<name>/approve/<token>`, unlock
-  alerts.
+- `src/index.js`: the Worker: `/<name>/adv`, `/<name>/rec/<kid>` and its admission, `/<name>/approve/<token>`, the cron run.
 - `src/origin.js`: addresses, prefixes and the /24 or /48 an origin is keyed by.
+- `src/alert.js`: the unlock and refusal alerts, the hourly digest of held sources, the Worker-version notice.
 - `src/bounded.js`: the empty-at-limit rule for the Worker's and the Gate's per-isolate caches.
+- `src/timeout.js`: `withTimeout`, the race against a timer both the Gate mail and the Gate wait use.
 - `src/gate.js`: the `Gate` Durable Object holding pending approvals, approval tokens, and the mail.
 - `src/auth-css.js`: the approval pages' stylesheet, generated from `@dunn.dev/reference` by `scripts/auth-css.mjs` (`npm run auth-css`).
 - `bin/keyset.mjs`: `new`, `check`, `deploy`, `revoke`. `main(argv, io)` takes fetch, the wrangler runner, stdio and process

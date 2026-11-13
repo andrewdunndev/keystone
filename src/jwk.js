@@ -126,3 +126,7 @@ export async function policyTag(set) {
     enc.encode(JSON.stringify([set.allow ?? null, set.approvers ?? null])));
   return b64u.enc(new Uint8Array(mac));
 }
+
+// A private key as a non-extractable WebCrypto key, which checks its d against its public point.
+export const importJwk = (k, name, use) => crypto.subtle.importKey('jwk', { kty: k.kty, crv: k.crv, x: k.x, y: k.y, d: k.d },
+  { name, namedCurve: k.crv }, false, [use]);
