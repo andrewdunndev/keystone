@@ -581,11 +581,11 @@ test('deploy refuses a Worker serving a newer or unreadable release than this cl
     assert.equal(seen.length, 0);
   }
   // A release that is no x.y.z cannot be ordered, so it refuses as if newer, quoted.
-  for (const odd of ['1.2', '1.2.3.4', 'v9.9.9', '1.2.x', `${x}.${y}.${z}-rc1`, 'latest']) {
+  for (const odd of ['1.2', '1.2.3.4', 'v9.9.9', '1.2.x', `${x}.${y}.${z}-rc1`, 'latest', '1.2.3\u009b[2J']) {
     const live = { TANG_KEY_A_1: A.text }, seen = [];
     const r = await deploy(stdin, ['--new', 'b-1', '--apply'], { live, fetch: serving(live, odd), wrangler: cf(live, { seen }) });
     assert.equal(r.code, 1, odd);
-    assert.ok(r.out.includes(`REFUSE  Worker: --url serves keystone ${JSON.stringify(odd)}, this clone is ${version}; update the clone and run npm ci\n`), r.out);
+    assert.ok(r.out.includes(`REFUSE  Worker: --url serves keystone ${JSON.stringify(odd.replace(/[^\x20-\x7e]/g, '?'))}, this clone is ${version}; update the clone and run npm ci\n`), r.out);
     assert.equal(seen.length, 0);
   }
   for (const release of [before, version, null, undefined]) {

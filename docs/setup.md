@@ -129,7 +129,7 @@ jq -n --arg s2 "$(pass tang/server-2)" \
 
 The plan labels each set `ok`, `new`, `policy`, `revoked` or `REFUSE` and applies only when nothing is refused. A null entry that is still served shows as `REVOKED-LIVE`, and `--apply` redeploys from current secrets to drop it. The drift report lists live sets missing from the input; a plan runs it only when `CLOUDFLARE_API_TOKEN` is set.
 
-`--apply` refuses when the wrangler target's secrets disagree with `--url`. `keyset` prints private keys only from `new` and deletes only the set `revoke` names. `deploy --apply` redeploys the Worker from the config given after `--`; `deploy` refuses when `--url` serves a newer keystone release than the clone. Each check sends a real `rec`, which can raise an alert and marks its source seen.
+`--apply` refuses when the wrangler target's secrets disagree with `--url`. `keyset` prints private keys only from `new` and deletes only the set `revoke` names. `deploy --apply` redeploys the Worker from the config given after `--`; `deploy` refuses when `--url` serves a newer keystone release than the clone, or one that is not an `x.y.z` number. Each check sends a real `rec`, which can raise an alert and marks its source seen.
 
 To upgrade, update the clone and run `npm ci`. Then plan `keyset deploy` over the whole store: `keyset` refuses, before any deploy, a set with a member other than `keys`, `allow` and `approvers`. Fix it in the store, then merge the example config's new bindings and redeploy with `npx wrangler deploy --config "$KEYSTONE/deploy/wrangler.toml"`; secrets persist. A set already answering 500 is repaired with `npx wrangler secret put TANG_KEY_<NAME> --config "$KEYSTONE/deploy/wrangler.toml"` with the cleaned value. To move to a new hostname, change the route and redeploy the same way. Then plan `keyset deploy` against the new `--url`: every set should read `ok`.
 
@@ -140,7 +140,7 @@ When a `rec` succeeds from a new source, keystone mails one alert through a Clou
 1. Create the namespace: `npx wrangler kv namespace create UNLOCKS`.
 2. Onboard a subdomain such as `mail.example.org` in Email Sending, which needs Workers Paid. The apex domain's mail is untouched.
 3. Uncomment all four blocks in `deploy/wrangler.toml`: the `UNLOCKS` namespace id, the `ALERT` binding, `ALERT_FROM` and `ALERT_TO`, and the hourly cron. `ALERT_FROM` must be on that subdomain.
-4. Redeploy.
+4. Redeploy. A cron run with these bindings missing logs `cron run skipped: UNLOCKS, ALERT, ALERT_FROM and ALERT_TO are not all bound`.
 
 Any client may send `keystone-probe: 1`, as `keyset check` does. It mutes only the refusal alert for that request, and a probed `rec` is never served unless its origin is in `allow` or the set has no gate, exactly as without the header. A probed `adv` also reveals the Worker version, the keystone release, the set's policy tag and whether a gated set lacks its bindings, so a probe shows that a set is gated.
 

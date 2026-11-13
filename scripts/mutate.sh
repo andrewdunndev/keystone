@@ -325,7 +325,7 @@ mutant "a failed version mail is swallowed" "s/    if (a.status === 'rejected') 
 mutant "the digest is skipped" 's/, sendDigest(env)\]/, Promise.resolve({})]/'
 mutant "a probe of an absent set sends no release" 's/  if (probed(request)) res.headers.set(.keystone-release., pkg.version);//'
 mutant "a tombstone is checked without its release" 's/for (const t of tombs) newer = newerRelease(await planTomb(t, ctx)) ?? newer;/for (const t of tombs) await planTomb(t, ctx);/' $k
-mutant "a served release that is no x.y.z deploys" 's/  if (!SEMVER.test(r)) return JSON.stringify(r);//' $k
+mutant "a served release that is no x.y.z deploys" 's/  if (!SEMVER.test(r)) return JSON.stringify(r.*);//' $k
 mutant "check passes an unbound Gate" "/=== 'unavailable') throw new Error/d" $k
 mutant "check accepts an adv carrying a private key" "s/if (keys.some((k) => 'd' in k)) return null;//" $k
 mutant "rec proof compares against S, not ECDH(r, S)" 's/if (got !== want)/if (got !== set.exch.x)/' $k

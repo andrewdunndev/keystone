@@ -19,11 +19,11 @@ const older = (a, b) => {
   const i = p.findIndex((x, k) => x !== q[k]);
   return i >= 0 && p[i] < q[i];
 };
-// The release a probe reply names when it is newer than this clone's, or not an x.y.z at all (quoted); null otherwise.
+// The release a probe reply names when it is newer than this clone's, or not an x.y.z at all (quoted, non-printable bytes as ?); null otherwise.
 const newerRelease = (res) => {
   const r = res?.headers.get('keystone-release');
   if (!r) return null;
-  if (!SEMVER.test(r)) return JSON.stringify(r);
+  if (!SEMVER.test(r)) return JSON.stringify(r.replace(/[^\x20-\x7e]/g, '?'));
   return older(RELEASE, r) ? r : null;
 };
 const USAGE = `usage: keyset new [--curve P-256|P-521, default P-521] > set

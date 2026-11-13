@@ -281,7 +281,6 @@ test('the cron run on a Worker without alerts bound logs once per isolate and do
   } finally { console.error = log; }
 });
 
-
 eachCurve('a key set is {"keys":[...]}, one signing and one ECMR private key on the signing alg\'s curve; else 500, logged by name', async (c) => {
   const alien = FX[OTHER[c.crv]];
   const { alg, ...noAlg } = fx.exch;
