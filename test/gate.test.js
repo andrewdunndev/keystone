@@ -587,7 +587,7 @@ test('a set that spends its share of 5 messages an hour per approver leaves anot
   assert.deepEqual(sent.slice(27).map((m) => m.to), five);
 }));
 
-test('at most 40 messages an hour across all sets, notices included; held mail goes out once the hour turns', withClock(async () => {
+test('at most 40 messages an hour across all sets, notices included, past that only an approver\'s first; held mail goes out once the hour turns', withClock(async () => {
   const five = ['a@example.org', 'b@example.org', 'c@example.org', 'd@example.org', 'e@example.org'];
   const e = gateEnv(Object.fromEntries(['ASK', 'OTHER', 'THIRD'].map((n) => [`TANG_KEY_${n}`, setText({ approvers: five })])));
   for (const name of ['ask', 'other']) for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1']) await rec(e, name, { ip });
@@ -604,6 +604,20 @@ test('at most 40 messages an hour across all sets, notices included; held mail g
   await rec(e, 'ask', { ip: '2001:db8::1' });
   assert.deepEqual(subjects().slice(45), Array(5).fill('keystone: ask has 3 origins waiting; new ones are refused'));
   assert.ok(e.store.m.get('c:ask'));
+}));
+
+test('past 40 messages an hour, an approver of a set not yet mailed that hour still gets one message', withClock(async () => {
+  const five = ['a@example.org', 'b@example.org', 'c@example.org', 'd@example.org', 'e@example.org'];
+  const e = gateEnv({ TANG_KEY_ASK: setText({ approvers: five }), TANG_KEY_OTHER: setText({ approvers: five }), TANG_KEY_THIRD: setText({ approvers: five.slice(0, 2) }) });
+  for (const name of ['ask', 'other']) for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1', '2001:db8::1']) await rec(e, name, { ip });
+  assert.equal(sent.length, 40);
+  await rec(e, 'third', { ip: HOME });
+  assert.deepEqual(sent.slice(40).map((m) => m.to), five.slice(0, 2));
+  await rec(e, 'third', { ip: '203.0.113.1' });
+  assert.equal(sent.length, 42);
+  mock.timers.tick(3600e3);
+  await rec(e, 'third', { ip: '203.0.113.1' });
+  assert.deepEqual(sent.slice(42).map((m) => m.to), five.slice(0, 2));
 }));
 
 test('held mail that keeps failing is retried after 5, 10, 20, 40, then every 60 minutes while the pending lives', withClock(async () => {

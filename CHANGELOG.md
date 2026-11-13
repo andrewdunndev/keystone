@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.4 - 2026-11-13
+
+- Past the 40 messages an hour across all sets, each approver of each set still gets their first message of the hour, so strangers asking for one set can no longer silence another set's approval mail. Setup's Origin gate section documents it.
+
 ## v0.2.3 - 2026-11-12
 
 - A set's hourly mail share is counted per approver, so one failing mailbox no longer uses up the others' share; the 40 an hour across all sets is unchanged. Setup's Origin gate section documents it.

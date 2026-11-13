@@ -157,11 +157,12 @@ export class Gate extends DurableObject {
     else await s.put(key, { expires: now + RETRY });
   }
 
-  // SHARE messages an hour to each approver of a set, and MAIL_MAX across every set, counted before the send.
+  // SHARE messages an hour to each approver of a set, counted before the send. Past MAIL_MAX across every set, each
+  // approver of each set still gets their first message of the hour, so no set's strangers silence another set.
   async budget(name, to, now, d = 1) {
     const s = this.ctx.storage, hour = Math.floor(now / 3600000), expires = (hour + 1) * 3600000;
     const all = (await s.get(`m:${hour}`)) ?? { n: 0, expires }, own = (await s.get(`m:${hour}:${name}:${to}`)) ?? { n: 0, expires };
-    if (d > 0 && (all.n >= MAIL_MAX || own.n >= SHARE)) return false;
+    if (d > 0 && ((all.n >= MAIL_MAX && own.n > 0) || own.n >= SHARE)) return false;
     all.n += d;
     own.n += d;
     await s.put(`m:${hour}`, all);
