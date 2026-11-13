@@ -11,7 +11,7 @@ There is no DCO and no CLA.
 
 ## Tests
 
-The suite uses stock `tangd` as the oracle: on fresh keys of each curve, the Worker must match its advertisements, recoveries and verdicts on malformed points. It needs Fedora with `tang` and `jose` (CI uses `quay.io/fedora/fedora:44`) and Node 22.15 or later.
+The suite uses stock `tangd` as the oracle: on fresh keys of each curve, the Worker must match its advertisements, recoveries and verdicts on malformed points. It needs Fedora with `tang` and `jose` (the image is in `.gitlab-ci.yml`) and the Node in `engines` of `package.json`.
 
 ```sh
 dnf -y install tang jose nodejs npm

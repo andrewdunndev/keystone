@@ -5,7 +5,7 @@ A key set is one signing key and one exchange key on one curve. A pin's `thp` is
 ## Prerequisites
 
 - A Cloudflare account and a zone on Cloudflare DNS for the Worker's hostname.
-- Node 22.15 or later, git and `jq` where `keyset` runs, and `clevis` (which brings `jose`) on each host to bind.
+- Node as `engines` in `package.json` requires, git and `jq` where `keyset` runs, and `clevis` (which brings `jose`) on each host to bind.
 - An offline store for key sets, such as `pass`.
 
 ```sh
@@ -135,7 +135,7 @@ To upgrade, update the clone and run `npm ci`. Then plan `keyset deploy` over th
 
 ## Alerts
 
-When a `rec` succeeds from a new source, keystone mails one alert through a Cloudflare Email Sending `send_email` binding. A source is the client's /24 or /48 with its ASN and country. A failed alert is logged and never changes the unlock. Each set sends at most one alert an hour; up to five sources met meanwhile wait for the hourly digest. The hourly run also mails when another Worker version serves, and names a rollback: a version serves the secrets it was deployed with, so a rollback brings back sets revoked and policies edited since. While a gradual deployment splits traffic the run can land on either version, so the mail repeats hourly until one takes all traffic. A rollback to a version before v0.2.1 is not mailed, since that version has no such check.
+When a `rec` succeeds from a new source, keystone mails one alert through a Cloudflare Email Sending `send_email` binding. A source is the client's /24 or /48 with its ASN and country. A failed alert is logged and never changes the unlock. Each set sends at most one alert an hour; up to five sources met meanwhile wait for the hourly digest. The hourly run also mails when another Worker version serves, and names a rollback: a version serves the secrets it was deployed with, so a rollback brings back sets revoked and policies edited since. While a gradual deployment splits traffic the run can land on either version, so the mail repeats hourly until one takes all traffic. A rollback to a version that predates this check is not mailed.
 
 1. Create the namespace: `npx wrangler kv namespace create UNLOCKS`.
 2. Onboard a subdomain such as `mail.example.org` in Email Sending, which needs Workers Paid. The apex domain's mail is untouched.
