@@ -239,6 +239,49 @@ test('a name with no secret, and odd paths, are 404', async () => {
   assert.equal((await call('/lab/adv/a/b')).status, 404);
 });
 
+test('names outside [a-z0-9-], and paths past /<name>/<op>/<arg>, are 404 even where a prefix would be served', async () => {
+  assert.equal((await call('/LAB/adv')).status, 404);
+  assert.equal((await call('/Host1/adv')).status, 404);
+  assert.equal((await call(`/lab/adv/${await thumbprint(fx.sig)}/x`)).status, 404);
+  assert.equal((await rec('lab', `${fx.kid}/x`, fx.client)).status, 404);
+});
+
+test('adv takes GET alone and rec POST alone', async () => {
+  for (const method of ['POST', 'PUT', 'DELETE']) assert.equal((await call('/lab/adv', { method })).status, 405, method);
+  for (const method of ['GET', 'PUT', 'DELETE']) assert.equal((await call(`/lab/rec/${fx.kid}`, { method })).status, 405, method);
+});
+
+eachCurve('a rec body is one EC point: another kty, a missing member or a body that is no object is 400', async () => {
+  for (const body of [{ ...fx.client, kty: 'OKP' }, { ...fx.client, kty: undefined }, { ...fx.client, x: undefined }, { ...fx.client, y: 5 }, 'null', '[]', '7']) {
+    assert.equal((await rec('lab', fx.kid, body)).status, 400, JSON.stringify(body));
+  }
+});
+
+eachCurve('a rec coordinate is base64url without padding: a trailing = is 400 though the value is the same', async () => {
+  const pad = (s) => {
+    const b = b64u.dec(s);
+    return b64u.enc(Uint8Array.of(...new Array((5 - (b.length % 3)) % 3).fill(0), ...b));
+  };
+  const padded = { ...fx.client, x: pad(fx.client.x), y: pad(fx.client.y) };
+  for (const k of ['x', 'y']) assert.equal(padded[k].length % 4, 3);
+  assert.equal((await rec('lab', fx.kid, padded)).status, 200);
+  for (const k of ['x', 'y']) assert.equal((await rec('lab', fx.kid, { ...padded, [k]: padded[k] + '=' })).status, 400, k);
+});
+
+test('the cron run on a Worker without alerts bound logs once per isolate and does nothing', async () => {
+  const errs = []; const log = console.error; console.error = (...a) => errs.push(a.join(' '));
+  try {
+    resetAlertState();
+    await worker.scheduled({}, { ...env });
+    await worker.scheduled({}, { ...env, ALERT: {} });
+    assert.deepEqual(errs, ['cron run skipped: UNLOCKS, ALERT, ALERT_FROM and ALERT_TO are not all bound']);
+    resetAlertState();
+    await worker.scheduled({}, { ...env });
+    assert.equal(errs.length, 2);
+  } finally { console.error = log; }
+});
+
+
 eachCurve('a key set is {"keys":[...]}, one signing and one ECMR private key on the signing alg\'s curve; else 500, logged by name', async (c) => {
   const alien = FX[OTHER[c.crv]];
   const { alg, ...noAlg } = fx.exch;
