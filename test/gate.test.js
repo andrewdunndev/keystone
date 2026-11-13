@@ -401,7 +401,7 @@ test('a set takes 3 open pendings; further origins are capped until one is decid
   mock.timers.tick(12 * 3600e3);
   await rec(e, 'ask', { ip: '203.0.113.200' });
   const h = (T0 + 12 * 3600e3) / 3600e3;
-  assert.deepEqual([...e.store.m.keys()].sort(), [`m:${h}`, `m:${h}:ask`, 'p:ask:203.0.113.0/24']);
+  assert.deepEqual([...e.store.m.keys()].sort(), [`m:${h}`, ...APPROVERS.map((to) => `m:${h}:ask:${to}`), 'p:ask:203.0.113.0/24'].sort());
 }));
 
 test('a capped answer is cached per origin, so a granted origin is served while strangers keep the set capped', withClock(async () => {
@@ -571,7 +571,7 @@ test('a capped set mails each approver one notice naming the refused origin and 
 
 test('a set that spends its share of 5 messages an hour per approver leaves another set\'s held host its mail', withClock(async () => {
   const five = ['a@example.org', 'b@example.org', 'c@example.org', 'd@example.org', 'e@example.org'];
-  const e = gateEnv({ TANG_KEY_ASK: setText({ approvers: five }), TANG_KEY_OTHER: setText({ approvers: APPROVERS }) });
+  const e = gateEnv({ TANG_KEY_ASK: setText({ approvers: five }), TANG_KEY_OTHER: setText({ approvers: five.slice(0, 2) }) });
   for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1', '2001:db8::1']) await rec(e, 'ask', { ip });
   assert.equal(sent.length, 20);
   for (const [origin, net] of [['198.51.100.0/24', '2001:db8:1::'], ['203.0.113.0/24', '2001:db8:2::']]) {
@@ -581,7 +581,7 @@ test('a set that spends its share of 5 messages an hour per approver leaves anot
   }
   assert.equal(sent.length, 25);
   await rec(e, 'other', { ip: HOME });
-  assert.deepEqual(sent.slice(25).map((m) => m.to), APPROVERS);
+  assert.deepEqual(sent.slice(25).map((m) => m.to), five.slice(0, 2));
   mock.timers.tick(3600e3);
   await rec(e, 'ask', { ip: '2001:db8:2::1' });
   assert.deepEqual(sent.slice(27).map((m) => m.to), five);
@@ -631,7 +631,7 @@ test('a failed send is refunded to the hourly cap; a notice that never went out 
   mock.timers.tick(5 * 60e3);
   await rec(e, 'ask', { ip: HOME });
   assert.equal(errors.length, 4);
-  for (const k of [`m:${T0 / 3600e3}`, `m:${T0 / 3600e3}:ask`]) assert.equal(e.store.m.get(k).n, 0);
+  for (const k of [`m:${T0 / 3600e3}`, ...APPROVERS.map((to) => `m:${T0 / 3600e3}:ask:${to}`)]) assert.equal(e.store.m.get(k).n, 0);
   for (const ip of ['203.0.113.1', '192.0.2.1']) await rec(e, 'ask', { ip });
   errors.length = 0;
   await rec(e, 'ask', { ip: '2001:db8::1' });
@@ -646,13 +646,15 @@ test('a failed send is refunded to the hourly cap; a notice that never went out 
   mock.timers.tick(5 * 60e3 - 10 * 5001);
   await rec(e, 'ask', { ip: '2001:db8::1' });
   assert.deepEqual(sent.map((m) => m.to), APPROVERS);
-  for (const k of [`m:${T0 / 3600e3}`, `m:${T0 / 3600e3}:ask`]) assert.equal(e.store.m.get(k).n, 2);
+  assert.equal(e.store.m.get(`m:${T0 / 3600e3}`).n, 2);
+  for (const to of APPROVERS) assert.equal(e.store.m.get(`m:${T0 / 3600e3}:ask:${to}`).n, 1);
   assert.equal(e.store.m.get('c:ask').expires, Date.now() + 12 * 3600e3);
-  const g = e.GATE.get(), set = { approvers: APPROVERS };
-  for (let i = 2; i < 10; i++) assert.ok(await g.budget('ask', set, T0));
-  assert.equal(await g.budget('ask', set, T0), false);
-  await g.budget('ask', set, T0, -1);
-  assert.ok(await g.budget('ask', set, T0));
+  const g = e.GATE.get(), [a, b] = APPROVERS;
+  for (let i = 1; i < 5; i++) assert.ok(await g.budget('ask', a, T0));
+  assert.equal(await g.budget('ask', a, T0), false);
+  assert.ok(await g.budget('ask', b, T0), 'one approver spending its share leaves the others theirs');
+  await g.budget('ask', a, T0, -1);
+  assert.ok(await g.budget('ask', a, T0));
 }));
 
 test('concurrent capped misses send one notice per approver', withClock(async () => {
@@ -675,7 +677,8 @@ test('a send that times out keeps its unit of the hourly cap, since it may yet b
   }
   await held;
   assert.deepEqual(errors, APPROVERS.map((to) => `approval mail to ${to} for ask failed: send timed out`));
-  for (const k of [`m:${T0 / 3600e3}`, `m:${T0 / 3600e3}:ask`]) assert.equal(e.store.m.get(k).n, 2);
+  assert.equal(e.store.m.get(`m:${T0 / 3600e3}`).n, 2);
+  for (const to of APPROVERS) assert.equal(e.store.m.get(`m:${T0 / 3600e3}:ask:${to}`).n, 1);
 }));
 
 test('240.0.0.0/4 is refused from its first address, as is AS13335 or a missing ASN; the alert says the origin is never admitted', async () => {
@@ -828,3 +831,40 @@ test('the Gate keeps 100 parsed sets, then the first derives its approve key aga
     assert.ok(await miss(0) >= 1);
   } finally { delete subtle.importKey; }
 });
+
+test('a token is v1.<payload of at most 512 characters>.<43-character MAC> and nothing else', withClock(async () => {
+  const e = gateEnv();
+  await rec(e, 'ask', { ip: HOME });
+  const p = pending(e, NET);
+  const token = (extra) => sign(approveKey(fx.exch), 'ask', { o: NET, p: p.pid, e: p.expires, a: APPROVERS[0], ...extra });
+  const good = await token();
+  assert.equal((await open(e, `/ask/approve/${good}`)).status, 200);
+  assert.equal((await open(e, `/ask/approve/${await token({ pad: 'x'.repeat(600) })}`)).status, 404);
+  assert.equal((await open(e, `/ask/approve/${good}AA`)).status, 404);
+  assert.equal((await open(e, `/ask/approve/x${good}`)).status, 404);
+}));
+
+test('a Gate that has not answered in 30 seconds fails the request closed, logged by name', { timeout: 5000 }, withClock(async () => {
+  mock.timers.reset();
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: T0 });
+  const e = gateEnv();
+  let calls = 0;
+  e.GATE = { idFromName: (n) => n, get: () => ({ miss: () => { calls++; return new Promise(() => {}); } }) };
+  const held = rec(e, 'ask', { ip: HOME });
+  await until(() => calls >= 1);
+  mock.timers.tick(29999);
+  assert.deepEqual(errors, []);
+  mock.timers.tick(1);
+  await refusedReply(await held);
+  assert.deepEqual(errors, ['ask: approvals unavailable, refusing new origins: the Gate did not answer']);
+}));
+
+test('an approver past their share is skipped, and the set\'s other approvers are still mailed, notices included', withClock(async () => {
+  const e = gateEnv(), g = e.GATE.get();
+  for (let i = 0; i < 5; i++) assert.ok(await g.budget('ask', APPROVERS[0], T0));
+  for (const ip of ['198.51.100.1', '203.0.113.1', '192.0.2.1']) await rec(e, 'ask', { ip });
+  assert.deepEqual(sent.map((m) => m.to), Array(3).fill(APPROVERS[1]));
+  await rec(e, 'ask', { ip: '2001:db8::1' });
+  assert.deepEqual(sent.slice(3).map((m) => m.to), [APPROVERS[1]]);
+  assert.match(subjects()[3], /has 3 origins waiting/);
+}));

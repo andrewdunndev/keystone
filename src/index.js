@@ -1,10 +1,12 @@
 // Tang server (McCallum-Relyea exchange, P-256 or P-521 per key set) as a Cloudflare Worker.
 // One write-once key set per name: /<name>/adv, /<name>/adv/<thp>, /<name>/rec/<kid>, /<name>/approve/<token>.
-import { b64u, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
+import { b64u, importJwk, kidMatches, parseSet, policyTag, secretName, NAME } from './jwk.js';
 import { inCidr, parseIp, sourceNet, unadmittable } from './origin.js';
-import { approveKey, send, verify, when, GRANT } from './gate.js';
+import { approveKey, verify, when, GRANT } from './gate.js';
+import { SEEN_MAX, alertNewSource, resetAlerts, sendDigest, versionChange } from './alert.js';
 import { AUTH_CSS } from './auth-css.js';
 import { bounded } from './bounded.js';
+import { withTimeout } from './timeout.js';
 import pkg from '../package.json' with { type: 'json' };
 
 export { Gate } from './gate.js';
@@ -33,8 +35,7 @@ const field = (p) => {
 const pub = (k, ops) => ({ alg: k.alg, crv: k.crv, key_ops: ops, kty: k.kty, x: k.x, y: k.y });
 
 // Private keys are imported when a request first needs them, each on its own, so an unusable key fails only those requests.
-const privateKey = (e, name, use) => (e.key ??= crypto.subtle.importKey('jwk',
-  { kty: e.jwk.kty, crv: e.jwk.crv, x: e.jwk.x, y: e.jwk.y, d: e.jwk.d }, { name, namedCurve: e.jwk.crv }, false, [use]));
+const privateKey = (e, name, use) => (e.key ??= importJwk(e.jwk, name, use));
 
 // Parsed key sets per isolate, keyed by the secret's text: a changed or deleted secret is never served stale.
 const prepared = new Map();
@@ -146,126 +147,6 @@ async function exchange(set, { x, y }) {
   }), 'application/jwk+json');
 }
 
-// One alert per key set per hour bounds the mail a stream of new sources can cause; KV's minimum TTL is 60 s. Sources
-// that arrive during the cooldown are held in KV and mailed as one digest by the cron trigger. KV takes one write a
-// second per key and, on the Free plan, 1,000 writes a day per account; HELD_CAP keeps a set's worst day near 400.
-const COOLDOWN = 3600;
-const HELD_TTL = 7 * 86400;
-const SEEN_MAX = 1000;
-const HELD_CAP = 5;
-const DIGEST_MAX = 200;
-const seen = new Set();
-const held = new Set();
-const inflight = new Set();
-const coolUntil = new Map();
-const heldCount = new Map();
-
-export function resetAlertState() {
-  for (const s of [seen, held, inflight, failed]) s.clear();
-  for (const m of [coolUntil, loggedAt, answered]) m.clear();
-  heldCount.clear();
-}
-
-const sendMail = (env, subject, text) => send(env, env.ALERT_TO, subject, text);
-
-const add = (set, k) => bounded(set, SEEN_MAX).add(k);
-
-// A recovery request from a (/24 or /48, ASN, country) not seen before mails once per set per cooldown. The kid is
-// public, so a request proves nothing about an unlock. Sources met during the cooldown or while a mail is in flight are
-// held for the digest. The set name and source are claimed before the first await so concurrent requests send one mail.
-// A refused source is a source of its own, so a refusal never marks the source seen for a later recovery.
-async function alertNewSource(request, env, name, refused = false) {
-  const net = sourceNet(request.headers.get('CF-Connecting-IP'));
-  if (!net) return;
-  const { asn = '?', country = '?' } = request.cf ?? {};
-  const id = `${name}:${net}:${asn}:${country}${refused ? ':refused' : ''}`;
-  const key = `seen:${id}`;
-  if (seen.has(key) || held.has(id) || inflight.has(key)) return;
-  const hold = async () => {
-    let c = heldCount.get(name);
-    if (!c || c.until <= Date.now()) {
-      const n = Number(await env.UNLOCKS.get(`heldn:${name}`)) || 0;
-      c = heldCount.get(name);
-      if (!c || c.until <= Date.now()) heldCount.set(name, c = { n, until: Date.now() + COOLDOWN * 1000 });
-    }
-    if (c.n >= HELD_CAP) return;
-    c.n++;
-    await env.UNLOCKS.put(`held:${id}`, JSON.stringify({ host: name, net, asn, country, refused, time: new Date().toISOString() }), { expirationTtl: HELD_TTL });
-    add(held, id);
-    await env.UNLOCKS.put(`heldn:${name}`, String(c.n), { expirationTtl: COOLDOWN });
-  };
-  if (inflight.has(name) || (coolUntil.get(name) ?? 0) > Date.now()) return hold();
-  inflight.add(name); inflight.add(key);
-  try {
-    if (await env.UNLOCKS.get(key) !== null) return add(seen, key);
-    const until = Number(await env.UNLOCKS.get(`cool:${name}`));
-    if (until > Date.now()) { coolUntil.set(name, until); return await hold(); }
-    const next = Date.now() + COOLDOWN * 1000;
-    coolUntil.set(name, next);
-    await env.UNLOCKS.put(`cool:${name}`, String(next), { expirationTtl: COOLDOWN }).catch(() => {});
-    const facts = `source: ${net}\nASN: ${asn}\ncountry: ${country}\ntime: ${new Date().toISOString()}\n\n`;
-    const [subject, text] = refused ? [`keystone: refused a recovery request from a new source for ${name}`,
-      `Key set ${name} refused a recovery request from a source not seen before: the origin is not admitted, so no key ` +
-      `was released.\n\n${facts}` + (refused === 'origin'
-        ? 'Origins on Cloudflare\'s own network (WARP, Worker egress), with no ASN, or in 240.0.0.0/4 (Pseudo IPv4) are never ' +
-          'admitted. If this is the host, it must egress elsewhere.'
-        : 'If the host moved, add its prefix to the set\'s allow list.') +
-      ` If it is not the host, someone who knows the set's name is asking for it.\n`] : [`keystone: recovery request from a new source for ${name}`,
-      `Key set ${name} received a recovery request from a source not seen before.\n\n${facts}` +
-      `The key id is public, so this does not prove an unlock happened. If you did not expect it, ` +
-      `check the host before deleting ${secretName(name)}: deleting it blocks the next boot.\n`];
-    try {
-      await sendMail(env, subject, text);
-    } catch (e) {
-      await hold().catch(() => {});
-      throw e;
-    }
-    add(seen, key);
-    await env.UNLOCKS.put(key, new Date().toISOString());
-  } finally {
-    inflight.delete(name); inflight.delete(key);
-  }
-}
-
-// Mails the sources held during cooldowns as one digest, then records them as seen. A run takes DIGEST_MAX sources to
-// stay under the Workers limit of 1,000 KV operations per invocation; the rest wait for the next run.
-async function sendDigest(env) {
-  const { keys } = await env.UNLOCKS.list({ prefix: 'held:', limit: DIGEST_MAX });
-  const fresh = [];
-  for (const { name } of keys) {
-    const seenKey = `seen:${name.slice(5)}`;
-    if (await env.UNLOCKS.get(seenKey) !== null) { await env.UNLOCKS.delete(name); continue; }
-    const v = JSON.parse(await env.UNLOCKS.get(name) ?? 'null');
-    if (v) fresh.push({ name, seenKey, ...v });
-  }
-  if (!fresh.length) return;
-  const lines = fresh.map((v) => `${v.host}  ${v.net}  ASN ${v.asn}  ${v.country}  ${v.time}${v.refused ? '  refused' : ''}`).join('\n');
-  await sendMail(env, `keystone: ${fresh.length} held recovery request source(s)`,
-    `Recovery requests from sources not seen before, held during an alert cooldown:\n\n${lines}\n\n` +
-    `The key id is public, so a request does not prove an unlock. Delete ${[...new Set(fresh.map((v) => secretName(v.host)))].join(', ')} only after checking the host.\n`);
-  for (const v of fresh) {
-    await env.UNLOCKS.put(v.seenKey, v.time);
-    await env.UNLOCKS.delete(v.name);
-  }
-}
-
-// Mails when the version serving the cron trigger differs from the last seen. One uploaded before the last seen is a rollback.
-async function versionChange(env) {
-  const { id, timestamp } = env.CF_VERSION_METADATA ?? {};
-  if (!id) return;
-  const last = JSON.parse(await env.UNLOCKS.get('serving') ?? 'null');
-  if (last?.id === id) return;
-  if (last) {
-    const back = timestamp < last.timestamp;
-    await sendMail(env, back ? 'keystone: rolled back to an earlier Worker version' : 'keystone: a new Worker version is serving',
-      `Worker version ${id}, uploaded ${timestamp}, serves in place of ${last.id}, uploaded ${last.timestamp}.\n\n` + (back
-        ? 'A version serves the secrets it was deployed with, so a set revoked or a policy edited since is live again. ' +
-          'Plan keyset deploy over the whole key store to see which; --apply redeploys from the current secrets.\n'
-        : 'If you did not deploy it, check the Worker\'s deployments in Cloudflare.\n'));
-  }
-  await env.UNLOCKS.put('serving', JSON.stringify({ id, timestamp }));
-}
-
 const PAGE_HEADERS = {
   'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'same-origin',
   'x-content-type-options': 'nosniff',
@@ -298,7 +179,7 @@ function facts(name, origin, p) {
 
 // /<name>/approve/<token>, over https only. A GET shows; a POST from the page itself decides. A token is 404 unless its
 // MAC holds and it names a current approver.
-async function approval(request, env, name, set, token) {
+async function approval(request, env, name, set, token, from) {
   if (new URL(request.url).protocol !== 'https:') return reply(403, 'https only\n');
   const t = await verify(set.approveKey ??= approveKey(set.exch.jwk), name, token);
   if (!t || !set.approvers.includes(t.a)) return notFound();
@@ -327,10 +208,10 @@ async function approval(request, env, name, set, token) {
   if (body === null || !['approve', 'deny'].includes(decision) || (decision === 'approve' && form.get('confirm') !== name)) {
     return page(400, 'Nothing changed', note(`To approve, type ${esc(name)} exactly.`, 'notice-danger'));
   }
-  const ip = request.headers.get('CF-Connecting-IP'), asn = request.cf?.asn ?? null;
-  const { status, p } = await gate(env).decide(name, t.o, t.p, decision, { a: t.a, ip, asn });
+  const asn = request.cf?.asn ?? null;
+  const { status, p } = await gate(env).decide(name, t.o, t.p, decision, { a: t.a, ip: from, asn });
   if (status !== 200) return page(409, 'Nothing changed', p ? decided(p) : note('This request is no longer current.'));
-  console.log(JSON.stringify({ event: p.state, name, origin: t.o, approver: t.a, ip, asn }));
+  console.log(JSON.stringify({ event: p.state, name, origin: t.o, approver: t.a, ip: from, asn }));
   answered.delete(`${name} ${t.o}`);
   return page(200, p.state === 'approved' ? 'Approved' : 'Denied', decided(p));
 }
@@ -338,6 +219,7 @@ async function approval(request, env, name, set, token) {
 const alertsOn = (env) => env.UNLOCKS && env.ALERT && env.ALERT_FROM && env.ALERT_TO;
 const gateBound = (env) => env.GATE && env.ALERT && env.ALERT_FROM;
 
+let unbound = false;
 const failed = new Set();
 const loggedAt = new Map();
 const answered = new Map();
@@ -346,27 +228,30 @@ const GATE_WAIT = 30000;
 const gate = (env) => env.GATE.get(env.GATE.idFromName('gate'));
 const clip = (v) => String(v ?? '?').slice(0, 64);
 
+export function resetAlertState() {
+  resetAlerts();
+  failed.clear(); loggedAt.clear(); answered.clear();
+  unbound = false;
+}
+
 // null when the origin is admitted, else why not. A refused origin never reaches a private key or the Gate.
-async function admit(set, name, ip, request, env) {
+async function admit(set, name, ip, from, request, env) {
   if (set.nets?.some((c) => inCidr(ip, c))) return null;
   if (!set.approvers) return 'allow';
   if (probed(request)) return 'probe';
   if (!gateBound(env)) return closed(name, 'GATE, ALERT and ALERT_FROM are not all bound');
   // Answers are kept per set and origin, so a box retrying twice a second asks the Gate once per ANSWER_TTL.
-  const origin = sourceNet(request.headers.get('CF-Connecting-IP')), at = `${name} ${origin}`, now = Date.now();
+  const origin = sourceNet(from), at = `${name} ${origin}`, now = Date.now();
   if ((answered.get(at)?.until ?? 0) > now) return answered.get(at).why;
   const cf = request.cf ?? {};
-  let why, timer;
+  let why;
   try {
     // The rec that opens a pending is usually a stranger's: its scheme and port never reach a link.
-    why = await Promise.race([
-      gate(env).miss(name, origin, {
-        asn: clip(cf.asn), org: clip(cf.asOrganization), country: clip(cf.country), city: clip(cf.city), colo: clip(cf.colo),
-        base: `https://${new URL(request.url).hostname}`,
-      }),
-      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('the Gate did not answer')), GATE_WAIT); }),
-    ]);
-  } catch (e) { return closed(name, e.message); } finally { clearTimeout(timer); }
+    why = await withTimeout(gate(env).miss(name, origin, {
+      asn: clip(cf.asn), org: clip(cf.asOrganization), country: clip(cf.country), city: clip(cf.city), colo: clip(cf.colo),
+      base: `https://${new URL(request.url).hostname}`,
+    }), GATE_WAIT, 'the Gate did not answer');
+  } catch (e) { return closed(name, e.message); }
   if (why === 'served') return null;
   if (!['held', 'denied', 'capped'].includes(why)) return closed(name, `unexpected Gate answer ${clip(why)}`);
   bounded(answered, SEEN_MAX).set(at, { why, until: now + ANSWER_TTL });
@@ -382,16 +267,15 @@ function closed(name, why) {
 }
 
 // Unserved recoveries all look alike to the client. A held origin is logged by the Gate instead.
-function refuse(request, env, ctx, name, why) {
-  const ip = request.headers.get('CF-Connecting-IP');
-  const key = `${name}:${sourceNet(ip) ?? ip}`;
+function refuse(request, env, ctx, name, from, why) {
+  const key = `${name}:${sourceNet(from) ?? from}`;
   if (why !== 'held' && (loggedAt.get(key) ?? 0) <= Date.now()) {
     bounded(loggedAt, SEEN_MAX).set(key, Date.now() + 60000);
     const { asn = null, country = null } = request.cf ?? {};
-    console.log(JSON.stringify({ event: 'refused', name, ip, asn, country, why }));
+    console.log(JSON.stringify({ event: 'refused', name, ip: from, asn, country, why }));
   }
   if ((why === 'allow' || why === 'origin') && !probed(request) && alertsOn(env)) {
-    ctx.waitUntil(alertNewSource(request, env, name, why).catch((e) => console.error('refusal alert failed:', e.message)));
+    ctx.waitUntil(alertNewSource(request, env, name, from, why).catch((e) => console.error('refusal alert failed:', e.message)));
   }
   return reply(403, 'origin not admitted\n');
 }
@@ -401,6 +285,7 @@ export default {
     const url = new URL(request.url);
     const seg = url.pathname.split('/').filter(Boolean);
     const [name, op, arg] = seg;
+    const from = request.headers.get('CF-Connecting-IP');
     if (!name || !NAME.test(name) || seg.length > 3) return reply(404, 'not found\n');
     const secret = secretName(name), raw = env[secret];
     if (!raw) return op === 'adv' ? absent(request, 'unknown key set\n') : reply(404, 'unknown key set\n');
@@ -422,28 +307,32 @@ export default {
     if (op === 'rec' && arg) {
       if (request.method !== 'POST') return reply(405, 'method not allowed\n');
       if (!(await kidMatches(set.exch.jwk, arg, set.exch.kids))) return reply(404, 'unknown kid\n');
-      const ip = set.gated && parseIp(request.headers.get('CF-Connecting-IP'));
-      if (set.gated && unadmittable(ip, request.cf?.asn)) return refuse(request, env, ctx, name, 'origin');
+      const ip = set.gated && parseIp(from);
+      if (set.gated && unadmittable(ip, request.cf?.asn)) return refuse(request, env, ctx, name, from, 'origin');
       const point = await parseRec(set, request);
       if (point instanceof Response) return point;
       if (set.gated) {
-        const why = await admit(set, name, ip, request, env);
-        if (why) return refuse(request, env, ctx, name, why);
+        const why = await admit(set, name, ip, from, request, env);
+        if (why) return refuse(request, env, ctx, name, from, why);
       }
       const res = await exchange(set, point);
       // One line per recovery for the Workers logs: the source, never key material or the body.
       const { asn = null, country = null } = request.cf ?? {};
-      console.log(JSON.stringify({ event: 'rec', name, ip: request.headers.get('CF-Connecting-IP'), asn, country }));
+      console.log(JSON.stringify({ event: 'rec', name, ip: from, asn, country }));
       if (alertsOn(env)) {
-        ctx.waitUntil(alertNewSource(request, env, name).catch((e) => console.error('unlock alert failed:', e.message)));
+        ctx.waitUntil(alertNewSource(request, env, name, from).catch((e) => console.error('unlock alert failed:', e.message)));
       }
       return res;
     }
-    if (op === 'approve' && arg) return set.approvers ? approval(request, env, name, set, arg) : notFound();
+    if (op === 'approve' && arg) return set.approvers ? approval(request, env, name, set, arg, from) : notFound();
     return reply(404, 'not found\n');
   },
   async scheduled(event, env) {
-    if (!alertsOn(env)) return;
+    if (!alertsOn(env)) {
+      if (!unbound) console.error('cron run skipped: UNLOCKS, ALERT, ALERT_FROM and ALERT_TO are not all bound');
+      unbound = true;
+      return;
+    }
     const [a, b] = await Promise.allSettled([versionChange(env), sendDigest(env)]);
     if (a.status === 'rejected' && b.status === 'rejected') console.error('digest failed:', b.reason.message);
     if (a.status === 'rejected') throw a.reason;

@@ -8,15 +8,23 @@ import { constants, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { b64u, thumbprint, parseSet, policyTag, secretName, NAME, CURVES } from '../src/jwk.js';
+import { b64u, importJwk, thumbprint, parseSet, policyTag, secretName, NAME, CURVES } from '../src/jwk.js';
 
 const WRANGLER = fileURLToPath(new URL('../node_modules/.bin/wrangler', import.meta.url));
 const RELEASE = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
+const SEMVER = /^\d+\.\d+\.\d+$/;
 // Whether release a precedes b, compared as x.y.z numbers.
 const older = (a, b) => {
   const [p, q] = [a, b].map((v) => v.split('.').map(Number));
   const i = p.findIndex((x, k) => x !== q[k]);
   return i >= 0 && p[i] < q[i];
+};
+// The release a probe reply names when it is newer than this clone's, or not an x.y.z at all (quoted, non-printable bytes as ?); null otherwise.
+const newerRelease = (res) => {
+  const r = res?.headers.get('keystone-release');
+  if (!r) return null;
+  if (!SEMVER.test(r)) return JSON.stringify(r.replace(/[^\x20-\x7e]/g, '?'));
+  return older(RELEASE, r) ? r : null;
 };
 const USAGE = `usage: keyset new [--curve P-256|P-521, default P-521] > set
        keyset check <url> <name> < set
@@ -51,7 +59,7 @@ const publicKey = (k, name) => crypto.subtle.importKey('jwk', { kty: k.kty, crv:
 async function loadSet(text) {
   const set = parseSet(text);
   for (const [k, name, use] of [[set.sign, 'ECDSA', 'sign'], [set.exch, 'ECDH', 'deriveBits']]) {
-    await crypto.subtle.importKey('jwk', { kty: k.kty, crv: k.crv, x: k.x, y: k.y, d: k.d }, { name, namedCurve: k.crv }, false, [use])
+    await importJwk(k, name, use)
       .catch(() => { throw new Error(`the ${k.alg} private key does not match its public key`); });
   }
   set.thp = { sign: await thumbprint(set.sign), exch: await thumbprint(set.exch) };
@@ -132,6 +140,62 @@ async function serving(io, extra) {
   } catch { return null; }
 }
 
+// One stdin set's verdict against what --url serves and the wrangler target holds, as rows through say. Returns the probe reply.
+async function planSet(s, { url, io, listed, drops, say }) {
+  const { name, secret, set, isNew } = s;
+  const res = await probe(url, name, io).catch(() => null);
+  const held = listed?.has(secret);
+  if (res?.status === 404) {
+    if (!isNew) say('REFUSE', name, 'absent (never deployed, or revoked); --new only for a freshly minted set');
+    else if (held) say('REFUSE', name, `absent at --url, yet the wrangler target holds ${secret}`);
+    else say('new', name, `absent; will be created, signing key ${set.thp.sign}`);
+  } else if (res?.status !== 200) say('REFUSE', name, res ? `adv answered HTTP ${res.status}` : 'adv unreachable');
+  else if (isNew) say('REFUSE', name, 'live; --new names only absent sets');
+  else if (await res.json().then(advertised).catch(() => null) !== set.roles) say('REFUSE', name, 'live with other keys; keys are never rewritten, rotate to a new name');
+  else if (listed && !held) say('REFUSE', name, `live at --url, yet the wrangler target lacks ${secret}`);
+  else if (res.headers.get('keystone-policy') && !set.tag && !drops.has(name)) say('REFUSE', name, `live with a policy, stdin has none; pass --drop-policy ${name} to write it without`);
+  else if (res.headers.get('keystone-policy') !== set.tag) {
+    Object.assign(s, { policy: true, version: res.headers.get('keystone-version') });
+    say('policy', name, set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed');
+  } else say('ok', name, 'live and unchanged');
+  return res;
+}
+
+// A null value is a tombstone: the set was revoked, and a Worker version rolled back past the revoke serves it again
+// while the target's secret list no longer shows it. A deploy from the current secrets drops it.
+async function planTomb({ name, secret }, { url, io, listed, say }) {
+  const res = await probe(url, name, io).catch(() => null);
+  const kept = listed?.has(secret);
+  if (res?.status === 404 && !kept) say('revoked', name, '404');
+  else if (kept) say('REFUSE', name, res?.status === 404 ? `absent at --url, yet the wrangler target holds ${secret}` : `revoked ${name} is a live secret; run keyset revoke ${name}`);
+  else if (res?.status !== 200) say('REFUSE', name, res ? `adv answered HTTP ${res.status}` : 'adv unreachable');
+  else if (!listed) say('REFUSE', name, `revoked ${name} is served; cannot tell rollback from live secret without the target's secret list`);
+  else say('REVOKED-LIVE', name, 'served by a rolled-back version; --apply redeploys from current secrets to drop it');
+  return res;
+}
+
+// Redeploys the Worker with the given secrets, which pass through a file that is gone however wrangler ends.
+async function applySecrets(io, extra, payload) {
+  const dir = await mkdtemp(join(tmpdir(), 'keyset-'));
+  let code, child;
+  // A signal while wrangler runs removes the secrets file before keyset exits, and stops wrangler too.
+  const onSignal = (sig) => {
+    rmSync(dir, { recursive: true, force: true });
+    child?.kill(sig);
+    io.process.exit(128 + constants.signals[sig]);
+  };
+  for (const sig of SIGNALS) io.process.on(sig, onSignal);
+  try {
+    const file = join(dir, 'secrets.json');
+    await writeFile(file, JSON.stringify(payload), { mode: 0o600, flag: 'wx' });
+    ({ code } = await io.wrangler(['deploy', '--secrets-file', file, ...extra], { onSpawn: (p) => { child = p; } }));
+  } finally {
+    for (const sig of SIGNALS) io.process.off(sig, onSignal);
+    await rm(dir, { recursive: true, force: true });
+  }
+  if (code !== 0) throw new Error(`wrangler deploy exited ${code}`);
+}
+
 async function deploy(argv, io) {
   const { o, pos, extra } = args(argv, { url: { type: 'string' }, apply: { type: 'boolean' }, new: { type: 'string', multiple: true }, 'drop-policy': { type: 'string', multiple: true } });
   if (!o.url || pos.length) throw new Error(`deploy takes --url and stdin\n${USAGE}`);
@@ -163,27 +227,9 @@ async function deploy(argv, io) {
 
   // --url and the wrangler target are named apart, so the target's secrets must agree with what --url serves.
   const listed = o.apply || io.env.CLOUDFLARE_API_TOKEN ? await secrets(io, extra) : null;
+  const ctx = { url: o.url, io, listed, drops, say };
   let newer;
-  const release = (res) => { const r = res?.headers.get('keystone-release'); return r && older(RELEASE, r) ? r : null; };
-  for (const s of sets) {
-    const { name, secret, set, isNew } = s;
-    const res = await probe(o.url, name, io).catch(() => null);
-    newer = release(res) ?? newer;
-    const held = listed?.has(secret);
-    if (res?.status === 404) {
-      if (!isNew) say('REFUSE', name, 'absent (never deployed, or revoked); --new only for a freshly minted set');
-      else if (held) say('REFUSE', name, `absent at --url, yet the wrangler target holds ${secret}`);
-      else say('new', name, `absent; will be created, signing key ${set.thp.sign}`);
-    } else if (res?.status !== 200) say('REFUSE', name, res ? `adv answered HTTP ${res.status}` : 'adv unreachable');
-    else if (isNew) say('REFUSE', name, 'live; --new names only absent sets');
-    else if (await res.json().then(advertised).catch(() => null) !== set.roles) say('REFUSE', name, 'live with other keys; keys are never rewritten, rotate to a new name');
-    else if (listed && !held) say('REFUSE', name, `live at --url, yet the wrangler target lacks ${secret}`);
-    else if (res.headers.get('keystone-policy') && !set.tag && !drops.has(name)) say('REFUSE', name, `live with a policy, stdin has none; pass --drop-policy ${name} to write it without`);
-    else if (res.headers.get('keystone-policy') !== set.tag) {
-      Object.assign(s, { policy: true, version: res.headers.get('keystone-version') });
-      say('policy', name, set.tag ? 'keys unchanged, policy will be written' : 'keys unchanged, policy will be removed');
-    } else say('ok', name, 'live and unchanged');
-  }
+  for (const s of sets) newer = newerRelease(await planSet(s, ctx)) ?? newer;
   // A policy write redeploys the Worker; it goes ahead only over the one version --url is seen serving.
   const writes = sets.filter((s) => s.policy);
   if (writes.length && (o.apply || io.env.CLOUDFLARE_API_TOKEN)) {
@@ -194,18 +240,7 @@ async function deploy(argv, io) {
       else if (version !== live) say('REFUSE', name, `--url serves version ${version}, the wrangler target ${live}`);
     }
   }
-  // A null value is a tombstone: the set was revoked, and a Worker version rolled back past the revoke serves it again
-  // while the target's secret list no longer shows it. A deploy from the current secrets drops it.
-  for (const { name, secret } of tombs) {
-    const res = await probe(o.url, name, io).catch(() => null);
-    newer = release(res) ?? newer;
-    const kept = listed?.has(secret);
-    if (res?.status === 404 && !kept) say('revoked', name, '404');
-    else if (kept) say('REFUSE', name, res?.status === 404 ? `absent at --url, yet the wrangler target holds ${secret}` : `revoked ${name} is a live secret; run keyset revoke ${name}`);
-    else if (res?.status !== 200) say('REFUSE', name, res ? `adv answered HTTP ${res.status}` : 'adv unreachable');
-    else if (!listed) say('REFUSE', name, `revoked ${name} is served; cannot tell rollback from live secret without the target's secret list`);
-    else say('REVOKED-LIVE', name, 'served by a rolled-back version; --apply redeploys from current secrets to drop it');
-  }
+  for (const t of tombs) newer = newerRelease(await planTomb(t, ctx)) ?? newer;
 
   // --apply redeploys this clone's code, so it never replaces a newer release; a Worker sending none predates the header.
   if (newer) say('REFUSE', 'Worker', `--url serves keystone ${newer}, this clone is ${RELEASE}; update the clone and run npm ci`);
@@ -221,24 +256,7 @@ async function deploy(argv, io) {
   }
   if (!o.apply) return 0;
 
-  const dir = await mkdtemp(join(tmpdir(), 'keyset-'));
-  let code, child;
-  // A signal while wrangler runs removes the secrets file before keyset exits, and stops wrangler too.
-  const onSignal = (sig) => {
-    rmSync(dir, { recursive: true, force: true });
-    child?.kill(sig);
-    io.process.exit(128 + constants.signals[sig]);
-  };
-  for (const sig of SIGNALS) io.process.on(sig, onSignal);
-  try {
-    const file = join(dir, 'secrets.json');
-    await writeFile(file, JSON.stringify(Object.fromEntries(sets.filter((s) => s.isNew || s.policy).map((s) => [s.secret, s.text]))), { mode: 0o600, flag: 'wx' });
-    ({ code } = await io.wrangler(['deploy', '--secrets-file', file, ...extra], { onSpawn: (p) => { child = p; } }));
-  } finally {
-    for (const sig of SIGNALS) io.process.off(sig, onSignal);
-    await rm(dir, { recursive: true, force: true });
-  }
-  if (code !== 0) throw new Error(`wrangler deploy exited ${code}`);
+  await applySecrets(io, extra, Object.fromEntries(sets.filter((s) => s.isNew || s.policy).map((s) => [s.secret, s.text])));
 
   let failed = 0;
   for (const { name, set } of sets) {
