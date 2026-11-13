@@ -10,11 +10,10 @@ export { be } from './hex.mjs';
 
 export const kv = (lag = 0) => {
   const m = new Map();
-  const ttl = new Map();
   return {
-    m, ttl, reads: [],
+    m, reads: [],
     get: async function (k) { this.reads.push(k); const v = m.get(k) ?? null; if (lag) await new Promise((r) => setTimeout(r, lag)); return v; },
-    put: async (k, v, o) => { m.set(k, v); o?.expirationTtl ? ttl.set(k, o.expirationTtl) : ttl.delete(k); },
+    put: async (k, v) => { m.set(k, v); },
     delete: async (k) => void m.delete(k),
     list: async ({ prefix }) => ({ keys: [...m.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }),
   };
@@ -33,9 +32,12 @@ export async function rec(e, name, { fx, ip, asn = 64500, headers = {}, body = f
   return r;
 }
 
-// Polls until cond() holds or the wall-clock deadline passes, yielding to the event loop between checks.
-// performance.now is not among the clocks the tests mock.
+// Polls until cond() holds, yielding to the event loop between checks.
+// It throws at the wall-clock deadline; performance.now is not among the clocks the tests mock.
 export async function until(cond, ms = 3000) {
   const end = performance.now() + ms;
-  while (!cond() && performance.now() < end) await new Promise((r) => setImmediate(r));
+  while (!cond()) {
+    if (performance.now() >= end) throw new Error(`until: condition not met within ${ms}ms`);
+    await new Promise((r) => setImmediate(r));
+  }
 }
