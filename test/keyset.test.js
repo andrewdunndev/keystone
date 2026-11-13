@@ -544,7 +544,7 @@ test('a policy write refuses a split deployment, a version other than --url serv
   assert.match(r.out, /^REFUSE +a-1: wrangler deployments status shows no single version/m);
 });
 
-test('deploy refuses a Worker serving a newer release than this clone; an older, equal or absent release deploys', async () => {
+test('deploy refuses a Worker serving a newer or unreadable release than this clone; an older, equal or absent release deploys', async () => {
   const { version } = JSON.parse(readFileSync(new globalThis.URL('../package.json', import.meta.url)));
   const [x, y, z] = version.split('.').map(Number);
   const before = z ? `${x}.${y}.${z - 1}` : y ? `${x}.${y - 1}.9` : `${x - 1}.9.9`;
@@ -578,6 +578,14 @@ test('deploy refuses a Worker serving a newer release than this clone; an older,
       assert.equal(r.code, 1, r.out);
       assert.ok(r.out.includes(`REFUSE  Worker: --url serves keystone ${newer}, this clone is ${version}; update the clone and run npm ci\n`), r.out);
     }
+    assert.equal(seen.length, 0);
+  }
+  // A release that is no x.y.z cannot be ordered, so it refuses as if newer, quoted.
+  for (const odd of ['1.2', '1.2.3.4', 'v9.9.9', '1.2.x', `${x}.${y}.${z}-rc1`, 'latest']) {
+    const live = { TANG_KEY_A_1: A.text }, seen = [];
+    const r = await deploy(stdin, ['--new', 'b-1', '--apply'], { live, fetch: serving(live, odd), wrangler: cf(live, { seen }) });
+    assert.equal(r.code, 1, odd);
+    assert.ok(r.out.includes(`REFUSE  Worker: --url serves keystone ${JSON.stringify(odd)}, this clone is ${version}; update the clone and run npm ci\n`), r.out);
     assert.equal(seen.length, 0);
   }
   for (const release of [before, version, null, undefined]) {

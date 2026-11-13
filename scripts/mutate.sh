@@ -303,8 +303,8 @@ mutant "keyset sends no probe header" 's/{ headers: PROBE }/{}/' $k
 mutant "apply skips the check after deploy" 's/^  for (const { name, set } of sets) {$/  for (const { name, set } of []) {/' $k
 mutant "tombstone written to the secrets file" 's/sets.filter((s) => s.isNew || s.policy).map((s) => \[s.secret, s.text\])/[...sets.filter((s) => s.isNew), ...tombs].map((s) => [s.secret, s.text ?? null])/' $k
 mutant "apply skips the tombstone 404 check" 's/^  for (const { name } of tombs) {$/  for (const { name } of []) {/' $k
-mutant "deploy over a tombstone the target holds" 's/    else if (kept) say/    else if (false) say/' $k
-mutant "served tombstone passes without a secret list" 's/    else if (!listed) say/    else if (false) say/' $k
+mutant "deploy over a tombstone the target holds" 's/else if (kept) say/else if (false) say/' $k
+mutant "served tombstone passes without a secret list" 's/else if (!listed) say/else if (false) say/' $k
 mutant "apply skipped when only tombstones need fixing" 's/if (!o.apply) return 0;/if (!o.apply || !sets.some((s) => s.isNew)) return 0;/' $k
 mutant "apply skipped when stdin holds only tombstones" 's/if (!o.apply) return 0;/if (!o.apply || !sets.length) return 0;/' $k
 mutant "a \"null\" string is not a tombstone" "s/ || (typeof value === 'string' \&\& value.trim() === 'null')//" $k
@@ -324,7 +324,8 @@ mutant "releases compared as strings" 's/return i >= 0 \&\& p\[i\] < q\[i\];/ret
 mutant "a failed version mail is swallowed" "s/    if (a.status === 'rejected') throw a.reason;//"
 mutant "the digest is skipped" 's/, sendDigest(env)\]/, Promise.resolve({})]/'
 mutant "a probe of an absent set sends no release" 's/  if (probed(request)) res.headers.set(.keystone-release., pkg.version);//'
-mutant "a tombstone is checked without its release" '/{ name, secret } of tombs) {/{n;n;d;}' $k
+mutant "a tombstone is checked without its release" 's/for (const t of tombs) newer = newerRelease(await planTomb(t, ctx)) ?? newer;/for (const t of tombs) await planTomb(t, ctx);/' $k
+mutant "a served release that is no x.y.z deploys" 's/  if (!SEMVER.test(r)) return JSON.stringify(r);//' $k
 mutant "check passes an unbound Gate" "/=== 'unavailable') throw new Error/d" $k
 mutant "check accepts an adv carrying a private key" "s/if (keys.some((k) => 'd' in k)) return null;//" $k
 mutant "rec proof compares against S, not ECDH(r, S)" 's/if (got !== want)/if (got !== set.exch.x)/' $k
