@@ -36,6 +36,7 @@ const current = nav.find(n => here.startsWith(n.href))?.href;
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
   <slot name="head" />
+  <script>import '../scripts/figures.js';</script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to the page</a>

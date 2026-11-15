@@ -1,23 +1,81 @@
-/* figures: the inline-SVG drawings read these names until their modules
-   move to the folio kit. */
-:root {
-  --bg: var(--paper);
-  --surface: var(--tone-0);
-  --border: var(--hair);
-  --border-strong: var(--hair-2);
-  --text: var(--ink);
-  --text-2: var(--grey);
-  --text-muted: var(--grey);
-  --accent: var(--ink);
-  --accent-contrast: var(--paper);
-  --accent-subtle: var(--tone-0);
-  --danger: var(--ink);
-  --dd-moss-300: var(--grey);
+/* figures: the stage, the stills and the marks of folio's two drawing
+   registers. Colour is ink, grey and the tone ramp; hatch, weight and tone
+   carry difference. */
+.stage { position: sticky; top: calc(var(--pin) + 12px); margin: 0; }
+.stage-inner { width: 100%; }
+.stage svg, .still svg, .fig svg { display: block; width: 100%; height: auto; max-width: 880px; font-family: var(--mono); font-size: 13px; }
+.stage svg { max-height: calc(100vh - var(--pin) - 40px); }
+.fig { margin: 0 0 40px; max-width: 880px; }
+.still { margin: 0 0 20px; }
+.chapter.stills .stage { display: none; }
+.pan { min-width: 0; }
+
+svg text { fill: var(--ink); }
+.sheet { fill: none; stroke: var(--hair-2); stroke-width: .7; }
+
+/* iso solids */
+.iso-face { stroke: none; }
+.iso-face[data-tone="0"] { fill: var(--tone-0); }
+.iso-face[data-tone="1"] { fill: var(--tone-1); }
+.iso-face[data-tone="2"] { fill: var(--tone-2); }
+.iso-face[data-tone="3"] { fill: var(--tone-3); }
+.iso-top { fill: var(--tone-top); stroke: none; }
+.iso-edge { fill: none; stroke: var(--ink); stroke-width: .8; stroke-linejoin: round; stroke-linecap: round; }
+.iso-solid.hot .iso-top { fill: var(--ink); }
+.iso-solid.hot .iso-face { fill: var(--grey); }
+.iso-solid.hot .iso-face[data-tone="3"], .iso-solid.hot .iso-face[data-tone="2"] { fill: #3a3a3a; }
+.iso-solid.ghost .iso-face, .iso-solid.ghost .iso-top { fill: var(--paper); }
+.iso-solid.ghost .iso-edge { stroke: var(--grey); stroke-dasharray: 4 3; stroke-width: .7; }
+.iso-plate { fill: none; stroke: var(--grey); stroke-width: .7; stroke-dasharray: 12 3 2 3; }
+
+/* drafting marks */
+.part-box { fill: var(--paper); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+.part.hot .part-box { fill: var(--ink); }
+.part.hot text { fill: var(--paper); stroke: var(--ink); }
+.part.hot .lab-2 { fill: var(--tone-3); }
+.part.ghost .part-box { fill: none; stroke: var(--grey); stroke-width: .7; stroke-dasharray: 4 3; }
+.zone-box { fill: none; stroke: var(--grey); stroke-width: .7; stroke-dasharray: 12 3 2 3; }
+.wire { fill: none; stroke: var(--ink); stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; }
+.wire.faint { stroke: var(--grey); stroke-width: .7; stroke-dasharray: 4 3; }
+.flow .arrow { fill: var(--ink); }
+.packet-box { fill: var(--ink); stroke: none; }
+.packet-text { fill: var(--paper); stroke: none; paint-order: normal; font-size: 13px; }
+.leader { fill: none; stroke: var(--grey); stroke-width: .7; }
+.lead-dot { fill: var(--ink); }
+.lab { fill: var(--ink); font-size: 14px; }
+.lab-2 { fill: var(--grey); font-size: 13px; }
+.dim-line { stroke: var(--grey); stroke-width: .7; }
+.ext { stroke: var(--grey); stroke-width: .55; }
+.dim-text { fill: var(--grey); font-size: 13px; }
+.dim-text, .lab, .cell, .note, .view-title { paint-order: stroke; stroke: var(--paper); stroke-width: 4; stroke-linejoin: round; }
+.arrow { fill: var(--grey); }
+.hatch-line { stroke: var(--grey); stroke-width: .6; }
+.hatched { stroke: var(--grey); stroke-width: .7; }
+.centerline { stroke: var(--grey); stroke-width: .7; stroke-dasharray: 12 3 2 3; }
+.nb-box { fill: var(--paper); stroke: var(--ink); stroke-width: .8; }
+.nb-text { fill: var(--ink); font-size: 13px; font-weight: 500; }
+.view-title { fill: var(--ink); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+.rule { stroke: var(--hair-2); stroke-width: .55; }
+.rule-2 { stroke: var(--ink); stroke-width: .8; }
+.cell { fill: var(--ink); font-size: 13px; }
+.cell.code { fill: var(--grey); }
+.note { fill: var(--ink); font-size: 13px; }
+.bar { fill: var(--tone-1); stroke: var(--ink); stroke-width: 1.4; transform-box: fill-box; transform-origin: left center; }
+.bar.cold { fill: none; stroke-width: .7; stroke: var(--grey); }
+.tick { stroke: var(--grey); stroke-width: .55; }
+
+@media (max-width: 620px) {
+  .pan { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .pan svg { min-width: 640px; }
 }
-.figure-pair svg { display: block; width: 100%; height: auto; }
-.figure-pair .figure-narrow { display: none; }
-.figure-pair .figure-narrow { max-width: 26.25rem; margin-inline: auto; }
-@media (max-width: 900px) {
-  .figure-pair .figure-wide { display: none; }
-  .figure-pair .figure-narrow { display: block; }
+@media print, (prefers-reduced-motion: reduce), (max-width: 860px) {
+  .stage { position: static; }
+}
+@media print {
+  .still, .fig { break-inside: avoid; }
+  .still svg, .fig svg { max-width: 520px; }
+}
+@media print, (prefers-reduced-motion: reduce), (max-width: 860px) {
+  .chapter-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .still svg { max-width: 760px; }
 }
