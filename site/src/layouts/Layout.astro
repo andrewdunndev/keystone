@@ -1,27 +1,61 @@
 ---
-import '../styles/global.css';
-import ProjectLayout from '@dunn.dev/reference/chrome/ProjectLayout.astro';
+import '../styles/folio.css';
+import '../styles/site.css';
+import '../styles/figures.css';
 import mark from '../../public/favicon.svg?raw';
 
 interface Props {
   title?: string;
-  description?: string;
-  headings?: { slug: string; text: string }[];
-  section?: { label: string; pages: { href: string; label: string }[] } | null;
+  description: string;
 }
+const { title, description } = Astro.props;
+
+const siteName = 'keystone.dunn.dev';
+const pageTitle = title ? `${title} — ${siteName}` : siteName;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const here = Astro.url.pathname;
+const nav = [
+  { href: '/architecture/', label: 'Architecture' },
+  { href: '/setup/', label: 'Install' },
+];
+const current = nav.find(n => here.startsWith(n.href))?.href;
 ---
-<ProjectLayout
-  {...Astro.props}
-  siteName="keystone.dunn.dev"
-  tagline="MIT"
-  mark={mark}
-  nav={[
-    { href: '/', label: 'Home' },
-    { href: '/architecture/', label: 'Architecture' },
-    { href: '/setup/', label: 'Install' },
-  ]}
-  repoUrl="https://gitlab.com/dunn.dev/keystone"
-  repoLabel="gitlab.com/dunn.dev/keystone"
->
-  <slot />
-</ProjectLayout>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{pageTitle}</title>
+  <meta name="description" content={description}>
+  <link rel="canonical" href={canonical}>
+  <meta property="og:type" content="website">
+  <meta property="og:title" content={pageTitle}>
+  <meta property="og:description" content={description}>
+  <meta property="og:url" content={canonical}>
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <slot name="head" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the page</a>
+  <header class="site-head">
+    <div class="wrap">
+      <a class="site-name" href="/"><span aria-hidden="true" set:html={mark} />keystone</a>
+      <nav class="site-nav" aria-label="Site">
+        {nav.map(n => <a href={n.href} aria-current={n.href === current ? 'page' : undefined}>{n.label}</a>)}
+        <a href="https://gitlab.com/dunn.dev/keystone" rel="external">Source</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main">
+    <slot />
+  </main>
+  <footer class="site-foot">
+    <div class="wrap colophon">
+      <p>keystone.dunn.dev · disk unlock server · MIT · <a href="https://gitlab.com/dunn.dev/keystone" rel="external">source</a></p>
+      <p>Type is <a href="https://vercel.com/font" rel="external">Geist</a> (OFL).</p>
+    </div>
+  </footer>
+</body>
+</html>

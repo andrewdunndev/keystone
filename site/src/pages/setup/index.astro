@@ -1,6 +1,7 @@
 ---
 import { getEntry, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
+import SheetIndex from '../../components/SheetIndex.astro';
 import Quickstart from '../../figures/14-quickstart.astro';
 
 const DOCS = 'https://gitlab.com/dunn.dev/keystone/-/blob/main/docs/';
@@ -13,17 +14,19 @@ const html = setup.rendered.html
   .replace(/href="(?![a-z]+:|#|\/)([^"]*)"/gi, (_, url) => `href="${new URL(url, DOCS).href}"`);
 const headings = (await render(setup)).headings
   .filter(h => h.depth === 2)
-  .map(h => ({ slug: h.slug, text: h.text }));
+  .map(h => ({ id: h.slug, label: h.text }));
 ---
-<Layout title="Install" description="Install keystone, bind a first disk, rotate, revoke and set up alerts." headings={headings}>
-  <header class="page-header">
+<Layout title="Install" description="Install keystone, bind a first disk, rotate, revoke and set up alerts.">
+  <header class="wrap page-head arch-head">
+    <p class="folio">Setup</p>
     <h1 class="page-title">Install</h1>
   </header>
-  <div class="cat-explainer figure-pair">
-    <Quickstart />
+  <SheetIndex label="Sections" items={headings} />
+  <div class="wrap page">
+    <div class="prose">
+      <div class="fig figure-pair"><Quickstart /></div>
+      <p>The quickstart deploys an empty Worker, confirms it serves no sets, mints a set into the key store and deploys it, which also checks it. The disk is then bound with the thp (the signing key's thumbprint) read from the live advertisement, and the initramfs is rebuilt with network, DNS and a CA bundle so clevis can reach the Worker before the root filesystem mounts. A reboot then unlocks the disk with no passphrase prompt. The numbered steps under Quickstart give each its commands.</p>
+      <Fragment set:html={html} />
+    </div>
   </div>
-  <article>
-    <p>The quickstart deploys an empty Worker, confirms it serves no sets, mints a set into the key store and deploys it, which also checks it. The disk is then bound with the thp (the signing key's thumbprint) read from the live advertisement, and the initramfs is rebuilt with network, DNS and a CA bundle so clevis can reach the Worker before the root filesystem mounts. A reboot then unlocks the disk with no passphrase prompt. The numbered steps under Quickstart give each its commands.</p>
-    <Fragment set:html={html} />
-  </article>
 </Layout>

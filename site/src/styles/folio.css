@@ -1,0 +1,67 @@
+/* folio: tokens, type and the page frame. Light only. */
+@font-face { font-family: 'Geist'; src: url('/fonts/Geist-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Geist Mono'; src: url('/fonts/GeistMono-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+:root {
+  color-scheme: light;
+  --paper: #fcfcfa;
+  --ink: #161616;
+  --grey: #525252;
+  --hair: rgba(22,22,22,.12);
+  --hair-2: rgba(22,22,22,.3);
+  --tone-top: #ffffff;
+  --tone-0: #f2f2f0;
+  --tone-1: #e8e8e5;
+  --tone-2: #dadad6;
+  --tone-3: #c8c8c3;
+  --sans: 'Geist', system-ui, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+  --t-display: clamp(48px, 7vw, 112px);
+  --t-plate: clamp(40px, 5.4vw, 88px);
+  --t-head: clamp(24px, 2.2vw, 32px);
+  --t-lead: clamp(19px, 1.4vw, 23px);
+  --t-body: 17px;
+  --t-mono: 12.5px;
+  --gutter: 56px;
+  --pin: 64px;
+  --ease: cubic-bezier(.4, 0, .2, 1);
+}
+@media (max-width: 860px) { :root { --gutter: 16px; --pin: 48px; } }
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--sans); font-size: var(--t-body); line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: underline; text-decoration-color: var(--hair-2); text-underline-offset: 2px; }
+a:hover { text-decoration-color: var(--ink); }
+code { font-family: var(--mono); font-size: .9em; }
+.wrap { max-width: 1680px; margin: 0 auto; padding: 0 var(--gutter); }
+
+.skip { position: absolute; left: 8px; top: -48px; z-index: 100; padding: 8px 12px; background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: var(--t-mono); }
+.skip:focus { top: 8px; }
+
+.folio { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--grey); margin: 0 0 24px; }
+.display { font-weight: 500; font-size: var(--t-display); letter-spacing: -.035em; line-height: .98; margin: 0 0 28px; }
+.page-title { font-weight: 500; font-size: var(--t-plate); letter-spacing: -.03em; line-height: 1; margin: 0 0 24px; }
+.deck { font-size: var(--t-lead); font-weight: 500; letter-spacing: -.01em; color: var(--grey); max-width: 34em; margin: 0 0 32px; }
+.deck a { color: var(--ink); }
+
+.prose { min-width: 0; }
+.prose h2 { font-weight: 500; font-size: var(--t-head); letter-spacing: -.02em; line-height: 1.15; margin: 64px 0 16px; scroll-margin-top: 72px; }
+.prose h3 { font-weight: 500; font-size: var(--t-lead); letter-spacing: -.01em; line-height: 1.3; margin: 40px 0 12px; scroll-margin-top: 72px; }
+.prose > :first-child { margin-top: 0; }
+.prose p, .prose ul, .prose ol { max-width: 68ch; margin: 0 0 16px; }
+.prose ul, .prose ol { padding-left: 1.2em; }
+.prose li { margin: 0 0 6px; }
+.prose strong { font-weight: 600; }
+.prose pre { font-family: var(--mono); font-size: var(--t-mono); line-height: 1.6; background: var(--tone-0); border: 1px solid var(--hair);
+  padding: 14px 16px; margin: 0 0 20px; max-width: 100%; overflow-x: auto; }
+.prose pre code { font-size: inherit; }
+.prose :not(pre) > code { background: var(--tone-0); padding: .05em .3em; overflow-wrap: anywhere; }
+.prose table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 0 0 20px; font-size: 15px; }
+.prose th { text-align: left; font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase;
+  border-bottom: 1px solid var(--ink); padding: 6px 16px 6px 0; }
+.prose td { border-bottom: 1px solid var(--hair-2); padding: 6px 16px 6px 0; vertical-align: top; }

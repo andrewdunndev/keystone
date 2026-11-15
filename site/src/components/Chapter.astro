@@ -1,0 +1,12 @@
+<section class:list={['chapter', { 'chapter-full': !Astro.slots.has('figure') }]}>
+  <div class="wrap chapter-grid">
+    <div class="chapter-text prose">
+      <slot />
+    </div>
+    {Astro.slots.has('figure') && (
+      <figure class="chapter-fig">
+        <slot name="figure" />
+      </figure>
+    )}
+  </div>
+</section>

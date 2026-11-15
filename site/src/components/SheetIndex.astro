@@ -1,0 +1,33 @@
+---
+import mark from '../../public/favicon.svg?raw';
+
+interface Props {
+  label: string;
+  items: { id: string; label: string }[];
+}
+const { label, items } = Astro.props;
+---
+<nav class="sheet-index" aria-label={label}>
+  <div class="wrap">
+    <a class="sheet-home" href="/" aria-label="keystone, home"><span aria-hidden="true" set:html={mark} /></a>
+    <ol>
+      {items.map(i => <li><a href={`#${i.id}`}>{i.label}</a></li>)}
+    </ol>
+  </div>
+</nav>
+<script is:inline>
+  (() => {
+    const links = [...document.querySelectorAll('.sheet-index ol a')];
+    const seen = new Map();
+    links.forEach(a => {
+      const el = document.getElementById(a.hash.slice(1));
+      if (el) seen.set(el.closest('section') || el, a.hash);
+    });
+    const mark = hash => links.forEach(a => {
+      if (a.hash === hash) a.setAttribute('aria-current', 'location'); else a.removeAttribute('aria-current');
+    });
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) mark(seen.get(e.target)); }),
+      { rootMargin: '-45% 0px -55% 0px' });
+    seen.forEach((_, el) => io.observe(el));
+  })();
+</script>
