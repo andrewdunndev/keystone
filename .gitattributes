@@ -1,2 +1,0 @@
-site/public/fonts/*.woff2 filter=lfs diff=lfs merge=lfs -text
-site/public/fonts/OFL.txt filter=lfs diff=lfs merge=lfs -text

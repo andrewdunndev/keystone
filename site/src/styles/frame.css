@@ -1,42 +1,7 @@
-/* folio: tokens, type and the page frame. Light only. */
-@font-face { font-family: 'Geist'; src: url('/fonts/Geist-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Geist Mono'; src: url('/fonts/GeistMono-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
-:root {
-  color-scheme: light;
-  --paper: #fcfcfa;
-  --ink: #161616;
-  --grey: #525252;
-  --hair: rgba(22,22,22,.12);
-  --hair-2: rgba(22,22,22,.3);
-  --tone-top: #ffffff;
-  --tone-0: #f2f2f0;
-  --tone-1: #e8e8e5;
-  --tone-2: #dadad6;
-  --tone-3: #c8c8c3;
-  --sans: 'Geist', system-ui, sans-serif;
-  --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
-  --t-display: clamp(48px, 7vw, 112px);
-  --t-plate: clamp(40px, 5.4vw, 88px);
-  --t-head: clamp(24px, 2.2vw, 32px);
-  --t-lead: clamp(19px, 1.4vw, 23px);
-  --t-body: 17px;
-  --t-mono: 12.5px;
-  --gutter: 56px;
-  --pin: 64px;
-}
+/* frame: the page frame and prose. Tokens, base and figure marks come from @dunn.dev/reference/folio/folio.css. */
+:root { --gutter: 56px; --pin: 64px; }
 @media (max-width: 860px) { :root { --gutter: 16px; --pin: 48px; } }
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-body {
-  margin: 0; background: var(--paper); color: var(--ink);
-  font-family: var(--sans); font-size: var(--t-body); line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-}
-a { color: inherit; text-decoration: underline; text-decoration-color: var(--hair-2); text-underline-offset: 2px; }
-a:hover { text-decoration-color: var(--ink); }
-code { font-family: var(--mono); font-size: .9em; }
 .wrap { max-width: 1680px; margin: 0 auto; padding: 0 var(--gutter); }
 
 .skip { position: absolute; left: 8px; top: -48px; z-index: 100; padding: 8px 12px; background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: var(--t-mono); }
