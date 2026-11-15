@@ -2,9 +2,9 @@
 /* keystone mark, direction "arch": a flat-faced isometric arch whose crown is
    the moss keystone. Projection (elevation 30), tones and the #404040 edge
    follow cairn's src/brand; each stone is a prism with a handful of flat
-   faces, so the glyph stays crisp at any size. Writes mark.svg (64 px and
-   up), favicon.svg (16 to 32 px) and hero.svg (the keystone drops into the
-   crown) beside this file. */
+   faces told apart by tone alone, so the glyph stays crisp at any size.
+   Writes mark.svg (64 px and up), favicon.svg (16 to 32 px) and hero.svg
+   (the keystone drops into the crown) beside this file. */
 
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -16,23 +16,23 @@ const mix = (a, b, pct) => {
   const c = (h, i) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
   return '#' + [0, 1, 2].map(i => Math.round(c(a, i) * pct / 100 + c(b, i) * (1 - pct / 100)).toString(16).padStart(2, '0')).join('');
 };
-/* a body lit from the front: the front elevation, faces that look up, faces
-   that look along the span, and the shaded faces inside the opening */
-const lit = (front, dark, k) => ({ front, up: mix(dark, front, k[0]), side: mix(dark, front, k[1]), shade: mix(dark, front, k[2]) });
-const stone = lit(palette.white, palette.e600, [7, 16, 30]);
+/* a body lit from above, as cairn's stones are: faces that look up carry the
+   stone's own colour, the front elevation and the faces along the span sink
+   toward dark, the faces inside the opening furthest */
+const lit = (up, dark, k) => ({ up, front: mix(dark, up, k[0]), side: mix(dark, up, k[1]), shade: mix(dark, up, k[2]) });
+const stone = lit(palette.white, palette.e600, [16, 30, 42]);
 const moss = lit(palette.m400, palette.e600, [18, 36, 55]);
 const tones = {
   stone, key: moss, edge: palette.e500,
-  small: { stone: [stone.front, mix(palette.e600, palette.white, 24)], key: [moss.front, moss.side], edge: palette.e500, width: 1 },
+  small: { stone: [stone.up, mix(palette.e600, palette.white, 24)], key: [moss.up, moss.front], edge: palette.e500, width: 1 },
 };
 
 /* ---- the arch, in world units: span along u, depth along v, z up ----
    ro, ri: ring radii; pier: springing height; key: keystone half-angle;
    proud: how far the keystone stands outside and inside the ring; perSide:
-   voussoirs each side; facets: extrados chords per voussoir; cull: how
-   square-on a face must be to draw */
-const large = { ro: 100, ri: 62, pier: 70, depth: 44, yaw: -24, key: 20, proud: [10, 5], perSide: 2, cull: 0 };
-const small = { ro: 100, ri: 40, pier: 40, depth: 34, yaw: -24, key: 32, proud: [16, 10], perSide: 1, facets: 2, cull: 0 };
+   voussoirs each side; facets: extrados chords per voussoir */
+const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3 };
+const small = { ro: 100, ri: 54, pier: 66, depth: 28, yaw: -24, key: 19, proud: [10, 5], perSide: 1, facets: 2 };
 const deg = Math.PI / 180;
 
 /* cross-sections in (u, z), counter-clockwise seen from the front, each edge
@@ -88,7 +88,7 @@ export function build(a, elevation = 30) {
       const q = s.pts[(i + 1) % n], tag = s.tags[i];
       if (tag === 'hidden') return;
       const [nu, nz] = norm2([q[1] - p[1], p[0] - q[0]]);   // outward normal of a CCW section
-      if (nu * dU + nz * sE < a.cull) return;
+      if (nu * dU + nz * sE <= 0) return;
       const tone = tag === 'in' ? 'shade' : nz > 0.3 ? 'up' : 'side';
       faces.push({ pts: [front[i], front[(i + 1) % n], back[(i + 1) % n], back[i]].map(project), tone });
     });
@@ -136,50 +136,50 @@ export const small_ = (id = 'keystone', label = LABEL) => {
   }).join('');
   const t = tones.small, r = (k) => `.${c(k)}`;
   const css = `${r('s1')}{fill:${t.stone[0]}}${r('s0')}{fill:${t.stone[1]}}${r('c1')}{fill:${t.key[0]}}${r('c0')}{fill:${t.key[1]}}` +
-    `${r('e')}{fill:none;stroke:${t.edge};stroke-width:${t.width};stroke-linejoin:miter}`;
+    `${r('e')}{fill:none;stroke:${t.edge};stroke-width:${t.width};stroke-linejoin:round}`;
   return `${open(label)}<style>${css}</style>${body}</svg>\n`;
 };
 
-/* 64 px and up: flat faces toned by where they look, seams at half the
-   edge weight, the stone's silhouette at full weight */
+/* 64 px and up: the silhouette filled first so no seam shows between faces,
+   each face flat in its tone, then the silhouette's edge; cairn's weight
+   and round join */
 const stoneMarkup = (s, fit, edge) => {
-  const b = s.key ? tones.key : tones.stone;
+  const b = s.key ? tones.key : tones.stone, outline = points(fit(s.hull), 1);
   const fills = s.faces.map(f => `<polygon points="${points(fit(f.pts), 1)}" fill="${b[f.tone]}"/>`).join('');
-  const seams = s.faces.slice(1).map(f => path(fit(f.pts), 1)).join('');
-  return `<g>${fills}` +
-    (seams ? `<path d="${seams}" fill="none" stroke="${tones.edge}" stroke-width="${edge / 2}" stroke-linejoin="miter"/>` : '') +
-    `<polygon points="${points(fit(s.hull), 1)}" fill="none" stroke="${tones.edge}" stroke-width="${edge}" stroke-linejoin="miter"/></g>`;
+  return `<g><polygon points="${outline}" fill="${b.front}"/>${fills}` +
+    `<polygon points="${outline}" fill="none" stroke="${tones.edge}" stroke-width="${edge}" stroke-linejoin="round"/></g>`;
 };
 
-export const glyph = (edge = 0.5, label = LABEL) => {
+export const glyph = (edge = 1, label = LABEL) => {
   const { solids, fit } = fitted(large, [2, 2, 60, 60]);
   return `${open(label)}${solids.map(s => stoneMarkup(s, fit, edge)).join('')}</svg>\n`;
 };
 
-/* the hero: the keystone starts lifted over its dashed landing, falls
-   accelerating, lands, rocks once and settles, as cairn's stones do; it plays
-   once, and reduced motion shows the finished still */
-export const hero = (edge = 0.5, label = LABEL, still = false) => {
+/* the hero: mark.svg's geometry on a canvas with headroom above, so the
+   settled frame is the mark. The keystone starts lifted over its dashed
+   landing, falls accelerating, lands, rocks once and settles, as cairn's
+   stones do; it plays once, and reduced motion shows the finished still */
+export const hero = (edge = 1, label = LABEL, still = false) => {
   const lift = 14, head = 16;
-  const { solids, fit } = fitted(large, [2, head, 60, 60]);
+  const { solids, fit } = fitted(large, [2, 2, 60, 60]);
   const key = solids.find(s => s.key);
-  const land = `<polygon class="land" points="${points(fit(key.hull), 1)}" fill="none" stroke="${tones.key.front}" stroke-width="0.6" stroke-dasharray="1.6 1.2" stroke-linejoin="round"${still ? ' style="opacity:1"' : ''}/>`;
-  const css = `.key{transform-box:fill-box;transform-origin:50% 100%;animation:key-drop 820ms linear 400ms both}` +
-    `.land{opacity:0;animation:key-land 820ms linear 400ms both}` +
-    `@keyframes key-drop{0%{transform:translateY(-${lift}px);animation-timing-function:cubic-bezier(.5,0,1,.6)}` +
-    `56%{transform:translateY(0);animation-timing-function:ease-out}70%{transform:translateY(.35px) rotate(-.6deg);animation-timing-function:ease-in-out}` +
-    `86%{transform:translateY(-.15px) rotate(.3deg);animation-timing-function:ease-in-out}100%{transform:none}}` +
-    `@keyframes key-land{0%,50%{opacity:1}62%,100%{opacity:0}}` +
-    `@media (prefers-reduced-motion:reduce){.key,.land{animation:none}}`;
+  const land = `<polygon class="keystone-land" points="${points(fit(key.hull), 1)}" fill="none" stroke="${tones.key.up}" stroke-width="0.6" stroke-dasharray="1.6 1.2" stroke-linejoin="round"${still ? ' style="opacity:1"' : ''}/>`;
+  const css = `.keystone-key{transform-box:fill-box;transform-origin:50% 100%;animation:keystone-drop 820ms linear 400ms both}` +
+    `.keystone-land{opacity:0;animation:keystone-land 820ms linear 400ms both}` +
+    `@keyframes keystone-drop{0%{transform:translateY(-${lift}px) rotate(-1deg);animation-timing-function:cubic-bezier(.5,0,1,.6)}` +
+    `56%{transform:translateY(0) rotate(-.4deg);animation-timing-function:ease-out}70%{transform:translateY(-.9px) rotate(.5deg);animation-timing-function:ease-in-out}` +
+    `84%{transform:translateY(0) rotate(-.15deg);animation-timing-function:ease-in-out}100%{transform:none}}` +
+    `@keyframes keystone-land{0%,50%{opacity:1}62%,100%{opacity:0}}` +
+    `@media (prefers-reduced-motion:reduce){.keystone-key,.keystone-land{animation:none}}`;
   const body = solids.map(s => s.key
-    ? `${land}<g class="key"${still ? ` transform="translate(0 -${lift})"` : ''}>${stoneMarkup(s, fit, edge)}</g>`
+    ? `${land}<g class="keystone-key"${still ? ` transform="translate(0 -${lift})"` : ''}>${stoneMarkup(s, fit, edge)}</g>`
     : stoneMarkup(s, fit, edge)).join('');
-  return `${open(label, `0 0 64 ${64 + head}`)}<style>${css}</style>${body}</svg>\n`;
+  return `${open(label, `0 -${head} 64 ${64 + head}`)}<style>${css}</style>${body}</svg>\n`;
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
 writeFileSync(join(here, 'mark.svg'), glyph());
 writeFileSync(join(here, 'favicon.svg'), small_());
 writeFileSync(join(here, 'hero.svg'), hero());
-if (process.argv[2]) writeFileSync(process.argv[2], hero(0.5, LABEL, true));
+if (process.argv[2]) writeFileSync(process.argv[2], hero(1, LABEL, true));
 console.log('wrote mark.svg favicon.svg hero.svg');
