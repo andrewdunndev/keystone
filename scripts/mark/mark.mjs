@@ -279,54 +279,7 @@ export const small_ = (id = 'keystone', label = LABEL) => {
   return `${open(label)}<style>${css}</style>${body}</svg>\n`;
 };
 
-/* 64 px and up: the silhouette filled first, then one path per step of the
-   ramp so faces of a step share a fill and leave no seam, each drawn with a
-   hair of its own colour over the joins to the next; then the silhouette's
-   edge, cairn's weight and round join */
-export const stoneMarkup = (s, fit, edge) => {
-  const b = s.key ? tones.key : tones.stone, outline = path(fit(s.hull), 1), byTone = new Map();
-  for (const f of s.faces) byTone.set(f.tone, (byTone.get(f.tone) ?? '') + path(fit(f.pts), 1));
-  const fills = [...byTone.keys()].sort((p, q) => p - q).map(t =>
-    `<path d="${byTone.get(t)}" fill="${b[t]}" stroke="${b[t]}" stroke-width="0.2" stroke-linejoin="round"/>`).join('');
-  return `<g><path d="${outline}" fill="${b[2]}"/>${fills}` +
-    `<path d="${outline}" fill="none" stroke="${tones.edge}" stroke-width="${edge}" stroke-linejoin="round"/></g>`;
-};
-
 /* the piers' cast on the ground: one flat tone, no blur */
 export const castMarkup = (casts, fit) =>
   `<path d="${casts.map(c => path(fit(c), 1)).join('')}" fill="${tones.cast}" fill-opacity="${tones.castOpacity}"/>`;
-
-export const glyph = (edge = 1, label = LABEL) => {
-  const { solids, casts, fit } = fitted(large, [2, 2, 60, 60], carve);
-  return `${open(label)}${castMarkup(casts, fit)}${solids.map(s => stoneMarkup(s, fit, edge)).join('')}</svg>\n`;
-};
-
-/* the hero: mark.svg's geometry on a canvas with headroom above, so the
-   settled frame is the mark. The keystone starts lifted clear of its dashed
-   landing, which lies under the stones and shows only in the gap; it falls
-   accelerating, lands, rocks once and settles, as cairn's stones do; it
-   plays once, and reduced motion shows the finished still */
-export const heroFrame = () => {
-  const { solids, fit } = fitted(large, [2, 2, 60, 60], carve);
-  const kb = bounds(fit(solids.find(s => s.key).hull));
-  const lift = Math.ceil(kb.maxY - kb.minY) + 3;
-  return { lift, head: Math.ceil(lift - kb.minY + 2) };
-};
-export const hero = (edge = 1, label = LABEL, still = false) => {
-  const { lift, head } = heroFrame();
-  const { solids, casts, fit } = fitted(large, [2, 2, 60, 60], carve);
-  const key = solids.find(s => s.key);
-  const land = `<polygon class="keystone-land" points="${points(fit(key.hull), 1)}" fill="none" stroke="${tones.key[0]}" stroke-width="0.6" stroke-dasharray="1.6 1.2" stroke-linejoin="round"${still ? ' style="opacity:1"' : ''}/>`;
-  const css = `.keystone-key{transform-box:fill-box;transform-origin:50% 100%;animation:keystone-drop 900ms linear 400ms both}` +
-    `.keystone-land{opacity:0;animation:keystone-land 900ms linear 400ms both}` +
-    `@keyframes keystone-drop{0%{transform:translateY(-${lift}px) rotate(-1deg);animation-timing-function:cubic-bezier(.5,0,1,.6)}` +
-    `58%{transform:translateY(0) rotate(-.4deg);animation-timing-function:ease-out}71%{transform:translateY(-.9px) rotate(.5deg);animation-timing-function:ease-in-out}` +
-    `85%{transform:translateY(0) rotate(-.15deg);animation-timing-function:ease-in-out}100%{transform:none}}` +
-    `@keyframes keystone-land{0%,52%{opacity:1}62%,100%{opacity:0}}` +
-    `@media (prefers-reduced-motion:reduce){.keystone-key,.keystone-land{animation:none}}`;
-  const body = solids.map(s => s.key
-    ? `<g class="keystone-key"${still ? ` transform="translate(0 -${lift})"` : ''}>${stoneMarkup(s, fit, edge)}</g>`
-    : stoneMarkup(s, fit, edge)).join('');
-  return `${open(label, `0 -${head} 64 ${64 + head}`)}<style>${css}</style>${castMarkup(casts, fit)}${land}${body}</svg>\n`;
-};
 

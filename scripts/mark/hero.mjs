@@ -35,21 +35,19 @@ export const archBody = (edge = wire.edge, plate = false) => {
   return (plate ? plateMarkup(plateOf(fit)) : '') + castMarkup(casts, fit) + solids.map(s => stoneWire(s, fit, edge)).join('');
 };
 
-export const glyph = (edge = wire.edge, label = LABEL) => `${open(label)}${archBody(edge)}</svg>\n`;
-
 /* the hero: mark's geometry plus the plate on a canvas with headroom, so the
    settled frame is the mark on its ground. The keystone starts clear above
    its dashed landing and falls on cairn's DROP: it leads by 200 ms, accelerates
    to land at 56% of 820 ms, lifts a hair, settles, and plays once. Reduced
    motion drops the animation and shows the finished frame */
-export const hero = (label = LABEL, still = false) => {
+export const hero = (label = LABEL) => {
   const { solids, casts, fit } = fitted(large, [2, 2, 60, 60], carve);
   const key = solids.find(s => s.key), kb = bounds(fit(key.hull));
   const lift = Math.ceil(kb.maxY - kb.minY) + 3;
   const plate = plateOf(fit), pb = bounds(plate);
   const x0 = Math.floor(Math.min(0, pb.minX - 1)), x1 = Math.ceil(Math.max(64, pb.maxX + 1));
   const y0 = -Math.ceil(lift - kb.minY + 2), y1 = Math.ceil(Math.max(64, pb.maxY + 1));
-  const land = `<polygon class="keystone-land" points="${points(fit(key.hull), 1)}" fill="none" stroke="${wire.plateColor}" stroke-width="${wire.plate}" stroke-dasharray="1 .8" stroke-linejoin="round"${still ? ' style="opacity:1"' : ''}/>`;
+  const land = `<polygon class="keystone-land" points="${points(fit(key.hull), 1)}" fill="none" stroke="${wire.plateColor}" stroke-width="${wire.plate}" stroke-dasharray="1 .8" stroke-linejoin="round"/>`;
   const css = `.keystone-key{transform-box:fill-box;transform-origin:50% 100%;animation:keystone-drop 820ms linear 200ms both}` +
     `.keystone-land{opacity:0;animation:keystone-land 820ms linear 200ms both}` +
     `@keyframes keystone-drop{0%{opacity:0;transform:translateY(-${lift}px) rotate(1.4deg);animation-timing-function:cubic-bezier(.5,0,1,.6)}` +
@@ -59,7 +57,7 @@ export const hero = (label = LABEL, still = false) => {
     `@keyframes keystone-land{0%,50%{opacity:1}60%,100%{opacity:0}}` +
     `@media (prefers-reduced-motion:reduce){.keystone-key,.keystone-land{animation:none}}`;
   const body = solids.map(s => s.key
-    ? `<g class="keystone-key"${still ? ` transform="translate(0 -${lift})"` : ''}>${stoneWire(s, fit)}</g>`
+    ? `<g class="keystone-key">${stoneWire(s, fit)}</g>`
     : stoneWire(s, fit)).join('');
   return `${open(label, `${x0} ${y0} ${x1 - x0} ${y1 - y0}`)}<style>${css}</style>${plateMarkup(plate)}${castMarkup(casts, fit)}${land}${body}</svg>\n`;
 };
