@@ -2,6 +2,7 @@
 import Chapter from '../../components/Chapter.astro';
 import SheetIndex from '../../components/SheetIndex.astro';
 import Layout from '../../layouts/Layout.astro';
+import mark from "../../brand/hero-mark.svg?raw";
 
 const sections = [
   { id: "overview", label: "Overview" }, { id: "binding", label: "Binding" }, { id: "unlock", label: "Unlock" },
@@ -12,10 +13,13 @@ const sections = [
 ];
 ---
 <Layout title="Architecture" description="How keystone works: binding, unlock, key sets, their lifecycle, deploy, curves, trust, alerts and failure.">
-  <header class="wrap page-head arch-head">
+  <header class="wrap page-head arch-head head-grid">
+    <div>
     <p class="folio">Reference</p>
     <h1 class="page-title">How keystone works</h1>
     <p class="deck">keystone speaks the protocol of stock <code>tangd</code> and serves many named key sets from one Cloudflare Worker. Deleting a set's secret revokes it. <code>keyset</code> mints, checks, deploys and revokes the sets.</p>
+    </div>
+    <div class="head-mark" aria-hidden="true" set:html={mark} />
   </header>
   <SheetIndex label="Sections" items={sections} numbered />
 

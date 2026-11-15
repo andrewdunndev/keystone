@@ -37,9 +37,10 @@ import mark from '../brand/hero-mark.svg?raw';
   </section>
 
   <section class="sec" id="how-it-works">
-    <div class="wrap prose">
+    <div class="wrap prose proc">
       <h2>How it works</h2>
-      <ol class="how">
+      <div class="proc-body">
+      <ol class="how how-fluid">
         <li>
           <p class="mark">1 · bind</p>
           <h3>Bind the disk once</h3>
@@ -56,37 +57,41 @@ import mark from '../brand/hero-mark.svg?raw';
           <p>If a computer or disk is stolen, delete its key set before it next starts. keystone then stops answering for that set, and the disk stays locked to whoever took it.</p>
         </li>
       </ol>
-      <p>If keystone is offline or past its daily request limit, the disk asks for its passphrase; once a stolen disk's key set is deleted, keystone refuses it and the disk stays locked.</p>
-      <Figure fig="13-failure" />
+      <div class="sec-note">
+        <p>If keystone is offline or past its daily request limit, the disk asks for its passphrase; once a stolen disk's key set is deleted, keystone refuses it and the disk stays locked.</p>
+        <Figure fig="13-failure" />
+      </div>
+      </div>
     </div>
   </section>
 
   <section class="sec" id="secrets">
-    <div class="wrap prose">
+    <div class="wrap prose proc">
       <h2>Where the secrets are</h2>
+      <div class="proc-body cols">
       <p>keystone never receives the disk's passphrase or its second key. The LUKS header keeps a value that gives the second key only with keystone's private key.</p>
       <p>keystone keeps each key set's private keys as one secret in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by the set's exchange key, and the computer removes the random number to get the second key. keystone alone holds nothing that opens a disk. It answers anyone who asks, and its alert comes after an unlock, so a thief who starts the computer before you delete the key set gets in.</p>
       <p>Cloudflare, and anyone who can deploy keystone in your account, can read the key sets. With the disk or a copy of its header, a copied key set opens it even after a delete. <a href="/architecture/#rollback">Rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
+      </div>
     </div>
   </section>
 
-  <section class="sec" id="origin-gate">
-    <div class="wrap prose">
+  <section class="sec">
+    <div class="wrap prose split">
+      <div id="origin-gate">
       <h2>Who can ask</h2>
       <p>A key set can name the networks allowed to unlock it and who approves the rest. A request from any other network is held while the approvers are mailed a link; when one approves, any machine on that network can unlock the set for 10 minutes. A held host is refused until one approves, and its request lapses after 12 hours. Listed networks are never held, so a server that restarts by itself needs no approval. The <a href="/architecture/#gate">architecture</a> page has the mechanism.</p>
-    </div>
-  </section>
-
-  <section class="sec" id="what-you-need">
-    <div class="wrap prose">
+      </div>
+      <div id="what-you-need">
       <h2>What you need</h2>
-      <ul>
+      <ul class="key-list">
         <li>A Linux computer with a LUKS disk and clevis installed.</li>
         <li>A Cloudflare account and a domain managed there. keystone runs as a Cloudflare Worker, Cloudflare's name for such a program. The free plan works with the smaller key type (<code>--curve P-256</code>); the default key type needs the paid Workers plan.</li>
         <li>A computer with Node.js, git and jq to create and deploy key sets.</li>
         <li>An offline place to keep key sets, such as pass on a machine you control.</li>
         <li>Each disk's passphrase, kept for the day keystone cannot answer.</li>
       </ul>
+      </div>
     </div>
   </section>
 

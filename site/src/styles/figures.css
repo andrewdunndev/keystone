@@ -3,9 +3,9 @@
    carry difference. */
 .stage { position: sticky; top: calc(var(--pin) + 12px); margin: 0; }
 .stage-inner { width: 100%; }
-.stage svg, .still svg, .fig svg { display: block; width: 100%; height: auto; max-width: 880px; font-family: var(--mono); font-size: 13px; }
+.stage svg, .still svg, .fig svg { display: block; width: 100%; height: auto; font-family: var(--mono); font-size: 13px; }
 .stage svg { max-height: calc(100vh - var(--pin) - 40px); }
-.fig { margin: 0 0 40px; max-width: 880px; }
+.fig { margin: 0 0 40px; }
 .still { margin: 0 0 20px; }
 .chapter.stills .stage { display: none; }
 .pan { min-width: 0; }
