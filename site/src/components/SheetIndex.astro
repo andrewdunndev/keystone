@@ -4,14 +4,15 @@ import mark from '../../public/favicon.svg?raw';
 interface Props {
   label: string;
   items: { id: string; label: string }[];
+  numbered?: boolean;
 }
-const { label, items } = Astro.props;
+const { label, items, numbered } = Astro.props;
 ---
 <nav class="sheet-index" aria-label={label}>
   <div class="wrap">
     <a class="sheet-home" href="/" aria-label="keystone, home"><span aria-hidden="true" set:html={mark} /></a>
     <ol>
-      {items.map(i => <li><a href={`#${i.id}`}>{i.label}</a></li>)}
+      {items.map((i, k) => <li><a href={`#${i.id}`}>{numbered && <><span>{String(k + 1).padStart(2, '0')}</span> </>}{i.label}</a></li>)}
     </ol>
   </div>
 </nav>
@@ -26,8 +27,13 @@ const { label, items } = Astro.props;
     const mark = hash => links.forEach(a => {
       if (a.hash === hash) a.setAttribute('aria-current', 'location'); else a.removeAttribute('aria-current');
     });
-    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) mark(seen.get(e.target)); }),
-      { rootMargin: '-45% 0px -55% 0px' });
-    seen.forEach((_, el) => io.observe(el));
+    const spy = () => {
+      let cur;
+      seen.forEach((hash, el) => { if (el.getBoundingClientRect().top <= innerHeight * 0.45) cur = hash; });
+      mark(cur);
+    };
+    addEventListener('scroll', spy, { passive: true });
+    addEventListener('resize', spy);
+    spy();
   });
 </script>
