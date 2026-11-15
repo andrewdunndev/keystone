@@ -1,14 +1,8 @@
-#!/usr/bin/env node
-/* keystone mark, direction "arch": an isometric stone arch whose crown is
-   the moss keystone. Projection (elevation 30), tones and the #404040 edge
-   follow cairn's src/brand. At 64 px and up every stone is a rounded slab
-   of many faces, toned by normal; at 16 to 32 px each is a flat prism.
-   Writes mark.svg, favicon.svg and hero.svg (the keystone drops into the
-   crown) beside this file. */
+/* keystone mark: an isometric stone arch whose crown is the moss keystone.
+   Elevation 30; tones and the #404040 edge follow cairn's src/brand. At 64 px
+   and up each stone is a rounded slab of many faces toned by normal; below
+   that each is a flat prism. */
 
-import { writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /* ---- palette and tones, the estate's table ---- */
 const palette = { white: '#ffffff', e500: '#404040', e600: '#0a0a0a', m400: '#4a6741' };
@@ -336,11 +330,3 @@ export const hero = (edge = 1, label = LABEL, still = false) => {
   return `${open(label, `0 -${head} 64 ${64 + head}`)}<style>${css}</style>${castMarkup(casts, fit)}${land}${body}</svg>\n`;
 };
 
-const here = dirname(fileURLToPath(import.meta.url));
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  writeFileSync(join(here, 'mark.svg'), glyph());
-  writeFileSync(join(here, 'favicon.svg'), small_());
-  writeFileSync(join(here, 'hero.svg'), hero());
-  if (process.argv[2]) writeFileSync(process.argv[2], hero(1, LABEL, true));
-  console.log('wrote mark.svg favicon.svg hero.svg');
-}

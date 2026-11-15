@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Redraw the keystone glyph in avatar.svg and hero.svg from the arch
-   generator, and write favicon.svg to the repo root and site/public:
+   generator, write favicon.svg to the repo root and site/public, and the
+   animated mark the site home embeds to site/src/brand:
      node scripts/brand.mjs
    The text cards are hand-authored; only <g id="keystone-glyph"> is
    replaced. PNGs come after, from the reference brand.sh. The avatar is
@@ -8,8 +9,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { carve, fitted, large, bounds, small_ } from '../prototypes/mark/arch/mark.mjs';
-import { archBody } from '../prototypes/mark/arch/mark6.mjs';
+import { carve, fitted, large, bounds, small_ } from './mark/mark.mjs';
+import { archBody, hero } from './mark/hero.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { solids, fit } = fitted(large, [2, 2, 60, 60], carve);
@@ -32,4 +33,5 @@ for (const [file, { box: [x, y, w, h], edge }] of Object.entries(bands)) {
 const favicon = small_();
 writeFileSync(join(root, 'favicon.svg'), favicon);
 writeFileSync(join(root, 'site/public/favicon.svg'), favicon);
-console.log('wrote favicon.svg, site/public/favicon.svg, glyph in avatar.svg and hero.svg');
+writeFileSync(join(root, 'site/src/brand/hero-mark.svg'), hero());
+console.log('wrote favicons, site hero mark, glyph in avatar.svg and hero.svg');

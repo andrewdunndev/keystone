@@ -1,15 +1,6 @@
-#!/usr/bin/env node
-/* keystone mark v6: the arch of mark.mjs drawn as cairn's home cover is
-   drawn, in thin wire. Same geometry and faceted stones; what changes is the
-   line. The cover's silhouette edge is 1.25 of a 378-unit figure (0.33%);
-   here the edge is 0.2 of the 60-unit arch. Faces keep the eight-step ramp
-   with a hair seam of their own colour, the ground is a dash-dot plate in
-   the 0.3 hairline, and the keystone drops once on cairn's timing.
-   Writes mark-v6.svg and hero-v6.svg beside this file. */
+/* The arch of mark.mjs drawn as cairn's home cover is, in thin wire: a
+   hairline edge, a dash-dot ground plate, and a keystone that drops once. */
 
-import { writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import { carve, fitted, large, deg, bounds, points, path, tones, open, LABEL, castMarkup } from './mark.mjs';
 
 /* the cover's weights over the 60-unit arch: edge, seam, plate */
@@ -73,9 +64,3 @@ export const hero = (label = LABEL, still = false) => {
   return `${open(label, `${x0} ${y0} ${x1 - x0} ${y1 - y0}`)}<style>${css}</style>${plateMarkup(plate)}${castMarkup(casts, fit)}${land}${body}</svg>\n`;
 };
 
-const here = dirname(fileURLToPath(import.meta.url));
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  writeFileSync(join(here, 'mark-v6.svg'), glyph());
-  writeFileSync(join(here, 'hero-v6.svg'), hero());
-  console.log('wrote mark-v6.svg hero-v6.svg');
-}
