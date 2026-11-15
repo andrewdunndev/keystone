@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>keystone mark directions</title>
+<style>
+:root { color-scheme: light; --paper:#fcfcfa; --ink:#161616; --grey:#525252; --rule:#dadad6; --tab:#e8e8e5; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; background: var(--paper); color: var(--ink);
+  font: 15px/1.5 system-ui, sans-serif; }
+main { max-width: 1180px; margin: 0 auto; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.lede { color: var(--grey); margin: 0 0 24px; }
+section { border-top: 1px solid var(--rule); padding: 20px 0 28px; }
+h2 { font-size: 16px; margin: 0 0 4px; }
+.idea { color: var(--grey); margin: 0 0 14px; max-width: 70ch; }
+.row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end; }
+figure { margin: 0; }
+figcaption { font-size: 12px; color: var(--grey); margin-top: 4px; }
+.small { display: flex; gap: 20px; align-items: flex-end; }
+.tabs { display: flex; flex-direction: column; gap: 10px; }
+.strip { display: flex; gap: 2px; background: #cfcfca; padding: 6px 6px 0; width: 340px; border-radius: 8px 8px 0 0; }
+.tab { display: flex; align-items: center; gap: 8px; width: 150px; height: 30px; padding: 0 10px;
+  background: var(--tab); border-radius: 8px 8px 0 0; font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; }
+.tab.on { background: #fff; }
+.tab img { display: block; flex: none; }
+</style>
+</head>
+<body>
+<main>
+<h1>keystone mark directions</h1>
+<p class="lede">Prototypes in prototypes/mark. Every image is 1:1 on paper. Cairn first, for comparison.</p>
+
+<section>
+  <h2>cairn (reference)</h2>
+  <p class="idea">Stacked stones, moss cap, flat small form. This is cairn's favicon.svg at each size; the faceted glyph lives in its kit.</p>
+  <div class="row">
+    <figure><img src="cairn-ref-512.png" width="512" height="512" alt="cairn at 512"><figcaption>512</figcaption></figure>
+    <figure><img src="cairn-ref-64.png" width="64" height="64" alt="cairn at 64"><figcaption>64</figcaption></figure>
+    <div class="small">
+      <figure><img src="cairn-ref-32.png" width="32" height="32" alt="cairn at 32"><figcaption>32</figcaption></figure>
+      <figure><img src="cairn-ref-16.png" width="16" height="16" alt="cairn at 16"><figcaption>16</figcaption></figure>
+    </div>
+    <div class="tabs"><div class="strip"><div class="tab on"><img src="cairn-ref-16.png" width="16" height="16" alt="">cairn</div><div class="tab">docs</div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>voussoir</h2>
+  <p class="idea">One wedge stone built as a cairn stone, yawed so its right end undercuts; moss on the top face only.</p>
+  <div class="row">
+    <figure><img src="voussoir/mark-512.png" width="512" height="512" alt="voussoir at 512"><figcaption>512</figcaption></figure>
+    <figure><img src="voussoir/mark-64.png" width="64" height="64" alt="voussoir at 64"><figcaption>64</figcaption></figure>
+    <div class="small">
+      <figure><img src="voussoir/favicon-32.png" width="32" height="32" alt="voussoir favicon 32"><figcaption>32</figcaption></figure>
+      <figure><img src="voussoir/favicon-16.png" width="16" height="16" alt="voussoir favicon 16"><figcaption>16</figcaption></figure>
+    </div>
+    <div class="tabs"><div class="strip"><div class="tab on"><img src="voussoir/favicon-16.png" width="16" height="16" alt="">keystone</div><div class="tab"><img src="cairn-ref-16.png" width="16" height="16" alt="">cairn</div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>arch</h2>
+  <p class="idea">Five-stone semicircular arch on two piers; only the keystone, standing proud of the ring, wears moss.</p>
+  <div class="row">
+    <figure><img src="arch/mark-512.png" width="512" height="512" alt="arch at 512"><figcaption>512</figcaption></figure>
+    <figure><img src="arch/mark-64.png" width="64" height="64" alt="arch at 64"><figcaption>64</figcaption></figure>
+    <div class="small">
+      <figure><img src="arch/favicon-32.png" width="32" height="32" alt="arch favicon 32"><figcaption>32</figcaption></figure>
+      <figure><img src="arch/favicon-16.png" width="16" height="16" alt="arch favicon 16"><figcaption>16</figcaption></figure>
+    </div>
+    <div class="tabs"><div class="strip"><div class="tab on"><img src="arch/favicon-16.png" width="16" height="16" alt="">keystone</div><div class="tab"><img src="cairn-ref-16.png" width="16" height="16" alt="">cairn</div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>keyed</h2>
+  <p class="idea">One moss keystone wedge on its narrow bed with a keyhole bored through its face.</p>
+  <div class="row">
+    <figure><img src="keyed/mark-512.png" width="512" height="512" alt="keyed at 512"><figcaption>512</figcaption></figure>
+    <figure><img src="keyed/mark-64.png" width="64" height="64" alt="keyed at 64"><figcaption>64</figcaption></figure>
+    <div class="small">
+      <figure><img src="keyed/favicon-32.png" width="32" height="32" alt="keyed favicon 32"><figcaption>32</figcaption></figure>
+      <figure><img src="keyed/favicon-16.png" width="16" height="16" alt="keyed favicon 16"><figcaption>16</figcaption></figure>
+    </div>
+    <div class="tabs"><div class="strip"><div class="tab on"><img src="keyed/favicon-16.png" width="16" height="16" alt="">keystone</div><div class="tab"><img src="cairn-ref-16.png" width="16" height="16" alt="">cairn</div></div></div>
+  </div>
+</section>
+</main>
+</body>
+</html>
