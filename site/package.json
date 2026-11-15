@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",
-    "@dunn.dev/reference": "git+https://gitlab.com/dunn.dev/reference.git#d04b1c2",
+    "@dunn.dev/reference": "^0.12.0",
     "astro": "^7.0.0",
     "typescript": "^6.0.0"
   }

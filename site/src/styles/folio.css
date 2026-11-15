@@ -23,7 +23,6 @@
   --t-mono: 12.5px;
   --gutter: 56px;
   --pin: 64px;
-  --ease: cubic-bezier(.4, 0, .2, 1);
 }
 @media (max-width: 860px) { :root { --gutter: 16px; --pin: 48px; } }
 

@@ -60,6 +60,12 @@ async function load(name, mount) {
 /* a figure that plays once when it comes into view */
 async function once(host) {
   const mount = host.querySelector('.stage-inner');
+  const pan = host.querySelector('.pan');
+  if (pan) {
+    pan.tabIndex = 0;
+    pan.setAttribute('role', 'group');
+    pan.setAttribute('aria-label', 'Figure, scrolls sideways');
+  }
   const fig = await load(host.dataset.fig, mount);
   const ms = fig.stepMs ? fig.stepMs.slice(1) : [];
   const tween = motion.slew(motion.STEP_MS, 0, k => ms[k - 1] ?? motion.STEP_MS);
@@ -147,7 +153,6 @@ async function chapter(el) {
 }
 
 async function main() {
-  document.querySelectorAll('figure.inline[data-kind]').forEach(f => inline.draw(f));
   document.querySelectorAll('.once[data-fig]').forEach(h => once(h).catch(e => console.warn(e)));
   const chapters = (await Promise.all([...document.querySelectorAll('.chapter[data-fig]')]
     .map(el => chapter(el).catch(e => { console.warn(e); return null; })))).filter(Boolean);

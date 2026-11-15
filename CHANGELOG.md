@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The approval pages are light only: the dark-scheme rules in the reference stylesheet are filtered out of the page CSS.
+
 ## v0.2.4 - 2026-11-13
 
 - Past the 40 messages an hour across all sets, each approver of each set still gets their first message of the hour, so strangers asking for one set can no longer silence another set's approval mail. Setup's Origin gate section documents it.

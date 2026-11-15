@@ -16,7 +16,7 @@ const { label, items } = Astro.props;
   </div>
 </nav>
 <script is:inline>
-  (() => {
+  addEventListener("DOMContentLoaded", () => {
     const links = [...document.querySelectorAll('.sheet-index ol a')];
     const seen = new Map();
     links.forEach(a => {
@@ -29,5 +29,5 @@ const { label, items } = Astro.props;
     const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) mark(seen.get(e.target)); }),
       { rootMargin: '-45% 0px -55% 0px' });
     seen.forEach((_, el) => io.observe(el));
-  })();
+  });
 </script>
