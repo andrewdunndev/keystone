@@ -4,6 +4,7 @@ import Hero from '@dunn.dev/reference/chrome/Hero.astro';
 import SectionLabel from '@dunn.dev/reference/chrome/SectionLabel.astro';
 import Split from '@dunn.dev/reference/chrome/Split.astro';
 import Ov1 from '../figures/15-ov1.astro';
+import mark from '../brand/hero-mark.svg?raw';
 import Failure from '../figures/13-failure.astro';
 ---
 <Layout description="keystone unlocks an encrypted disk at startup with no typed passphrase. If the computer is stolen, delete its key set before it next starts, and the disk stays locked.">
@@ -15,6 +16,7 @@ import Failure from '../figures/13-failure.astro';
       <a class="cta-primary" href="/setup/">Install</a>
       <a class="cta-secondary" href="/architecture/">Architecture</a>
     </Fragment>
+    <div slot="aside" class="mark" set:html={mark} />
   </Hero>
 
   <figure class="cat-explainer figure-pair figure-full">

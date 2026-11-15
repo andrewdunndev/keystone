@@ -1,2 +1,25 @@
 @import '@dunn.dev/reference/tokens/index.css';
 @import '@dunn.dev/reference/site.css';
+
+:root,
+:root[data-theme='dark'],
+:root:not([data-theme='light']) {
+  color-scheme: light;
+  --bg: #fcfcfa;
+  --surface: #f2f2f0;
+  --nav-bg: #fcfcfa;
+  --border: rgba(22, 22, 22, 0.12);
+  --border-strong: rgba(22, 22, 22, 0.3);
+  --text: #161616;
+  --text-2: #525252;
+  --text-muted: #525252;
+  --accent: #3a3a3a;
+  --accent-hover: #161616;
+  --accent-contrast: #fcfcfa;
+  --danger: #161616;
+}
+
+.theme-toggle { display: none; }
+
+.hero-aside .mark { max-width: 26rem; margin-inline: auto; }
+.hero-aside .mark svg { display: block; width: 100%; height: auto; overflow: visible; }
