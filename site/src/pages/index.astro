@@ -22,13 +22,17 @@ import mark from '../brand/hero-mark.svg?raw';
   </header>
 
   <section class="sec" id="what">
-    <div class="wrap prose">
-      <h2>What it does</h2>
-      <p>An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
-      <p>keystone supplies the <a href="#secrets">missing half</a> of a second key the computer keeps on the disk, so the disk opens without the passphrase. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
-      <p>You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. Until you delete a stolen computer's key set, anyone who starts that computer where it can reach the internet unlocks the disk, unless the key set limits <a href="#origin-gate">who can ask</a>.</p>
-      <Figure fig="15-ov1" />
-      <p>At boot the computer asks keystone for the missing half of its disk key. Delete a stolen computer's key set before it next starts and the disk stays locked.</p>
+    <div class="wrap chapter-grid">
+      <div class="prose">
+        <h2>What it does</h2>
+        <p>An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
+        <p>keystone supplies the <a href="#secrets">missing half</a> of a second key the computer keeps on the disk, so the disk opens without the passphrase. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
+        <p>You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. Until you delete a stolen computer's key set, anyone who starts that computer where it can reach the internet unlocks the disk, unless the key set limits <a href="#origin-gate">who can ask</a>.</p>
+      </div>
+      <div class="prose">
+        <Figure fig="15-ov1" />
+        <p>At boot the computer asks keystone for the missing half of its disk key. Delete a stolen computer's key set before it next starts and the disk stays locked.</p>
+      </div>
     </div>
   </section>
 
