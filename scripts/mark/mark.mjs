@@ -31,7 +31,7 @@ export const tones = {
    proud: how far the keystone stands outside and inside the ring; perSide:
    voussoirs each side; facets: extrados chords per voussoir */
 export const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.46, 0.54], arc: 2 };
-const small = { ro: 100, ri: 54, pier: 66, depth: 28, yaw: -24, key: 19, proud: [10, 5], perSide: 1, facets: 2 };
+const small = { ro: 100, ri: 54, pier: 66, depth: 28, yaw: -24, key: 19, proud: [10, 5], perSide: 1, facets: 2, rough: 5 };
 export const deg = Math.PI / 180;
 
 /* cross-sections in (u, z), counter-clockwise seen from the front, each edge
@@ -79,7 +79,13 @@ export function build(a, elevation = 30) {
   const view = [cE * Math.SQRT1_2, cE * Math.SQRT1_2, sE];
   const dU = U[0] * view[0] + U[1] * view[1];   // how much a face along +u shows
   const d = a.depth / 2;
-  const solids = sections(a).map((s) => {
+  /* a hewn hint: every corner no neighbour shares moves a seeded hair, so
+     joints still close and each stone sits a little off true */
+  const secs = sections(a), key = ([u, z]) => `${u.toFixed(3)},${z.toFixed(3)}`, seen = new Map();
+  secs.forEach(s => s.pts.forEach(p => seen.set(key(p), (seen.get(key(p)) ?? 0) + 1)));
+  const rough = a.rough ?? 0;
+  const solids = secs.map((s, i) => ({ ...s, pts: s.pts.map((p, j) => seen.get(key(p)) > 1 ? p
+    : [p[0] + rough * noise(70 + i, 2 * j), p[1] + rough * noise(70 + i, 2 * j + 1)]) })).map((s) => {
     const n = s.pts.length;
     const front = s.pts.map(([u, z]) => world(u, d, z)), back = s.pts.map(([u, z]) => world(u, -d, z));
     const faces = [{ pts: front.map(project) }];
@@ -100,8 +106,8 @@ export function build(a, elevation = 30) {
    A slab is rings stacked along its own height axis H, each ring a rounded
    rectangle across X and Y set in by the profile (foot, belly, shoulder,
    top); quads join the rings and the end rings cap it. A voussoir's height
-   runs out from the intrados, its X follows the joint planes and its
-   corners stay square; a pier course stands on z. Seeded noise moves
+   runs out from the intrados and its X follows the joint planes; a pier
+   course stands on z. Every stone is dressed the same way: seeded noise moves
    corners, radii, rings and the slope of the top, so no two stones match. */
 const noise = (seed, k) => {
   let h = Math.imul(seed + 0x9e37, 0x85ebca6b) ^ Math.imul(k + 0x2c1b, 0xc2b2ae35);
@@ -125,14 +131,14 @@ const newell = (poly) => {
 
 function slab(s, arc) {
   const Y = v3.dot(v3.cross(s.X, s.Y), s.H) < 0 ? s.Y.map(c => -c) : s.Y;
-  const m = Math.min(...s.half(s.h / 2)), steps = s.square ? 0 : arc;
+  const m = Math.min(...s.half(s.h / 2));
   const loops = s.rings.map(([f, g]) => {
-    const rise = f * s.h, inset = g * m, [A, B] = s.half(rise).map((v, i) => v - (i || !s.square ? inset : 0)), pts = [];
+    const rise = f * s.h, inset = g * m, [A, B] = s.half(rise).map(v => v - inset), pts = [];
     [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([sx, sy], q) => {
-      const rc = s.square ? 0 : Math.min(Math.max(s.r[q] * m - inset, 1), A, B);
-      for (let k = 0; k <= steps; k++) {
-        const t = (q * 90 + (k * 90) / (steps || 1)) * deg, grow = 1 + 0.07 * noise(s.seed, q * 5 + k);
-        const x = (sx * (A - rc) + rc * Math.cos(t)) * (s.square ? 1 : grow), y = (sy * (B - rc) + rc * Math.sin(t)) * grow;
+      const rc = Math.min(Math.max(s.r[q] * m - inset, 1), A, B);
+      for (let k = 0; k <= arc; k++) {
+        const t = (q * 90 + (k * 90) / arc) * deg, grow = 1 + 0.07 * noise(s.seed, q * 5 + k);
+        const x = (sx * (A - rc) + rc * Math.cos(t)) * grow, y = (sy * (B - rc) + rc * Math.sin(t)) * grow;
         pts.push(v3.add([1, s.O], [x, s.X], [y, Y], [rise + f * (s.tilt[0] * x + s.tilt[1] * y), s.H]));
       }
     });
@@ -188,12 +194,12 @@ export function carve(a, elevation = 30) {
       z = top;
     });
   });
-  /* the ring: square at the joints so neighbours close on one plane,
-     chamfered front and back; the keystone stands proud at the crown */
+  /* the ring: each stone hewn round its joint planes, so the joints read as
+     dressed grooves; the keystone stands proud at the crown */
   const ring = (name, a0, a1, [po, pi], seed, key = false) => {
     const mid = ((a0 + a1) / 2) * deg, half = ((a1 - a0) / 2) * deg, r0 = a.ri - pi;
     const er = v3.add([Math.cos(mid), U], [Math.sin(mid), Z]), et = v3.add([-Math.sin(mid), U], [Math.cos(mid), Z]);
-    slabs.push({ name, key, a0, a1, square: true, ...shape(seed), O: v3.add([1, at(0, 0, a.pier)], [r0, er]),
+    slabs.push({ name, key, a0, a1, ...shape(seed), O: v3.add([1, at(0, 0, a.pier)], [r0, er]),
       H: er, X: et, Y: V, h: a.ro + po - r0, half: (rise) => [(r0 + rise) * Math.tan(half), d] });
   };
   const step = (90 - a.key) / a.perSide;
