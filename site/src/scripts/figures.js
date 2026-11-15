@@ -51,6 +51,12 @@ const cropTo = (c, box) => {
   c.style.minWidth = `${Math.round(box[2] * 0.85)}px`;
 };
 
+/* a pan that overflows says so: data-pan shows the hint, so a wide figure is never cut off unseen */
+const flagPans = () => document.querySelectorAll('.pan').forEach(p => p.toggleAttribute('data-pan', p.scrollWidth > p.clientWidth + 1));
+let flagQueued = false;
+const queueFlag = () => { if (!flagQueued) { flagQueued = true; requestAnimationFrame(() => { flagQueued = false; flagPans(); }); } };
+addEventListener('resize', queueFlag);
+
 async function load(name, mount) {
   const load = modules[`../figures/${name}.js`];
   if (!load) throw new Error(`no figure ${name}`);
@@ -81,9 +87,11 @@ async function once(host) {
     c.setAttribute('viewBox', '0 0 720 520');
     c.classList.remove('cropped');
     c.style.minWidth = '';
+    queueFlag();
     if (!mqNarrow.matches) return;
     fig.update(fig.n);
     cropTo(c, extent(c));
+    queueFlag();
   };
   await document.fonts.ready;
   fit();
@@ -139,6 +147,7 @@ async function chapter(el) {
       if (st === text) text.querySelector('h2').after(f); else st.before(f);
       return f;
     });
+    queueFlag();
     el.classList.add('stills');
     fig.update(fig.n);
   };
