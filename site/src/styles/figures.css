@@ -64,9 +64,9 @@ svg text { fill: var(--ink); }
 .bar.cold { fill: none; stroke-width: .7; stroke: var(--grey); }
 .tick { stroke: var(--grey); stroke-width: .55; }
 
-@media (max-width: 620px) {
+@media (max-width: 860px) {
   .pan { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .pan svg { min-width: 640px; }
+  .cropped .sheet { display: none; }
 }
 @media print, (prefers-reduced-motion: reduce), (max-width: 860px) {
   .stage { position: static; }
@@ -78,4 +78,9 @@ svg text { fill: var(--ink); }
 @media print, (prefers-reduced-motion: reduce), (max-width: 860px) {
   .chapter-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .still svg { max-width: 760px; }
+}
+/* live mode: each step takes a stretch of scroll, so the stage pins while they pass */
+@media (min-width: 861px) and (prefers-reduced-motion: no-preference) {
+  .chapter-text [data-step] { min-height: 52vh; }
+  .chapter-text [data-step]:last-child { min-height: 0; }
 }

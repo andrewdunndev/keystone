@@ -26,8 +26,30 @@ function svg(mount, title, alt) {
 const kit = { iso, dim, motion, inline, svg };
 
 const mqStill = matchMedia('print, (prefers-reduced-motion: reduce), (max-width: 860px)');
+const mqNarrow = matchMedia('(max-width: 860px)');
 const still = () => mqStill.matches;
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/* the drawn extent of a figure at its last rest, padded: a narrow screen shows
+   the drawing and drops the empty sheet around it */
+function extent(svgEl) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  [...svgEl.children].forEach(e => {
+    if (e.matches('defs, title, desc, .sheet') || parseFloat(e.style.opacity) < 0.02) return;
+    const b = e.getBBox();
+    if (!b.width && !b.height) return;
+    x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height);
+  });
+  if (x1 <= x0 || y1 <= y0) return null;
+  const pad = 14;
+  return [x0 - pad, y0 - pad, x1 - x0 + 2 * pad, y1 - y0 + 2 * pad].map(v => +v.toFixed(1));
+}
+const cropTo = (c, box) => {
+  if (!box) return;
+  c.setAttribute('viewBox', box.join(' '));
+  c.classList.add('cropped');
+  c.style.minWidth = `${Math.round(box[2] * 0.85)}px`;
+};
 
 async function load(name, mount) {
   const load = modules[`../figures/${name}.js`];
@@ -48,8 +70,19 @@ async function once(host) {
     fig.update(still() ? fig.n : tween.v);
     if (live) requestAnimationFrame(frame);
   };
+  const fit = () => {
+    const c = mount.querySelector('svg');
+    c.setAttribute('viewBox', '0 0 720 520');
+    c.classList.remove('cropped');
+    c.style.minWidth = '';
+    if (!mqNarrow.matches) return;
+    fig.update(fig.n);
+    cropTo(c, extent(c));
+  };
+  await document.fonts.ready;
+  fit();
   fig.update(still() ? fig.n : 0);
-  mqStill.addEventListener('change', () => requestAnimationFrame(frame));
+  mqStill.addEventListener('change', () => { fit(); requestAnimationFrame(frame); });
   new IntersectionObserver((es, io) => {
     if (!es.some(e => e.isIntersecting)) return;
     io.disconnect();
@@ -77,11 +110,13 @@ async function chapter(el) {
     if (ch.stills) return;
     ch.stills = steps.map((st, k) => {
       fig.update(k + 1);
+      const crop = mqNarrow.matches ? extent(svgEl) : null;
       let html = svgEl.outerHTML;
       ids.forEach(id => { html = html.replace(new RegExp(`(?<=["#\\s])${esc(id)}(?=["\\s)])`, 'g'), `${id}-s${k}`); });
-      const box = document.createElement('div');
-      box.innerHTML = html;
-      const c = box.firstElementChild;
+      const holder = document.createElement('div');
+      holder.innerHTML = html;
+      const c = holder.firstElementChild;
+      cropTo(c, crop);
       const ttl = c.querySelector('title');
       if (steps.length > 1 && ttl) ttl.textContent += ` (step ${k + 1} of ${steps.length})`;
       const alt = fig.alts ? fig.alts[k] : fig.alt;
@@ -143,7 +178,8 @@ async function main() {
     if (live) queue();
   };
   const queue = () => { if (!queued) { queued = true; requestAnimationFrame(frame); } };
-  const mode = () => {
+  const mode = async () => {
+    await document.fonts.ready;
     if (still()) chapters.forEach(ch => ch.build());
     else chapters.forEach(ch => { ch.drop(); ch.tween.snap(); ch.shown = null; });
     queue();

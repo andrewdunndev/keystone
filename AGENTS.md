@@ -13,7 +13,7 @@ revokes its key sets.
 - `src/bounded.js`: the empty-at-limit rule for the Worker's and the Gate's per-isolate caches.
 - `src/timeout.js`: `withTimeout`, the race against a timer both the Gate mail and the Gate wait use.
 - `src/gate.js`: the `Gate` Durable Object holding pending approvals, approval tokens, and the mail.
-- `src/auth-css.js`: the approval pages' stylesheet, generated from `@dunn.dev/reference` by `scripts/auth-css.mjs` (`npm run auth-css`).
+- `src/auth-css.js`: the approval pages' stylesheet, generated from `@dunn.dev/reference` by `scripts/auth-css.mjs` (`npm run auth-css`), light only.
 - `bin/keyset.mjs`: `new`, `check`, `deploy`, `revoke`. `main(argv, io)` takes fetch, the wrangler runner, stdio and process
   injected, so tests run it in-process.
 - `test/worker.test.js`: the Worker against a fixture `test/gen-fixture.mjs` builds from stock tangd before each run.
@@ -22,7 +22,7 @@ revokes its key sets.
 - `test/auth-css.test.js`, `test/bounded.test.js`: the generated stylesheet is current; the bounded caches.
 - `test/helpers.mjs`: the `kv`, fixture, set-builder and `rec` helpers the suites share; `test/register.mjs` and the `cloudflare-*.mjs` files stand in for the Workers-only modules; `test/hex.mjs` is a byte helper.
 - `deploy/wrangler.toml.example`: the shipped Worker config, copied to the git-ignored `deploy/wrangler.toml` for a deploy and the CI dry runs; interop runs on its own copy.
-- `site/`: the Astro site at keystone.dunn.dev, built and deployed apart from the Worker. It is drawn in folio, declared in `.standards.yaml`: Geist from `site/public/fonts` (git-LFS), tokens and type in `site/src/styles/folio.css`, the chrome in `site.css`, the drawing kit from `@dunn.dev/reference/folio/*`.
+- `site/`: the Astro site at keystone.dunn.dev, built and deployed apart from the Worker. It is drawn in folio, declared in `.standards.yaml`: Geist from `site/public/fonts` (git-LFS), tokens and type in `site/src/styles/folio.css`, the chrome in `site.css`, the drawing kit from `@dunn.dev/reference/folio/*`. Each figure is a module in `site/src/figures` (`lib.js` is the shared sheet helper) that default-exports `(mount, kit)` and returns `{ n, alts, update }`; `site/src/scripts/figures.js` mounts it from a `Chapter` or `Figure` that names it and plays `update(s)`.
 - `scripts/brand.mjs`: writes `favicon.svg`, `site/public/favicon.svg` and `site/src/brand/hero-mark.svg`, and redraws the glyph in `avatar.svg` and `hero.svg`, from `scripts/mark/mark.mjs` (the arch geometry) and `scripts/mark/hero.mjs` (the animated home mark). Edit the generators and run `node scripts/brand.mjs`; never hand-edit the outputs.
 
 - `scripts/mutate.sh`: sed mutants of `src/` and `bin/`; each must apply and fail the suite.
