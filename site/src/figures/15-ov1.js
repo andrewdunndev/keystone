@@ -2,7 +2,7 @@
 import { sheet } from './lib.js';
 
 export default function (mount, kit) {
-  const alt = 'keystone at a glance, in seven steps: 1, the owner deploys a key set per disk to keystone, a Worker on a Cloudflare account; 2, the computer binds its encrypted disk once to its key set; 3, at boot the computer asks keystone, sending only a blinded value; 4, keystone reads that key set; 5, it answers with the missing half of the key; 6, the computer opens the disk with no passphrase typed, and keystone never sees the disk; 7, if the computer is stolen, the owner deletes its key set before it next starts, keystone refuses it, and the disk stays locked.';
+  const alt = 'Seven steps: 1, the owner deploys a key set per disk to keystone, a Worker on a Cloudflare account; 2, the computer binds its encrypted disk once to its key set; 3, at boot the computer asks keystone, sending only a blinded value; 4, keystone reads that key set; 5, it answers with the missing half of the key; 6, the computer opens the disk with no passphrase typed, and keystone never sees the disk; 7, if the computer is stolen, the owner deletes its key set before it next starts, keystone refuses it, and the disk stays locked.';
   const s = kit.svg(mount, 'keystone at a glance', alt);
   const f = sheet(s, kit, 1);
   const at = i => [0.08 + i * 0.09, 0.2 + i * 0.09];

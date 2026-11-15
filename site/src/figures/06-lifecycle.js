@@ -2,7 +2,7 @@
 import { sheet } from './lib.js';
 
 export default function (mount, kit) {
-  const alt = 'Four states stacked top to bottom. A set is minted by keyset new, goes live when deployed with --new and answers adv 200, is revoked when its secret is deleted and answers adv 404, and becomes a tombstone, a null entry in the deploy input, which every later deploy proves answers 404. A dashed part beside the live set shows new keys under the same name refused: rotate to server-2.';
+  const alt = 'Four states stacked top to bottom. A set is minted by keyset new, goes live when deployed with --new and answers adv 200, is revoked when its secret is deleted and answers adv 404, and becomes a tombstone, a null entry in the deploy input, which every later deploy proves answers 404. A dashed part beside the live set shows that new keys under the same name are refused, so rotation uses server-2.';
   const s = kit.svg(mount, 'Life of a key set', alt);
   const f = sheet(s, kit, 3);
   const X = 140, W = 200, H = 60, cx = X + W / 2;
