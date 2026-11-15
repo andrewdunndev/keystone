@@ -8,7 +8,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /* ---- palette and tones, the estate's table ---- */
 const palette = { white: '#ffffff', e500: '#404040', e600: '#0a0a0a', m400: '#4a6741' };
@@ -25,7 +25,7 @@ const moss = lit(palette.m400, palette.e600, [18, 36, 55]);
 /* the large form's ramp: each step k% of the way from a body's top toward
    dark, cairn's table (stone 7 16 30, moss 18 36 55) with steps between */
 const ramp = (top, ks) => ks.map(k => mix(palette.e600, top, k));
-const tones = {
+export const tones = {
   stone: ramp(palette.white, [0, 4, 7, 11, 16, 22, 30, 38]),
   key: ramp(palette.m400, [0, 10, 18, 27, 36, 45, 55, 63]),
   edge: palette.e500, cast: palette.e600, castOpacity: 0.14,
@@ -36,9 +36,9 @@ const tones = {
    ro, ri: ring radii; pier: springing height; key: keystone half-angle;
    proud: how far the keystone stands outside and inside the ring; perSide:
    voussoirs each side; facets: extrados chords per voussoir */
-const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.46, 0.54], arc: 2 };
+export const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.46, 0.54], arc: 2 };
 const small = { ro: 100, ri: 54, pier: 66, depth: 28, yaw: -24, key: 19, proud: [10, 5], perSide: 1, facets: 2 };
-const deg = Math.PI / 180;
+export const deg = Math.PI / 180;
 
 /* cross-sections in (u, z), counter-clockwise seen from the front, each edge
    tagged with the face it extrudes: out (extrados or outer wall), in (the
@@ -244,15 +244,15 @@ export function carve(a, elevation = 30) {
 }
 
 /* ---- fitting and SVG ---- */
-const bounds = (pts) => ({
+export const bounds = (pts) => ({
   minX: Math.min(...pts.map(p => p[0])), maxX: Math.max(...pts.map(p => p[0])),
   minY: Math.min(...pts.map(p => p[1])), maxY: Math.max(...pts.map(p => p[1])),
 });
-const fmt = (p, d = 1) => p.map(v => v.toFixed(d)).join(',');
-const points = (pts, d = 1) => pts.map(p => fmt(p, d)).join(' ');
-const path = (pts, d = 1) => 'M' + pts.map(p => fmt(p, d)).join('L') + 'Z';
+export const fmt = (p, d = 1) => p.map(v => v.toFixed(d)).join(',');
+export const points = (pts, d = 1) => pts.map(p => fmt(p, d)).join(' ');
+export const path = (pts, d = 1) => 'M' + pts.map(p => fmt(p, d)).join('L') + 'Z';
 
-function fitted(a, box, make = build) {
+export function fitted(a, box, make = build) {
   const g = make(a);
   const [bx, by, bw, bh] = box;
   const b = bounds(g.all);
@@ -263,8 +263,8 @@ function fitted(a, box, make = build) {
   return { ...g, fit, k };
 }
 
-const LABEL = 'keystone: a stone arch, its moss keystone at the crown';
-const open = (label, viewBox = '0 0 64 64') =>
+export const LABEL = 'keystone: a stone arch, its moss keystone at the crown';
+export const open = (label, viewBox = '0 0 64 64') =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"${label ? ` role="img" aria-label="${label}"` : ' aria-hidden="true"'}>`;
 
 /* 16 to 32 px: a white front, one grey for every depth face, an edge one
@@ -289,7 +289,7 @@ export const small_ = (id = 'keystone', label = LABEL) => {
    ramp so faces of a step share a fill and leave no seam, each drawn with a
    hair of its own colour over the joins to the next; then the silhouette's
    edge, cairn's weight and round join */
-const stoneMarkup = (s, fit, edge) => {
+export const stoneMarkup = (s, fit, edge) => {
   const b = s.key ? tones.key : tones.stone, outline = path(fit(s.hull), 1), byTone = new Map();
   for (const f of s.faces) byTone.set(f.tone, (byTone.get(f.tone) ?? '') + path(fit(f.pts), 1));
   const fills = [...byTone.keys()].sort((p, q) => p - q).map(t =>
@@ -299,7 +299,7 @@ const stoneMarkup = (s, fit, edge) => {
 };
 
 /* the piers' cast on the ground: one flat tone, no blur */
-const castMarkup = (casts, fit) =>
+export const castMarkup = (casts, fit) =>
   `<path d="${casts.map(c => path(fit(c), 1)).join('')}" fill="${tones.cast}" fill-opacity="${tones.castOpacity}"/>`;
 
 export const glyph = (edge = 1, label = LABEL) => {
@@ -337,8 +337,10 @@ export const hero = (edge = 1, label = LABEL, still = false) => {
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
-writeFileSync(join(here, 'mark.svg'), glyph());
-writeFileSync(join(here, 'favicon.svg'), small_());
-writeFileSync(join(here, 'hero.svg'), hero());
-if (process.argv[2]) writeFileSync(process.argv[2], hero(1, LABEL, true));
-console.log('wrote mark.svg favicon.svg hero.svg');
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  writeFileSync(join(here, 'mark.svg'), glyph());
+  writeFileSync(join(here, 'favicon.svg'), small_());
+  writeFileSync(join(here, 'hero.svg'), hero());
+  if (process.argv[2]) writeFileSync(process.argv[2], hero(1, LABEL, true));
+  console.log('wrote mark.svg favicon.svg hero.svg');
+}

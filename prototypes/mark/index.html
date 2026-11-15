@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>keystone mark: arch</title>
+<title>keystone mark: arch v6 and v5</title>
 <style>
 :root { color-scheme: light; --paper:#fcfcfa; --ink:#161616; --grey:#525252; --rule:#dadad6; --tab:#e8e8e5; }
 * { box-sizing: border-box; }
@@ -29,11 +29,26 @@ button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid va
 </head>
 <body>
 <main>
-<h1>keystone mark: arch</h1>
+<h1>keystone mark: arch (v6 wire, then v5)</h1>
 <p class="lede">An isometric arch: two piers in two courses each, six ring stones and the moss keystone standing proud at the crown. Each stone is a slab built as cairn's are: rings up the side, faces toned by normal on an eight-step ramp that holds cairn's stone and moss tones, seeded so no two match. Pier courses are rounded; ring stones are square at the joints so neighbours close on one plane. Faces of a step share one fill, so no seams; the only dark stroke is each stone's silhouette at cairn's weight, and the piers cast one flat shadow. The favicon stays the flat form. Every image is an SVG at its own size except the favicon PNGs, which are 1:1.</p>
 
 <section>
-  <h2>hero: the keystone drops into the crown</h2>
+  <h2>v6: thin wire, beside v5</h2>
+  <p class="lede">v6 keeps v5's arch, faceted stones and the keystone's drop, and draws them as cairn.dunn.dev's home cover is drawn: the silhouette edge is 0.33% of the figure's width (0.2 of the 60-unit arch, 1.25 of cairn's 378), faces keep their tones with a hair seam, and the ground is a dash-dot plate in the 0.3 hairline. The drop runs on cairn's timing (200 ms lead, 820 ms, lands at 56%, one small lift, settles) and plays once; reduced motion shows the finished frame.</p>
+  <div class="row">
+    <figure><img id="hero6" src="arch/hero-v6.svg" width="400" height="480" alt="v6 hero: the keystone drops into the arch, thin wire"><figcaption>v6 hero, 400 wide</figcaption></figure>
+    <figure><img src="arch/hero.svg" width="400" height="531" alt="v5 hero for comparison"><figcaption>v5 hero, 400 wide (edge 1.0)</figcaption></figure>
+    <button type="button" id="replay6">replay v6</button>
+  </div>
+  <div class="row" style="margin-top:24px">
+    <figure><img src="arch/mark-v6.svg" width="512" height="512" alt="v6 mark at 512"><figcaption>v6 mark at 512</figcaption></figure>
+    <figure><img src="arch/mark.svg" width="512" height="512" alt="v5 mark at 512"><figcaption>v5 mark at 512</figcaption></figure>
+    <figure><img src="arch/mark-v6.svg" width="128" height="128" alt="v6 mark at 128"><figcaption>v6 at 128</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>v5 hero: the keystone drops into the crown</h2>
   <div class="row">
     <figure><img id="hero" src="arch/hero.svg" width="400" height="531" alt="the keystone drops into the arch"><figcaption>hero.svg, 400 wide: mark.svg's geometry with 21 units of headroom, so the keystone starts clear of its landing. Plays once; reduced motion shows the still.</figcaption></figure>
     <button type="button" id="replay">replay</button>
@@ -41,7 +56,7 @@ button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid va
 </section>
 
 <section>
-  <h2>mark</h2>
+  <h2>v5 mark</h2>
   <div class="row">
     <figure><img src="arch/mark.svg" width="512" height="512" alt="arch mark at 512"><figcaption>mark.svg at 512</figcaption></figure>
     <figure><img src="cairn-ref.svg" width="512" height="512" alt="cairn glyph at 512"><figcaption>cairn's glyph at 512, for face density</figcaption></figure>
@@ -71,6 +86,7 @@ button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid va
 <script>
 const hero = document.getElementById('hero');
 document.getElementById('replay').addEventListener('click', () => { hero.src = 'arch/hero.svg?t=' + Date.now(); });
+document.getElementById('replay6').addEventListener('click', () => { document.getElementById('hero6').src = 'arch/hero-v6.svg?t=' + Date.now(); });
 </script>
 </body>
 </html>
