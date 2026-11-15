@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-/* keystone mark, direction "arch": a flat-faced isometric arch whose crown is
+/* keystone mark, direction "arch": an isometric stone arch whose crown is
    the moss keystone. Projection (elevation 30), tones and the #404040 edge
-   follow cairn's src/brand; each stone is a prism with a handful of flat
-   faces told apart by tone alone, so the glyph stays crisp at any size.
-   Writes mark.svg (64 px and up), favicon.svg (16 to 32 px) and hero.svg
-   (the keystone drops into the crown) beside this file. */
+   follow cairn's src/brand. At 64 px and up every stone is a rounded slab
+   of many faces, toned by normal; at 16 to 32 px each is a flat prism.
+   Writes mark.svg, favicon.svg and hero.svg (the keystone drops into the
+   crown) beside this file. */
 
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -17,21 +17,21 @@ const mix = (a, b, pct) => {
   return '#' + [0, 1, 2].map(i => Math.round(c(a, i) * pct / 100 + c(b, i) * (1 - pct / 100)).toString(16).padStart(2, '0')).join('');
 };
 /* a body lit from above, as cairn's stones are: faces that look up carry the
-   stone's own colour, the front elevation and the faces along the span sink
-   toward dark, the faces inside the opening furthest */
-const lit = (up, dark, k) => ({ up, front: mix(dark, up, k[0]), side: mix(dark, up, k[1]), shade: mix(dark, up, k[2]) });
-const stone = lit(palette.white, palette.e600, [16, 30, 42]);
+   stone's own colour, faces turned left and right sink toward dark, faces
+   that look down sink furthest */
+const lit = (top, dark, k) => ({ top, left: mix(dark, top, k[0]), right: mix(dark, top, k[1]), shade: mix(dark, top, k[2]) });
+const stone = lit(palette.white, palette.e600, [10, 23, 38]);
 const moss = lit(palette.m400, palette.e600, [18, 36, 55]);
 const tones = {
   stone, key: moss, edge: palette.e500,
-  small: { stone: [stone.up, mix(palette.e600, palette.white, 24)], key: [moss.up, moss.front], edge: palette.e500, width: 1 },
+  small: { stone: [stone.top, mix(palette.e600, palette.white, 24)], key: [moss.top, moss.left], edge: palette.e500, width: 1 },
 };
 
 /* ---- the arch, in world units: span along u, depth along v, z up ----
    ro, ri: ring radii; pier: springing height; key: keystone half-angle;
    proud: how far the keystone stands outside and inside the ring; perSide:
    voussoirs each side; facets: extrados chords per voussoir */
-const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3 };
+const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.46, 0.54], arc: 2 };
 const small = { ro: 100, ri: 54, pier: 66, depth: 28, yaw: -24, key: 19, proud: [10, 5], perSide: 1, facets: 2 };
 const deg = Math.PI / 180;
 
@@ -83,18 +83,124 @@ export function build(a, elevation = 30) {
   const solids = sections(a).map((s) => {
     const n = s.pts.length;
     const front = s.pts.map(([u, z]) => world(u, d, z)), back = s.pts.map(([u, z]) => world(u, -d, z));
-    const faces = [{ pts: front.map(project), tone: 'front' }];
+    const faces = [{ pts: front.map(project) }];
     s.pts.forEach((p, i) => {
       const q = s.pts[(i + 1) % n], tag = s.tags[i];
       if (tag === 'hidden') return;
       const [nu, nz] = norm2([q[1] - p[1], p[0] - q[0]]);   // outward normal of a CCW section
       if (nu * dU + nz * sE <= 0) return;
-      const tone = tag === 'in' ? 'shade' : nz > 0.3 ? 'up' : 'side';
-      faces.push({ pts: [front[i], front[(i + 1) % n], back[(i + 1) % n], back[i]].map(project), tone });
+      faces.push({ pts: [front[i], front[(i + 1) % n], back[(i + 1) % n], back[i]].map(project) });
     });
     const all = [...front, ...back];
     return { name: s.name, key: !!s.key, faces, hull: hull(all.map(project)), all: all.map(project) };
   });
+  return { solids, all: solids.flatMap(s => s.all) };
+}
+
+/* ---- the large form: every stone a rounded slab ----
+   A slab is rings stacked along its own height axis H, each ring a rounded
+   rectangle across X and Y set in by the profile (foot, belly, shoulder,
+   top); quads join the rings and the end rings cap it. A voussoir's height
+   runs out from the intrados and its X tapers with the radius; a pier
+   course stands on z. Seeded noise moves corners, radii, depth and the
+   slope of the top, so no two stones match. */
+const noise = (seed, k) => {
+  let h = Math.imul(seed + 0x9e37, 0x85ebca6b) ^ Math.imul(k + 0x2c1b, 0xc2b2ae35);
+  h = Math.imul(h ^ (h >>> 15), 0x27d4eb2f);
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296 - 0.5;
+};
+const rings = [[0, 0.12], [0.24, 0], [0.72, 0.03], [1, 0.18]];
+const v3 = {
+  add: (...terms) => terms.reduce((o, [k, w]) => o.map((c, i) => c + k * w[i]), [0, 0, 0]),
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+};
+const newell = (poly) => {
+  const n = [0, 0, 0];
+  poly.forEach((p, i) => {
+    const q = poly[(i + 1) % poly.length];
+    n[0] += (p[1] - q[1]) * (p[2] + q[2]); n[1] += (p[2] - q[2]) * (p[0] + q[0]); n[2] += (p[0] - q[0]) * (p[1] + q[1]);
+  });
+  const l = Math.hypot(...n);
+  return l < 1e-9 ? null : n.map(c => c / l);
+};
+
+function slab(s, arc) {
+  const Y = v3.dot(v3.cross(s.X, s.Y), s.H) < 0 ? s.Y.map(c => -c) : s.Y;
+  const m = Math.min(...s.half(s.h / 2));
+  const loops = rings.map(([f, g]) => {
+    const rise = f * s.h, inset = g * m, [A, B] = s.half(rise).map((v, i) => v - inset * (i ? 1 : s.taper ?? 1)), pts = [];
+    [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([sx, sy], q) => {
+      const rc = Math.min(Math.max(s.r[q] * m - inset, 1), A, B);
+      for (let k = 0; k <= arc; k++) {
+        const t = (q * 90 + (k * 90) / arc) * deg, grow = 1 + 0.07 * noise(s.seed, q * 5 + k);
+        const x = (sx * (A - rc) + rc * Math.cos(t)) * grow, y = (sy * (B - rc) + rc * Math.sin(t)) * grow;
+        pts.push(v3.add([1, s.O], [x, s.X], [y, Y], [rise + f * (s.tilt[0] * x + s.tilt[1] * y), s.H]));
+      }
+    });
+    return pts;
+  });
+  const polys = [[...loops[0]].reverse(), loops[loops.length - 1]];
+  for (let j = 0; j < loops.length - 1; j++) {
+    const lo = loops[j], hi = loops[j + 1], n = lo.length;
+    for (let k = 0; k < n; k++) polys.push([lo[k], lo[(k + 1) % n], hi[(k + 1) % n], hi[k]]);
+  }
+  return { polys, all: loops.flat() };
+}
+
+/* which tone a face takes, from its world normal */
+const toneOf = ([x, y, z]) => z < -0.2 ? 'shade' : z > 0.38 ? 'top' : Math.atan2(y, x) / deg < 45 ? 'right' : 'left';
+
+export function carve(a, elevation = 30) {
+  const sE = Math.sin(elevation * deg), cE = Math.cos(elevation * deg);
+  const th = a.yaw * deg, U = [Math.cos(th), Math.sin(th), 0], V = [-Math.sin(th), Math.cos(th), 0], Z = [0, 0, 1];
+  const project = ([x, y, z]) => [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2 * sE - z * cE];
+  const view = [cE * Math.SQRT1_2, cE * Math.SQRT1_2, sE];
+  const at = (u, v, z) => v3.add([u, U], [v, V], [z, Z]);
+  const d = a.depth / 2, w = (a.ro - a.ri) / 2;
+  const vary = (seed, k, by) => 1 + by * noise(seed, k);
+  const shape = (seed) => ({
+    seed, r: [0, 1, 2, 3].map(q => 0.42 + 0.3 * noise(seed, 40 + q)),
+    tilt: [0.05 * noise(seed, 50), 0.05 * noise(seed, 51)],
+  });
+  const slabs = [];
+  /* the piers, each in courses from the ground to the springing */
+  [-1, 1].forEach((side) => {
+    let z = 0;
+    a.courses.forEach((share, c) => {
+      const seed = (side > 0 ? 20 : 10) + c, h = share * a.pier * vary(seed, 1, 0.08);
+      const top = c === a.courses.length - 1 ? a.pier : z + h;
+      slabs.push({ name: `pier-${side > 0 ? 'right' : 'left'}-${c}`, ...shape(seed), O: at(side * (a.ri + w), 1.2 * noise(seed, 2), z),
+        H: Z, X: U, Y: V, h: top - z, half: () => [w * vary(seed, 3, 0.05), d * vary(seed, 4, 0.06)] });
+      z = top;
+    });
+  });
+  /* the ring: voussoirs each side, then the keystone proud at the crown */
+  const ring = (name, a0, a1, [po, pi], seed, key = false) => {
+    const mid = ((a0 + a1) / 2) * deg, half = ((a1 - a0) / 2) * deg, r0 = a.ri - pi;
+    const er = v3.add([Math.cos(mid), U], [Math.sin(mid), Z]), et = v3.add([-Math.sin(mid), U], [Math.cos(mid), Z]);
+    slabs.push({ name, key, ...shape(seed), O: v3.add([1, at(0, 1.2 * noise(seed, 2), a.pier)], [r0, er]),
+      H: er, X: et, Y: V, taper: 0.5, h: a.ro + po - r0, half: (rise) => [(r0 + rise) * Math.tan(half), d * vary(seed, 4, 0.06)] });
+  };
+  const step = (90 - a.key) / a.perSide;
+  for (let i = 0; i < a.perSide; i++) {
+    ring(`left-${i}`, 180 - (i + 1) * step, 180 - i * step, [0, 0], 30 + i);
+    ring(`right-${i}`, i * step, (i + 1) * step, [0, 0], 40 + i);
+  }
+  ring('keystone', 90 - a.key, 90 + a.key, a.proud, 7, true);
+
+  /* painted far to near: stones in contact are ordered by the line between
+     their centres, which here runs along each joint's normal */
+  const solids = slabs.map((s) => {
+    const { polys, all } = slab(s, a.arc);
+    const faces = polys.flatMap((p) => {
+      const n = newell(p);
+      return n && v3.dot(n, view) > 1e-3 ? [{ pts: p.map(project), tone: toneOf(n) }] : [];
+    });
+    const centre = all.reduce((c, p) => c.map((v, i) => v + p[i] / all.length), [0, 0, 0]);
+    const flat = all.map(project);
+    return { name: s.name, key: s.key, faces, hull: hull(flat), all: flat, depth: v3.dot(centre, view) };
+  }).sort((p, q) => p.depth - q.depth);
   return { solids, all: solids.flatMap(s => s.all) };
 }
 
@@ -107,8 +213,8 @@ const fmt = (p, d = 1) => p.map(v => v.toFixed(d)).join(',');
 const points = (pts, d = 1) => pts.map(p => fmt(p, d)).join(' ');
 const path = (pts, d = 1) => 'M' + pts.map(p => fmt(p, d)).join('L') + 'Z';
 
-function fitted(a, box) {
-  const g = build(a);
+function fitted(a, box, make = build) {
+  const g = make(a);
   const [bx, by, bw, bh] = box;
   const b = bounds(g.all);
   const k = Math.min(bw / (b.maxX - b.minX), bh / (b.maxY - b.minY));
@@ -140,18 +246,21 @@ export const small_ = (id = 'keystone', label = LABEL) => {
   return `${open(label)}<style>${css}</style>${body}</svg>\n`;
 };
 
-/* 64 px and up: the silhouette filled first so no seam shows between faces,
-   each face flat in its tone, then the silhouette's edge; cairn's weight
-   and round join */
+/* 64 px and up: the silhouette filled first, then one path per tone so
+   faces of a tone share a fill and leave no seam, each drawn with a hair of
+   its own colour over the joins to the next tone; then the silhouette's
+   edge, cairn's weight and round join */
 const stoneMarkup = (s, fit, edge) => {
-  const b = s.key ? tones.key : tones.stone, outline = points(fit(s.hull), 1);
-  const fills = s.faces.map(f => `<polygon points="${points(fit(f.pts), 1)}" fill="${b[f.tone]}"/>`).join('');
-  return `<g><polygon points="${outline}" fill="${b.front}"/>${fills}` +
-    `<polygon points="${outline}" fill="none" stroke="${tones.edge}" stroke-width="${edge}" stroke-linejoin="round"/></g>`;
+  const b = s.key ? tones.key : tones.stone, outline = path(fit(s.hull), 1), byTone = new Map();
+  for (const f of s.faces) byTone.set(f.tone, (byTone.get(f.tone) ?? '') + path(fit(f.pts), 1));
+  const fills = ['left', 'right', 'shade', 'top'].filter(t => byTone.has(t)).map(t =>
+    `<path d="${byTone.get(t)}" fill="${b[t]}" stroke="${b[t]}" stroke-width="0.2" stroke-linejoin="round"/>`).join('');
+  return `<g><path d="${outline}" fill="${b.left}"/>${fills}` +
+    `<path d="${outline}" fill="none" stroke="${tones.edge}" stroke-width="${edge}" stroke-linejoin="round"/></g>`;
 };
 
 export const glyph = (edge = 1, label = LABEL) => {
-  const { solids, fit } = fitted(large, [2, 2, 60, 60]);
+  const { solids, fit } = fitted(large, [2, 2, 60, 60], carve);
   return `${open(label)}${solids.map(s => stoneMarkup(s, fit, edge)).join('')}</svg>\n`;
 };
 
@@ -161,9 +270,9 @@ export const glyph = (edge = 1, label = LABEL) => {
    stones do; it plays once, and reduced motion shows the finished still */
 export const hero = (edge = 1, label = LABEL, still = false) => {
   const lift = 14, head = 16;
-  const { solids, fit } = fitted(large, [2, 2, 60, 60]);
+  const { solids, fit } = fitted(large, [2, 2, 60, 60], carve);
   const key = solids.find(s => s.key);
-  const land = `<polygon class="keystone-land" points="${points(fit(key.hull), 1)}" fill="none" stroke="${tones.key.up}" stroke-width="0.6" stroke-dasharray="1.6 1.2" stroke-linejoin="round"${still ? ' style="opacity:1"' : ''}/>`;
+  const land = `<polygon class="keystone-land" points="${points(fit(key.hull), 1)}" fill="none" stroke="${tones.key.top}" stroke-width="0.6" stroke-dasharray="1.6 1.2" stroke-linejoin="round"${still ? ' style="opacity:1"' : ''}/>`;
   const css = `.keystone-key{transform-box:fill-box;transform-origin:50% 100%;animation:keystone-drop 820ms linear 400ms both}` +
     `.keystone-land{opacity:0;animation:keystone-land 820ms linear 400ms both}` +
     `@keyframes keystone-drop{0%{transform:translateY(-${lift}px) rotate(-1deg);animation-timing-function:cubic-bezier(.5,0,1,.6)}` +
