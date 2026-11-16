@@ -74,8 +74,8 @@ import mark from '../brand/hero-mark.svg?raw';
     <div class="wrap prose proc">
       <h2>Where the secrets are</h2>
       <div class="proc-body cols">
-      <p>keystone never receives the disk's passphrase or its second key. It keeps each key set's private keys as one secret in your Cloudflare account, and the computer sends its header value <a href="/architecture/#unlock">blinded</a>, so keystone never sees it.</p>
-      <p>Anyone who can deploy keystone in your account can read the key sets. A copied key set opens its disk even after a delete, and <a href="/architecture/#rollback">rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. To split trust across two servers, see the <a href="/architecture/#trust">architecture</a>.</p>
+      <p>keystone never receives the disk's passphrase or its second key. It keeps each key set's private keys as one secret in your Cloudflare account, and the computer sends its header value <a href="/architecture/#ch-03">blinded</a>, so keystone never sees it.</p>
+      <p>Anyone who can deploy keystone in your account can read the key sets. A copied key set opens its disk even after a delete, and <a href="/architecture/#ch-08">rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. To split trust across two servers, see the <a href="/architecture/#ch-11">architecture</a>.</p>
       </div>
     </div>
   </section>
@@ -84,7 +84,7 @@ import mark from '../brand/hero-mark.svg?raw';
     <div class="wrap prose split">
       <div id="origin-gate">
       <h2>Who can ask</h2>
-      <p>A key set can name the networks allowed to unlock it and who approves the rest. Other networks are held while the approvers are mailed a link. An approval lets that network unlock for 10 minutes. Listed networks are never held. The <a href="/architecture/#gate">architecture</a> has the mechanism.</p>
+      <p>A key set can name the networks allowed to unlock it and who approves the rest. Other networks are held while the approvers are mailed a link. An approval lets that network unlock for 10 minutes. Listed networks are never held. The <a href="/architecture/#ch-12">architecture</a> has the mechanism.</p>
       </div>
       <div id="what-you-need">
       <h2>What you need</h2>
