@@ -1,22 +1,5 @@
-/* site: header, footer, cover and the pages around them. Tokens and type
-   come from folio.css. */
-.site-head { border-bottom: 1px solid var(--hair); }
-.site-head .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 32px;
-  min-height: var(--pin); padding-top: 10px; padding-bottom: 10px; }
-.site-name { display: inline-flex; align-items: center; gap: 10px; font-weight: 500; letter-spacing: -.01em; text-decoration: none; }
-.site-name span { display: block; line-height: 0; }
-.site-name svg { width: 24px; height: 24px; }
-.site-nav { display: flex; flex-wrap: wrap; gap: 4px 24px; font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
-.site-nav a { color: var(--grey); text-decoration: none; }
-.site-nav a:hover, .site-nav a[aria-current] { color: var(--ink); }
-.site-nav a[aria-current] { text-decoration: underline; text-decoration-color: var(--hair-2); text-underline-offset: 4px; }
-
-.site-foot { border-top: 1px solid var(--ink); padding: 56px 0; }
-.colophon p { max-width: none; margin: 0 0 8px; font-family: var(--mono); font-size: var(--t-mono); color: var(--grey); }
-.colophon a { color: var(--ink); }
-
-body { display: flex; flex-direction: column; min-height: 100vh; }
-main { flex: 1; }
+/* site: cover, sections and the pages around them. Tokens and type come from folio.css; the shell from frame.css. */
+:root { --proc-w: 280px; }
 
 /* cover: fills the first screen under the site head */
 .cover { min-height: calc(100vh - var(--pin) - 1px); display: flex; align-items: center; padding: 72px 0 64px; }
@@ -31,11 +14,6 @@ main { flex: 1; }
 .scroll-cue { font-family: var(--mono); font-size: var(--t-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--grey); margin: 44px 0 0; }
 .scroll-cue::after { content: " \2193"; }
 
-/* a page: head, then prose */
-.page { padding-top: 72px; padding-bottom: 96px; }
-.page-head { margin-block: 0 56px; }
-.page-head .deck { margin: 0; }
-
 /* home: sections under the cover */
 .sec { border-top: 1px solid var(--ink); padding: 56px 0 72px; }
 .sec .prose h2:first-child { margin-top: 0; }
@@ -44,11 +22,6 @@ main { flex: 1; }
 .how .mark { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--grey); margin: 0 0 8px; }
 .how h3 { margin: 0 0 8px; }
 .how p { margin: 0; max-width: none; }
-.next { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 40px; }
-.next li { margin: 0; border-top: 1px solid var(--hair-2); padding-top: 16px; }
-.next .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--grey); margin: 0 0 6px; }
-.next a { font-weight: 500; font-size: var(--t-lead); letter-spacing: -.01em; }
-.next p { margin: 4px 0 0; color: var(--grey); }
 
 /* section index: sticky, one link a heading */
 .sheet-index { position: sticky; top: 0; z-index: 30; background: var(--paper); border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
@@ -80,10 +53,8 @@ main { flex: 1; }
   .cover { min-height: 0; padding: 40px 0 48px; }
   .sheet-index a span { display: none; }
   .cover .wrap { grid-template-columns: minmax(0, 1fr); gap: 32px; }
-  .page { padding-top: 40px; padding-bottom: 56px; }
-  .page-head { margin-block-end: 40px; }
   .sec { padding: 40px 0 48px; }
-  .prose .how, .next { grid-template-columns: minmax(0, 1fr); }
+  .prose .how { grid-template-columns: minmax(0, 1fr); }
   .arch-head { padding-top: 40px; }
   .sheet-index .wrap { gap: 14px; }
   .sheet-index ol { gap: 2px 14px; padding: 8px 0; font-size: 11px; letter-spacing: .06em; }
@@ -92,19 +63,10 @@ main { flex: 1; }
   .chapter-full .chapter-text p { grid-column: 1; columns: auto; }
 }
 @media print {
-  .site-nav, .sheet-index, .cta-row { display: none; }
+  .sheet-index, .cta-row { display: none; }
 }
 
-/* heading in a left margin column, body beside it; .cols flows the body in two columns */
-.proc { display: grid; grid-template-columns: minmax(200px, 280px) minmax(0, 1fr); gap: 0 56px; align-items: start; }
-.prose.proc > h2 { margin: 0; }
-.proc-body { min-width: 0; }
-.cols { columns: 2 380px; column-gap: 40px; }
-.prose .cols > * { max-width: none; }
-.cols li, .cols pre, .cols table, .cols .how > li { break-inside: avoid; }
-.cols pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-.cols table { display: table; width: 100%; }
-.cols > :first-child { margin-top: 0; }
+/* a fluid grid of how-steps, and the side-by-side layouts */
 .prose .how.how-fluid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 56px; align-items: start; }
 .split > * { min-width: 0; }
@@ -129,18 +91,13 @@ main { flex: 1; }
 .setup-sec { padding: 40px 0 8px; border-top: 1px solid var(--ink); margin-top: 40px; }
 .setup-sec + .setup-sec { margin-top: 0; }
 
-.colophon { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 56px; align-items: start; }
-.colophon p { margin: 0 0 8px; }
-
 @media (max-width: 960px) {
-  .proc, .split, .sec-note, .setup-intro { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .split, .sec-note, .setup-intro { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .split > * + *, .sec-note .fig { margin-top: 8px; }
 }
 @media (max-width: 860px) {
   .head-grid { grid-template-columns: minmax(0, 1fr); }
   .head-mark { display: none; }
-  .colophon { grid-template-columns: minmax(0, 1fr); }
-  .cols { columns: auto; }
 }
 .setup-sec > h2 { margin: 0; }
 .setup-intro .intro-text > :first-child { margin-top: 0; }

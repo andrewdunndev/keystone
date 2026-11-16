@@ -1,9 +1,14 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Figure from '../components/Figure.astro';
+import FolioLayout from '@dunn.dev/reference/folio-site/FolioLayout.astro';
+import favicon from '../../public/favicon.svg?raw';
+import Colophon from '../components/Colophon.astro';
+import { nav } from '../site.ts';
+import '../styles/site.css';
+import '../styles/figures.css';
+import Figure from '@dunn.dev/reference/folio-guide/Figure.astro';
 import mark from '../brand/hero-mark.svg?raw';
 ---
-<Layout description="keystone unlocks an encrypted disk at startup with no typed passphrase. If the computer is stolen, delete its key set before it next starts, and the disk stays locked.">
+<FolioLayout name="keystone" nav={nav} mark={favicon} description="keystone unlocks an encrypted disk at startup with no typed passphrase. If the computer is stolen, delete its key set before it next starts, and the disk stays locked.">
   <header class="cover">
     <div class="wrap">
       <div>
@@ -104,4 +109,6 @@ import mark from '../brand/hero-mark.svg?raw';
       </ul>
     </div>
   </section>
-</Layout>
+  <Colophon slot="colophon" />
+  <script>import '../scripts/figures.js';</script>
+</FolioLayout>

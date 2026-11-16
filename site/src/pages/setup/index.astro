@@ -1,8 +1,13 @@
 ---
 import { getEntry, render } from 'astro:content';
-import Layout from '../../layouts/Layout.astro';
+import FolioLayout from '@dunn.dev/reference/folio-site/FolioLayout.astro';
+import favicon from '../../../public/favicon.svg?raw';
+import Colophon from '../../components/Colophon.astro';
+import { nav } from '../../site.ts';
+import '../../styles/site.css';
+import '../../styles/figures.css';
 import SheetIndex from '../../components/SheetIndex.astro';
-import Figure from '../../components/Figure.astro';
+import Figure from '@dunn.dev/reference/folio-guide/Figure.astro';
 import mark from "../../brand/hero-mark.svg?raw";
 
 const DOCS = 'https://gitlab.com/dunn.dev/keystone/-/blob/main/docs/';
@@ -20,7 +25,7 @@ const headings = (await render(setup)).headings
   .filter(h => h.depth === 2)
   .map(h => ({ id: h.slug, label: h.text }));
 ---
-<Layout title="Install" description="Install keystone, bind a first disk, rotate, revoke and set up alerts.">
+<FolioLayout name="keystone" nav={nav} mark={favicon} title="Install" description="Install keystone, bind a first disk, rotate, revoke and set up alerts.">
   <header class="wrap page-head arch-head head-grid">
     <div>
     <p class="folio">Setup</p>
@@ -46,4 +51,6 @@ const headings = (await render(setup)).headings
       ))}
     </div>
   </div>
-</Layout>
+  <Colophon slot="colophon" />
+  <script>import '../../scripts/figures.js';</script>
+</FolioLayout>

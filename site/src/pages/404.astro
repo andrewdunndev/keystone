@@ -1,8 +1,13 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import FolioLayout from '@dunn.dev/reference/folio-site/FolioLayout.astro';
+import favicon from '../../public/favicon.svg?raw';
+import Colophon from '../components/Colophon.astro';
+import { nav } from '../site.ts';
+import '../styles/site.css';
+import '../styles/figures.css';
 import mark from "../brand/hero-mark.svg?raw";
 ---
-<Layout title="Not found" description="No page at this address.">
+<FolioLayout name="keystone" nav={nav} mark={favicon} title="Not found" description="No page at this address.">
   <div class="wrap page">
     <header class="page-head head-grid">
       <div>
@@ -13,4 +18,6 @@ import mark from "../brand/hero-mark.svg?raw";
       <div class="head-mark" aria-hidden="true" set:html={mark} />
     </header>
   </div>
-</Layout>
+  <Colophon slot="colophon" />
+  <script>import '../scripts/figures.js';</script>
+</FolioLayout>
