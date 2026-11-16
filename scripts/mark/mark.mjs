@@ -30,8 +30,8 @@ export const tones = {
    ro, ri: ring radii; pier: springing height; key: keystone half-angle;
    proud: how far the keystone stands outside and inside the ring; perSide:
    voussoirs each side; facets: extrados chords per voussoir */
-export const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.33, 0.33, 0.34], arc: 3 };
-const small = { ...large, depth: 40, perSide: 2, courses: [0.5, 0.5], arc: 1 };
+export const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.33, 0.33, 0.34], arc: 3, ringArc: 2 };
+const small = { ...large, depth: 40, perSide: 2, courses: [0.5, 0.5], arc: 1, ringArc: 0 };
 export const deg = Math.PI / 180;
 
 /* cross-sections in (u, z), counter-clockwise seen from the front, each edge
@@ -132,12 +132,13 @@ const newell = (poly) => {
 function slab(s, arc) {
   const Y = v3.dot(v3.cross(s.X, s.Y), s.H) < 0 ? s.Y.map(c => -c) : s.Y;
   const m = Math.min(...s.half(s.h / 2));
-  const loops = s.rings.map(([f, g]) => {
+  const R = s.a0 === undefined ? s.rings : [[0, s.rings[0][1]], [0.027, s.rings[0][1] * 0.5], [0.1, s.rings[0][1] * 0.134], ...s.rings.slice(1, -1), [0.9, s.rings[4][1] * 0.134], [0.973, s.rings[4][1] * 0.5], s.rings[4]];
+  const loops = R.map(([f, g]) => {
     const rise = f < 0.4 ? f * Math.min(s.h, s.hr) : f > 0.6 ? s.h - (1 - f) * Math.min(s.h, s.hr) : f * s.h, inset = g * m, [A, B] = s.half(rise).map(v => v - inset), pts = [];
     [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([sx, sy], q) => {
       const rc = Math.min(Math.max(s.r[q] * m - inset, 1), A, B);
       for (let k = 0; k <= arc; k++) {
-        const t = (q * 90 + (k * 90) / arc) * deg, grow = 1 + 0.1 * noise(s.seed, q * 5 + k);
+        const t = (q * 90 + (k * 90) / arc) * deg, grow = 1 + 0.1 * (noise(s.seed, q * 5) * (1 - k / arc) + noise(s.seed, (q + 1) % 4 * 5) * k / arc);
         const x = (sx * (A - rc) + rc * Math.cos(t)) * grow, y = (sy * (B - rc) + rc * Math.sin(t)) * grow;
         pts.push(v3.add([1, s.O], [x, s.X], [y, Y], [rise + f * (s.tilt[0] * x + s.tilt[1] * y), s.H]));
       }
@@ -174,7 +175,7 @@ export function carve(a, elevation = 30) {
   /* each stone its own: corner radii, the slope of its top, and where its
      rings sit (foot, lower and upper belly, shoulder, top) */
   const shape = (seed, g = 1) => ({
-    seed, hr: a.pier * a.courses[0], r: [0, 1, 2, 3].map(q => g * (0.42 + 0.3 * noise(seed, 40 + q))),
+    seed, hr: a.pier * a.courses[0], r: [0, 1, 2, 3].map(q => Math.max(g * (0.42 + 0.3 * noise(seed, 40 + q)), g > 1 ? 0.8 : 0)),
     tilt: [0.08 * noise(seed, 50), 0.08 * noise(seed, 51)],
     rings: [[0, 0.12 + 0.06 * noise(seed, 60)], [0.2 + 0.06 * noise(seed, 61), 0.01], [0.48 + 0.08 * noise(seed, 62), 0],
       [0.74 + 0.06 * noise(seed, 63), 0.04 + 0.02 * noise(seed, 64)], [1, 0.18 + 0.06 * noise(seed, 65)]],
@@ -197,7 +198,7 @@ export function carve(a, elevation = 30) {
   const ring = (name, a0, a1, [po, pi], seed, key = false) => {
     const mid = ((a0 + a1) / 2) * deg, half = ((a1 - a0) / 2) * deg, r0 = a.ri - pi;
     const er = v3.add([Math.cos(mid), U], [Math.sin(mid), Z]), et = v3.add([-Math.sin(mid), U], [Math.cos(mid), Z]);
-    slabs.push({ name, key, a0, a1, ...shape(seed, 1.6), O: v3.add([1, at(0, 0, a.pier)], [r0, er]),
+    slabs.push({ name, key, a0, a1, ...shape(seed, 2), O: v3.add([1, at(0, 0, a.pier)], [r0, er]),
       H: er, X: et, Y: V, h: a.ro + po - r0, half: (rise) => [(r0 + rise) * Math.tan(half), d] });
   };
   const step = (90 - a.key) / a.perSide;
@@ -220,7 +221,7 @@ export function carve(a, elevation = 30) {
     if (v3.dot(t, view) > 0) after.get(q.name).add(p.name); else after.get(p.name).add(q.name);
   });
   const solids = slabs.map((s) => {
-    const { polys, all, belly } = slab(s, a.arc);
+    const { polys, all, belly } = slab(s, s.a0 === undefined ? a.arc : a.arc + a.ringArc);
     const faces = polys.flatMap((p) => {
       const n = newell(p);
       return n && v3.dot(n, view) > 1e-3 ? [{ pts: p.map(project), tone: toneOf(n) }] : [];
