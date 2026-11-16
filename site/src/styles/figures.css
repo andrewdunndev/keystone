@@ -28,6 +28,7 @@ svg text { fill: var(--ink); }
     font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--grey); }
   .pan:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
   .cropped .sheet { display: none; }
+  .still svg:not(.cropped) { min-width: 640px; max-width: none; }
 }
 @media print {
   .fig { break-inside: avoid; }
