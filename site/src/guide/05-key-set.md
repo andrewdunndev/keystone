@@ -5,7 +5,7 @@ fig: 05-key-set
 part:
   roman: II
   title: Key sets
-  claim: Mint to revoke.
+  claim: What a set holds and how it changes.
 ---
 
 ## Layout
