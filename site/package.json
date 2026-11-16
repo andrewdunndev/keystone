@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.0",
   "private": true,
-  "description": "Static site for keystone at keystone.dunn.dev. Consumes @dunn.dev/reference for tokens and chrome.",
+  "description": "Static site for keystone at keystone.dunn.dev, drawn in folio.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro check && astro build",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",
-    "@dunn.dev/reference": "^0.11.0",
+    "@dunn.dev/reference": "^0.14.0",
     "astro": "^7.0.0",
     "typescript": "^6.0.0"
   }

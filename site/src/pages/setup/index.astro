@@ -1,7 +1,14 @@
 ---
 import { getEntry, render } from 'astro:content';
-import Layout from '../../layouts/Layout.astro';
-import Quickstart from '../../figures/14-quickstart.astro';
+import FolioLayout from '@dunn.dev/reference/folio-site/FolioLayout.astro';
+import favicon from '../../../public/favicon.svg?raw';
+import Colophon from '../../components/Colophon.astro';
+import { nav } from '../../site.ts';
+import '../../styles/site.css';
+import '../../styles/figures.css';
+import SheetIndex from '../../components/SheetIndex.astro';
+import Figure from '@dunn.dev/reference/folio-guide/Figure.astro';
+import mark from "../../brand/hero-mark.svg?raw";
 
 const DOCS = 'https://gitlab.com/dunn.dev/keystone/-/blob/main/docs/';
 
@@ -11,19 +18,38 @@ if (!setup?.rendered) throw new Error('docs/setup.md did not render');
 const html = setup.rendered.html
   .replace(/<h1[^>]*>.*?<\/h1>/s, '')
   .replace(/href="(?![a-z]+:|#|\/)([^"]*)"/gi, (_, url) => `href="${new URL(url, DOCS).href}"`);
+const at = html.indexOf("<h2");
+const intro = html.slice(0, at);
+const sections = html.slice(at).split(/(?=<h2 )/).map(s => { const m = s.match(/^(<h2[^>]*>.*?<\/h2>)(.*)$/s) ?? []; return { head: m[1] ?? "", body: m[2] ?? "" }; });
 const headings = (await render(setup)).headings
   .filter(h => h.depth === 2)
-  .map(h => ({ slug: h.slug, text: h.text }));
+  .map(h => ({ id: h.slug, label: h.text }));
 ---
-<Layout title="Install" description="Install keystone, bind a first disk, rotate, revoke and set up alerts." headings={headings}>
-  <header class="page-header">
+<FolioLayout name="keystone" nav={nav} mark={favicon} title="Install" description="Install keystone and bind a first disk.">
+  <header class="wrap page-head arch-head head-grid">
+    <div>
+    <p class="folio">Setup</p>
     <h1 class="page-title">Install</h1>
+    </div>
+    <div class="head-mark" aria-hidden="true" set:html={mark} />
   </header>
-  <div class="cat-explainer figure-pair">
-    <Quickstart />
+  <SheetIndex label="Sections" items={headings} />
+  <div class="wrap page">
+    <div class="prose">
+      <div class="setup-intro">
+        <div class="intro-text">
+          <Fragment set:html={intro} />
+        </div>
+        <Figure fig="14-quickstart" />
+      </div>
+      {sections.map(s => (
+        <section class="setup-sec proc">
+          <Fragment set:html={s.head} />
+          <div class="proc-body cols"><Fragment set:html={s.body} /></div>
+        </section>
+      ))}
+    </div>
   </div>
-  <article>
-    <p>The quickstart deploys an empty Worker, confirms it serves no sets, mints a set into the key store and deploys it, which also checks it. The disk is then bound with the thp (the signing key's thumbprint) read from the live advertisement, and the initramfs is rebuilt with network, DNS and a CA bundle so clevis can reach the Worker before the root filesystem mounts. A reboot then unlocks the disk with no passphrase prompt. The numbered steps under Quickstart give each its commands.</p>
-    <Fragment set:html={html} />
-  </article>
-</Layout>
+  <Colophon slot="colophon" />
+  <script>import '../../scripts/walk.js';</script>
+</FolioLayout>

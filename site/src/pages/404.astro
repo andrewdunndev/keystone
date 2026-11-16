@@ -1,10 +1,21 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import FolioLayout from '@dunn.dev/reference/folio-site/FolioLayout.astro';
+import favicon from '../../public/favicon.svg?raw';
+import Colophon from '../components/Colophon.astro';
+import { nav } from '../site.ts';
+import '../styles/site.css';
+import mark from "../brand/hero-mark.svg?raw";
 ---
-<Layout title="Not found" description="No page at this address.">
-  <header class="page-header">
-    <p class="page-eyebrow">404</p>
-    <h1 class="page-title">Not found</h1>
-    <p class="page-lede">No page at this address. See <a href="/">Home</a> or <a href="/setup/">Install</a>.</p>
-  </header>
-</Layout>
+<FolioLayout name="keystone" nav={nav} mark={favicon} title="Not found" description="No page at this address.">
+  <div class="wrap page">
+    <header class="page-head head-grid">
+      <div>
+      <p class="folio">404</p>
+      <h1 class="page-title">Not found</h1>
+      <p class="deck">No page at this address. See <a href="/">Home</a> or <a href="/setup/">Install</a>.</p>
+      </div>
+      <div class="head-mark" aria-hidden="true" set:html={mark} />
+    </header>
+  </div>
+  <Colophon slot="colophon" />
+</FolioLayout>

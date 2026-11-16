@@ -1,96 +1,113 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Hero from '@dunn.dev/reference/chrome/Hero.astro';
-import SectionLabel from '@dunn.dev/reference/chrome/SectionLabel.astro';
-import Split from '@dunn.dev/reference/chrome/Split.astro';
-import Ov1 from '../figures/15-ov1.astro';
-import Failure from '../figures/13-failure.astro';
+import FolioLayout from '@dunn.dev/reference/folio-site/FolioLayout.astro';
+import favicon from '../../public/favicon.svg?raw';
+import Colophon from '../components/Colophon.astro';
+import { nav } from '../site.ts';
+import '../styles/site.css';
+import '../styles/figures.css';
+import Figure from '@dunn.dev/reference/folio-guide/Figure.astro';
+import mark from '../brand/hero-mark.svg?raw';
 ---
-<Layout description="keystone unlocks an encrypted disk at startup with no typed passphrase. If the computer is stolen, delete its key set before it next starts, and the disk stays locked.">
-  <Hero title="keystone" eyebrow="disk unlock server">
-    <p>An encrypted disk asks for its passphrase each time the computer starts. Someone at the keyboard types it. A machine with no one there, such as a home server coming back after a power cut, waits at the prompt until someone does.</p>
-    <p>keystone lets a computer with an encrypted disk unlock it at startup with no one typing a passphrase. At boot the computer gets its part of the key from keystone over the internet. keystone supplies the <a href="#secrets">missing half</a> of a second key the computer keeps on the disk, so the disk opens without the passphrase. It is for computers that can reach the internet at boot but have no unlock server on their own network.</p>
-    <p>You run your own copy of keystone on Cloudflare, a company that runs small programs on its servers for you. If the computer is stolen, delete its key set before it next starts, and the disk stays locked. Until you do, anyone who starts that computer where it can reach the internet unlocks the disk, unless the key set limits <a href="#origin-gate">who can ask</a>.</p>
-    <Fragment slot="actions">
-      <a class="cta-primary" href="/setup/">Install</a>
-      <a class="cta-secondary" href="/architecture/">Architecture</a>
-    </Fragment>
-  </Hero>
-
-  <figure class="cat-explainer figure-pair figure-full">
-    <Ov1 />
-    <p>At boot the computer asks keystone for the missing half of its disk key. Delete a stolen computer's key set before it next starts and the disk stays locked.</p>
-  </figure>
-
-  <section class="section" id="how-it-works">
-    <SectionLabel label="How it works" />
-    <div class="tile-grid">
-      <div class="tile">
-        <p class="tile-eyebrow">1 · bind</p>
-        <h3 class="tile-headline">Bind the disk once</h3>
-        <p class="tile-prose">The disk uses LUKS, the standard Linux disk encryption. clevis, the unlock tool on the computer, adds a second way in tied to a key set: two keys keystone holds under one name.</p>
+<FolioLayout name="keystone" nav={nav} mark={favicon} description="keystone is a Tang server for clevis network-bound disk encryption, run as a Cloudflare Worker.">
+  <header class="cover">
+    <div class="wrap">
+      <div>
+        <p class="folio">Disk unlock server</p>
+        <h1 class="display">keystone</h1>
+        <p class="deck">keystone is a <a href="https://github.com/latchset/tang" rel="external">Tang</a> server for <a href="https://github.com/latchset/clevis" rel="external">clevis</a> network-bound disk encryption, run as a <a href="https://workers.cloudflare.com/" rel="external">Cloudflare Worker</a>. A disk unlocks at boot without a passphrase. Delete a stolen computer's key set and its disk stays locked. <a href="/setup/">Set it up</a>, read the <a href="/architecture/">architecture</a> or the <a href="https://gitlab.com/dunn.dev/keystone" rel="external">source</a>.</p>
+        <p class="cta-row">
+          <a class="cta" href="/setup/">Install</a>
+          <a href="/architecture/">Architecture</a>
+          <a href="https://gitlab.com/dunn.dev/keystone" rel="external">Source</a>
+        </p>
+        <p class="scroll-cue">What it does, below</p>
       </div>
-      <div class="tile">
-        <p class="tile-eyebrow">2 · boot</p>
-        <h3 class="tile-headline">Unlock at startup</h3>
-        <p class="tile-prose">At startup the initramfs, the small system that runs before the disk opens, asks keystone for its part of the key. With keystone's answer and what the disk stores, the disk opens.</p>
-      </div>
-      <div class="tile">
-        <p class="tile-eyebrow">3 · delete</p>
-        <h3 class="tile-headline">Delete a stolen disk's key set</h3>
-        <p class="tile-prose">If a computer or disk is stolen, delete its key set before it next starts. keystone then stops answering for that set, and the disk stays locked to whoever took it.</p>
-      </div>
+      <div class="cover-fig" set:html={mark} />
     </div>
-    <Split>
-      <p>If keystone is offline or past its daily request limit, the disk asks for its passphrase; once a stolen disk's key set is deleted, keystone refuses it and the disk stays locked.</p>
-      <div slot="aside" class="figure-pair"><Failure /></div>
-    </Split>
-  </section>
+  </header>
 
-  <section class="section" id="secrets">
-    <SectionLabel label="Where the secrets are" />
-    <div class="flow">
-      <p class="section-prose">keystone never receives the disk's passphrase or its second key. The LUKS header keeps a value that gives the second key only with keystone's private key.</p>
-      <p class="section-prose">keystone keeps each key set's private keys as one secret in your Cloudflare account. At boot the computer sends the header value <a href="/architecture/#unlock">blinded</a>, mixed with a fresh random number so keystone never sees it. keystone multiplies it by the set's exchange key, and the computer removes the random number to get the second key. keystone alone holds nothing that opens a disk. It answers anyone who asks, and its alert comes after an unlock, so a thief who starts the computer before you delete the key set gets in.</p>
-      <p class="section-prose">Cloudflare, and anyone who can deploy keystone in your account, can read the key sets. With the disk or a copy of its header, a copied key set opens it even after a delete. <a href="/architecture/#rollback">Rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. <a href="/architecture/#trust">Architecture</a> shows how to split trust across two servers.</p>
+  <section class="sec" id="what">
+    <div class="wrap chapter-grid">
+      <div class="prose">
+        <h2>What it does</h2>
+        <p>An encrypted disk asks for its passphrase at every start. A server with no one at the keyboard waits at the prompt.</p>
+        <p>keystone supplies the <a href="#secrets">missing half</a> of a second key the computer keeps on the disk, so the disk opens without the passphrase. It suits computers that reach the internet at boot but have no unlock server on their network.</p>
+        <p>Until you delete a stolen computer's key set, anyone who starts it online unlocks the disk, unless the set limits <a href="#origin-gate">who can ask</a>.</p>
+      </div>
+      <div class="prose">
+        <Figure fig="15-ov1" />
+        <p>At boot the computer asks keystone for the missing half of its disk key.</p>
+      </div>
     </div>
   </section>
 
-  <section class="section" id="origin-gate">
-    <SectionLabel label="Who can ask" />
-    <div class="flow">
-      <p class="section-prose">A key set can name the networks allowed to unlock it and who approves the rest. A request from any other network is held while the approvers are mailed a link; when one approves, any machine on that network can unlock the set for 10 minutes. A held host is refused until one approves, and its request lapses after 12 hours. Listed networks are never held, so a server that restarts by itself needs no approval. The <a href="/architecture/#gate">architecture</a> page has the mechanism.</p>
+  <section class="sec" id="how-it-works">
+    <div class="wrap prose proc">
+      <h2>How it works</h2>
+      <div class="proc-body">
+      <ol class="how how-fluid">
+        <li>
+          <p class="mark">1 · bind</p>
+          <h3>Bind the disk once</h3>
+          <p>clevis adds a second way into the LUKS disk, tied to a key set: two keys keystone holds under one name.</p>
+        </li>
+        <li>
+          <p class="mark">2 · boot</p>
+          <h3>Unlock at startup</h3>
+          <p>The initramfs, which runs before the disk opens, asks keystone for the missing half and opens the disk.</p>
+        </li>
+        <li>
+          <p class="mark">3 · delete</p>
+          <h3>Delete a stolen disk's key set</h3>
+          <p>keystone stops answering for that set, and the disk stays locked.</p>
+        </li>
+      </ol>
+      <div class="sec-note">
+        <p>If keystone is offline or past its daily request limit, the disk asks for its passphrase.</p>
+        <Figure fig="13-failure" />
+      </div>
+      </div>
     </div>
   </section>
 
-  <section class="section" id="what-you-need">
-    <SectionLabel label="What you need" />
-    <div class="flow">
-      <ul class="section-prose">
-        <li>A Linux computer with a LUKS disk and clevis installed.</li>
-        <li>A Cloudflare account and a domain managed there. keystone runs as a Cloudflare Worker, Cloudflare's name for such a program. The free plan works with the smaller key type (<code>--curve P-256</code>); the default key type needs the paid Workers plan.</li>
-        <li>A computer with Node.js, git and jq to create and deploy key sets.</li>
-        <li>An offline place to keep key sets, such as pass on a machine you control.</li>
-        <li>Each disk's passphrase, kept for the day keystone cannot answer.</li>
+  <section class="sec" id="secrets">
+    <div class="wrap prose proc">
+      <h2>Where the secrets are</h2>
+      <div class="proc-body cols">
+      <p>keystone never receives the disk's passphrase or its second key. It keeps each key set's private keys as one secret in your Cloudflare account, and the computer sends its header value <a href="/architecture/#ch-03">blinded</a>, so keystone never sees it.</p>
+      <p>Anyone who can deploy keystone in your account can read the key sets. A copied key set opens its disk even after a delete, and <a href="/architecture/#ch-08">rolling back</a> the Worker past a delete serves the deleted set again. Protect the account and your offline copy like the disks. To split trust across two servers, see the <a href="/architecture/#ch-11">architecture</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap prose split">
+      <div id="origin-gate">
+      <h2>Who can ask</h2>
+      <p>A key set can name the networks allowed to unlock it and who approves the rest. Other networks are held while the approvers are mailed a link. An approval lets that network unlock for 10 minutes. Listed networks are never held. The <a href="/architecture/#ch-12">architecture</a> has the mechanism.</p>
+      </div>
+      <div id="what-you-need">
+      <h2>What you need</h2>
+      <ul class="key-list">
+        <li>A Linux computer with a LUKS disk and clevis.</li>
+        <li>A Cloudflare account and a domain on it. The free plan works with <code>--curve P-256</code>; the default curve needs the paid Workers plan.</li>
+        <li>Node.js, git and jq, to create and deploy key sets.</li>
+        <li>An offline place for key sets, such as pass.</li>
+        <li>Each disk's passphrase, for when keystone cannot answer.</li>
+      </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="next">
+    <div class="wrap">
+      <ul class="next">
+        <li><p class="kicker">Reference</p><a href="/architecture/">Architecture</a><p>Each mechanism in figures.</p></li>
+        <li><p class="kicker">Setup</p><a href="/setup/">Install</a><p>Deploy keystone and bind a first disk.</p></li>
+        <li><p class="kicker">Code</p><a href="https://gitlab.com/dunn.dev/keystone" rel="external">Source</a><p>Shared as-is: no roadmap, no support promise.</p></li>
       </ul>
     </div>
   </section>
-
-  <section class="section" id="next">
-    <SectionLabel label="Where next" />
-    <div class="tile-grid">
-      <div class="tile">
-        <h3 class="tile-headline"><a href="/architecture/">Architecture</a></h3>
-        <p class="tile-prose">Each mechanism in figures, from binding a disk to deleting a key set.</p>
-      </div>
-      <div class="tile">
-        <h3 class="tile-headline"><a href="/setup/">Install</a></h3>
-        <p class="tile-prose">The commands to deploy keystone and bind a first disk.</p>
-      </div>
-      <div class="tile">
-        <h3 class="tile-headline"><a href="https://gitlab.com/dunn.dev/keystone" rel="external">Source</a></h3>
-        <p class="tile-prose">Shared as-is: no roadmap, no support promise.</p>
-      </div>
-    </div>
-  </section>
-</Layout>
+  <Colophon slot="colophon" />
+  <script>import '../scripts/walk.js';</script>
+</FolioLayout>
