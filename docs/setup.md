@@ -1,10 +1,10 @@
 # Setup
 
-A key set is a signing key and an exchange key. Its `thp` is the signing key's thumbprint.
+Deploy keystone, then bind a disk to a key set: a signing key and an exchange key. Its `thp` is the signing key's thumbprint.
 
 ## Prerequisites
 
-- A Cloudflare account and a zone on Cloudflare DNS for the Worker's hostname.
+- A Cloudflare account with a DNS zone for the Worker's hostname.
 - Node (the version `package.json` names), git and `jq` where you run `keyset`.
 - `clevis` on each host to bind.
 
@@ -55,7 +55,7 @@ sudo apt install clevis clevis-luks clevis-initramfs      # Debian and Ubuntu
      keyset deploy --url https://tang.example.org --new server-1 --apply -- --config "$KEYSTONE/deploy/wrangler.toml"
    ```
 
-7. On the host, bind the disk. This reads the `thp` from the live advertisement.
+7. On the host, read the `thp` from the live advertisement, then bind the disk.
 
    ```sh
    curl -s https://tang.example.org/server-1/adv | jose fmt -j- -g payload -y -o- |
@@ -71,12 +71,12 @@ sudo apt install clevis clevis-luks clevis-initramfs      # Debian and Ubuntu
    sudo dracut -f
    ```
 
-   Debian and Ubuntu need a CA bundle hook: see [Initramfs](operate.md#initramfs).
+   Debian and Ubuntu need a CA bundle hook: [Initramfs](operate.md#initramfs).
 
 9. Reboot. The disk unlocks without a passphrase.
 
 ## Next
 
-- [Rotate and revoke](operate.md#rotate-and-revoke) a key set; the same section covers upgrades.
+- [Rotate and revoke](operate.md#rotate-and-revoke) a key set, or upgrade.
 - [Alerts](operate.md#alerts) on new unlock sources, and the [origin gate](operate.md#origin-gate).
 - [Routes and curves](operate.md#reference). The [architecture](/architecture/) draws each mechanism.

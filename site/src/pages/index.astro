@@ -14,7 +14,7 @@ import mark from '../brand/hero-mark.svg?raw';
       <div>
         <p class="folio">Disk unlock server</p>
         <h1 class="display">keystone</h1>
-        <p class="deck">keystone is a <a href="https://github.com/latchset/tang" rel="external">Tang</a> server for <a href="https://github.com/latchset/clevis" rel="external">clevis</a> network-bound disk encryption, run as a <a href="https://workers.cloudflare.com/" rel="external">Cloudflare Worker</a>. A disk unlocks at boot with no typed passphrase. Delete a stolen computer's key set and its disk stays locked. <a href="/setup/">Set it up</a>, read the <a href="/architecture/">architecture</a> or the <a href="https://gitlab.com/dunn.dev/keystone" rel="external">source</a>.</p>
+        <p class="deck">keystone is a <a href="https://github.com/latchset/tang" rel="external">Tang</a> server for <a href="https://github.com/latchset/clevis" rel="external">clevis</a> network-bound disk encryption, run as a <a href="https://workers.cloudflare.com/" rel="external">Cloudflare Worker</a>. A disk unlocks at boot without a passphrase. Delete a stolen computer's key set and its disk stays locked. <a href="/setup/">Set it up</a>, read the <a href="/architecture/">architecture</a> or the <a href="https://gitlab.com/dunn.dev/keystone" rel="external">source</a>.</p>
         <p class="cta-row">
           <a class="cta" href="/setup/">Install</a>
           <a href="/architecture/">Architecture</a>
@@ -54,12 +54,12 @@ import mark from '../brand/hero-mark.svg?raw';
         <li>
           <p class="mark">2 · boot</p>
           <h3>Unlock at startup</h3>
-          <p>The initramfs, which runs before the disk opens, asks keystone for its part of the key and opens the disk.</p>
+          <p>The initramfs, which runs before the disk opens, asks keystone for the missing half and opens the disk.</p>
         </li>
         <li>
           <p class="mark">3 · delete</p>
           <h3>Delete a stolen disk's key set</h3>
-          <p>keystone then stops answering for that set, and the disk stays locked.</p>
+          <p>keystone stops answering for that set, and the disk stays locked.</p>
         </li>
       </ol>
       <div class="sec-note">
@@ -84,7 +84,7 @@ import mark from '../brand/hero-mark.svg?raw';
     <div class="wrap prose split">
       <div id="origin-gate">
       <h2>Who can ask</h2>
-      <p>A key set can name the networks allowed to unlock it and who approves the rest. Other networks are held while the approvers are mailed a link; an approval lets that network unlock for 10 minutes. Listed networks are never held. The <a href="/architecture/#gate">architecture</a> has the mechanism.</p>
+      <p>A key set can name the networks allowed to unlock it and who approves the rest. Other networks are held while the approvers are mailed a link. An approval lets that network unlock for 10 minutes. Listed networks are never held. The <a href="/architecture/#gate">architecture</a> has the mechanism.</p>
       </div>
       <div id="what-you-need">
       <h2>What you need</h2>
