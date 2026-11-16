@@ -10,4 +10,4 @@ part:
 
 ## CPU
 
-Each bar is one rec's measured CPU time against the Free plan's 10 ms. P-521, takes 7 ms at the median and 12 cold, so it needs Workers Paid. P-256 stays at 6 or under; `keyset new --curve P-256` mints it.
+Each bar is one rec's measured CPU time against the Free plan's 10 ms. P-521 takes 7 ms at the median and 12 cold, so it needs Workers Paid. P-256 stays at 6 or under; `keyset new --curve P-256` mints it.

@@ -10,7 +10,7 @@ clevis checks the advertisement against the pinned thp, the signing key's thumbp
 
 ## Wrap
 
-It picks a random c and computes K = c·S, with S the exchange public key. K wraps a new slot passphrase.
+clevis picks a random c and computes K = c·S, with S the exchange public key. K wraps a new slot passphrase.
 
 ## Keep
 

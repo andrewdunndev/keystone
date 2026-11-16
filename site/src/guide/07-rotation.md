@@ -14,4 +14,4 @@ Bind `server-2` in a second slot, reboot, then unbind and revoke `server-1`.
 
 ## Copies
 
-A copy taken before the unbind still opens with `server-1`'s keys, so the store swaps them for the tombstone.
+A header copy taken before the unbind still opens with `server-1`'s keys, so the store swaps them for the tombstone.

@@ -13,7 +13,7 @@ The Gate, a Durable Object, opens a pending per origin and mails each approver a
 
 ## Refuse
 
-A set holds 3 pendings, and a fourth origin is refused. Cloudflare's network, no ASN and 240.0.0.0/4 are never admitted; `keystone-probe` requests are served only from `allow`.
+A set holds 3 pendings; a fourth origin is refused. Cloudflare's network, origins without an ASN and 240.0.0.0/4 are never admitted; `keystone-probe` requests are served only from `allow`.
 
 ## Unavailable
 
