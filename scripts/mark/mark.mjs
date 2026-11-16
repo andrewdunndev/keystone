@@ -23,15 +23,15 @@ export const tones = {
   stone: ramp(palette.white, [0, 4, 7, 11, 16, 22, 30, 38]),
   key: ramp(palette.m400, [0, 10, 18, 27, 36, 45, 55, 63]),
   edge: palette.e500, cast: palette.e600, castOpacity: 0.14,
-  small: { stone: [stone.top, mix(palette.e600, palette.white, 24)], key: [moss.top, moss.left], edge: palette.e500, width: 1 },
+  small: { width: 1 },
 };
 
 /* ---- the arch, in world units: span along u, depth along v, z up ----
    ro, ri: ring radii; pier: springing height; key: keystone half-angle;
    proud: how far the keystone stands outside and inside the ring; perSide:
    voussoirs each side; facets: extrados chords per voussoir */
-export const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.46, 0.54], arc: 2 };
-const small = { ro: 100, ri: 54, pier: 66, depth: 28, yaw: -24, key: 19, proud: [10, 5], perSide: 1, facets: 2, rough: 5 };
+export const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.33, 0.33, 0.34], arc: 3 };
+const small = { ...large, depth: 40, perSide: 2, courses: [0.5, 0.5], arc: 1 };
 export const deg = Math.PI / 180;
 
 /* cross-sections in (u, z), counter-clockwise seen from the front, each edge
@@ -137,7 +137,7 @@ function slab(s, arc) {
     [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([sx, sy], q) => {
       const rc = Math.min(Math.max(s.r[q] * m - inset, 1), A, B);
       for (let k = 0; k <= arc; k++) {
-        const t = (q * 90 + (k * 90) / arc) * deg, grow = 1 + 0.07 * noise(s.seed, q * 5 + k);
+        const t = (q * 90 + (k * 90) / arc) * deg, grow = 1 + 0.1 * noise(s.seed, q * 5 + k);
         const x = (sx * (A - rc) + rc * Math.cos(t)) * grow, y = (sy * (B - rc) + rc * Math.sin(t)) * grow;
         pts.push(v3.add([1, s.O], [x, s.X], [y, Y], [rise + f * (s.tilt[0] * x + s.tilt[1] * y), s.H]));
       }
@@ -171,26 +171,24 @@ export function carve(a, elevation = 30) {
   const view = [cE * Math.SQRT1_2, cE * Math.SQRT1_2, sE];
   const at = (u, v, z) => v3.add([u, U], [v, V], [z, Z]);
   const d = a.depth / 2, w = (a.ro - a.ri) / 2;
-  const vary = (seed, k, by) => 1 + by * noise(seed, k);
   /* each stone its own: corner radii, the slope of its top, and where its
      rings sit (foot, lower and upper belly, shoulder, top) */
   const shape = (seed) => ({
     seed, r: [0, 1, 2, 3].map(q => 0.42 + 0.3 * noise(seed, 40 + q)),
-    tilt: [0.05 * noise(seed, 50), 0.05 * noise(seed, 51)],
+    tilt: [0.08 * noise(seed, 50), 0.08 * noise(seed, 51)],
     rings: [[0, 0.12 + 0.06 * noise(seed, 60)], [0.2 + 0.06 * noise(seed, 61), 0.01], [0.48 + 0.08 * noise(seed, 62), 0],
       [0.74 + 0.06 * noise(seed, 63), 0.04 + 0.02 * noise(seed, 64)], [1, 0.18 + 0.06 * noise(seed, 65)]],
   });
   const slabs = [];
-  /* the piers, each in courses from the ground to the springing, each course
-     turned a few degrees its own way */
+  /* the piers, each in courses from the ground to the springing, dressed
+     exactly as the ring stones are */
   [-1, 1].forEach((side) => {
     let z = 0;
     a.courses.forEach((share, c) => {
-      const seed = (side > 0 ? 20 : 10) + c, h = share * a.pier * vary(seed, 1, 0.08), turn = 10 * deg * noise(seed, 5);
-      const top = c === a.courses.length - 1 ? a.pier : z + h;
-      slabs.push({ name: `pier-${side > 0 ? 'right' : 'left'}-${c}`, ...shape(seed), O: at(side * (a.ri + w), 1.2 * noise(seed, 2), z),
-        H: Z, X: v3.add([Math.cos(turn), U], [Math.sin(turn), V]), Y: v3.add([-Math.sin(turn), U], [Math.cos(turn), V]),
-        h: top - z, half: () => [w * vary(seed, 3, 0.05), d * vary(seed, 4, 0.06)] });
+      const seed = (side > 0 ? 20 : 10) + c;
+      const top = c === a.courses.length - 1 ? a.pier : z + share * a.pier;
+      slabs.push({ name: `pier-${side > 0 ? 'right' : 'left'}-${c}`, ...shape(seed), O: at(side * (a.ri + w), 0, z),
+        H: Z, X: U, Y: V, h: top - z, half: () => [w, d] });
       z = top;
     });
   });
@@ -267,22 +265,23 @@ export const LABEL = 'keystone: a stone arch, its moss keystone at the crown';
 export const open = (label, viewBox = '0 0 64 64') =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"${label ? ` role="img" aria-label="${label}"` : ' aria-hidden="true"'}>`;
 
-/* 16 to 32 px: a white front, one grey for every depth face, an edge one
-   screen pixel wide around each stone */
+/* 16 to 32 px: the large form with fewer, chunkier stones (two courses a
+   pier, two voussoirs a side), each its toned faces, a cast on the ground
+   and an edge one screen pixel wide around each stone */
 export const small_ = (id = 'keystone', label = LABEL) => {
-  const { solids, fit } = fitted(small, [3, 3, 58, 58]);
+  const { solids, casts, fit } = fitted(small, [3, 3, 58, 58], carve);
   const c = (r) => `${id}-${r}`;
   const body = solids.map(s => {
-    const m = s.key ? 'c' : 's';
-    const sides = s.faces.slice(1).map(f => path(fit(f.pts), 1)).join('');
-    return (sides ? `<path class="${c(m + '0')}" d="${sides}"/>` : '') +
-      `<polygon class="${c(m + '1')}" points="${points(fit(s.faces[0].pts), 1)}"/>` +
+    const b = s.key ? tones.key : tones.stone, byTone = new Map();
+    s.faces.forEach(f => byTone.set(f.tone, (byTone.get(f.tone) ?? '') + path(fit(f.pts), 1)));
+    return `<path class="${c(s.key ? 'k' : 's')}" d="${path(fit(s.hull), 1)}"/>` +
+      [...byTone.keys()].sort((p, q) => p - q).filter(t => t !== 2).map(t => `<path fill="${b[t]}" d="${byTone.get(t)}"/>`).join('') +
       `<path class="${c('e')}" d="${path(fit(s.hull), 1)}" vector-effect="non-scaling-stroke"/>`;
   }).join('');
-  const t = tones.small, r = (k) => `.${c(k)}`;
-  const css = `${r('s1')}{fill:${t.stone[0]}}${r('s0')}{fill:${t.stone[1]}}${r('c1')}{fill:${t.key[0]}}${r('c0')}{fill:${t.key[1]}}` +
-    `${r('e')}{fill:none;stroke:${t.edge};stroke-width:${t.width};stroke-linejoin:round}`;
-  return `${open(label)}<style>${css}</style>${body}</svg>\n`;
+  const r = (k) => `.${c(k)}`;
+  const css = `${r('s')}{fill:${tones.stone[2]}}${r('k')}{fill:${tones.key[2]}}` +
+    `${r('e')}{fill:none;stroke:${tones.edge};stroke-width:${tones.small.width};stroke-linejoin:round}`;
+  return `${open(label)}<style>${css}</style>${castMarkup(casts, fit)}${body}</svg>\n`;
 };
 
 /* the piers' cast on the ground: one flat tone, no blur */
