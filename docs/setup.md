@@ -1,65 +1,61 @@
 # Setup
 
-A key set is one signing key and one exchange key on one curve. A pin's `thp` is the thumbprint of the set's signing key.
+A key set is a signing key and an exchange key. Its `thp` is the signing key's thumbprint.
 
 ## Prerequisites
 
 - A Cloudflare account and a zone on Cloudflare DNS for the Worker's hostname.
-- Node as `engines` in `package.json` requires, git and `jq` where `keyset` runs, and `clevis` (which brings `jose`) on each host to bind.
-- An offline store for key sets, such as `pass`.
+- Node (the version `package.json` names), git and `jq` where you run `keyset`.
+- `clevis` on each host to bind.
 
 ```sh
-git clone --branch <tag> https://gitlab.com/dunn.dev/keystone.git
-cd keystone && npm ci
-export KEYSTONE="$PWD"
-keyset() { node "$KEYSTONE/bin/keyset.mjs" "$@"; }
+sudo dnf install clevis clevis-luks clevis-dracut         # Fedora and RHEL
+sudo apt install clevis clevis-luks clevis-initramfs      # Debian and Ubuntu
 ```
-
-Authenticate with `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN` (the "Edit Cloudflare Workers" template, plus KV Storage: Edit for alerts). `keyset` runs wrangler non-interactively, so with more than one account set `CLOUDFLARE_ACCOUNT_ID`.
 
 ## Quickstart
 
-1. Copy the example config and set the route to your hostname.
+1. Clone keystone and define `keyset`.
+
+   ```sh
+   git clone --branch <tag> https://gitlab.com/dunn.dev/keystone.git
+   cd keystone && npm ci
+   export KEYSTONE="$PWD"
+   keyset() { node "$KEYSTONE/bin/keyset.mjs" "$@"; }
+   ```
+
+2. Log in to Cloudflare. For CI, [use an API token](operate.md#authentication).
+
+   ```sh
+   npx wrangler login
+   ```
+
+3. Copy the example config and set its route to your hostname.
 
    ```sh
    cp "$KEYSTONE/deploy/wrangler.toml.example" "$KEYSTONE/deploy/wrangler.toml"
    ```
 
-2. Deploy the Worker.
+4. Deploy the Worker.
 
    ```sh
    npx wrangler deploy --config "$KEYSTONE/deploy/wrangler.toml"
    ```
 
-3. Confirm the Worker holds no sets; this prints 404.
-
-   ```sh
-   curl -s -o /dev/null -w '%{http_code}\n' https://tang.example.org/server-1/adv
-   ```
-
-4. Mint a set. The key goes to stdout and the `thp` to stderr. On the Free plan add `--curve P-256`.
+5. Mint a set into your offline key store. On the Free plan add `--curve P-256`.
 
    ```sh
    keyset new | pass insert -m tang/server-1
    ```
 
-5. Deploy it. Without `--apply` the command only plans.
+6. Deploy the set. Without `--apply` the command only plans.
 
    ```sh
    pass tang/server-1 | jq -R '{TANG_KEY_SERVER_1: .}' |
      keyset deploy --url https://tang.example.org --new server-1 --apply -- --config "$KEYSTONE/deploy/wrangler.toml"
    ```
 
-   `keyset` deploys, then checks the advertisement signature and a real recovery.
-
-6. Install clevis on the host.
-
-   ```sh
-   sudo dnf install clevis clevis-luks clevis-dracut         # Fedora and RHEL
-   sudo apt install clevis clevis-luks clevis-initramfs      # Debian and Ubuntu
-   ```
-
-7. Bind the disk. This reads the `thp` from the live advertisement.
+7. On the host, bind the disk. This reads the `thp` from the live advertisement.
 
    ```sh
    curl -s https://tang.example.org/server-1/adv | jose fmt -j- -g payload -y -o- |
@@ -68,123 +64,19 @@ Authenticate with `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN` (the "Edit
    sudo clevis luks bind -d /dev/sdXN tang '{"url":"https://tang.example.org/server-1","thp":"<thp>"}'
    ```
 
-8. Build the initramfs. It needs network, DNS and a CA bundle to reach the Worker.
-
-   Fedora and RHEL (dracut):
+8. Rebuild the initramfs with network up. On Fedora and RHEL:
 
    ```sh
    echo 'kernel_cmdline="rd.neednet=1"' | sudo tee /etc/dracut.conf.d/clevis.conf
    sudo dracut -f
    ```
 
-   `lsinitrd` lists the image. If it lacks a CA bundle or DNS libraries, put `install_items+=" /etc/pki/tls/certs/ca-bundle.crt "` in a file under `/etc/dracut.conf.d` and rerun `dracut -f`.
-
-   Debian and Ubuntu (initramfs-tools) ship no CA bundle in the initramfs, so add a hook, and bring the network up from the kernel command line. clevis reads the sixth `ip=` field as the interface name, so plain `ip=dhcp` waits for an interface named `dhcp`.
-
-   ```sh
-   sudo tee /etc/initramfs-tools/hooks/cabundle <<'HOOK'
-   #!/bin/sh
-   PREREQ=""
-   prereqs() { echo "$PREREQ"; }
-   case "$1" in prereqs) prereqs; exit 0;; esac
-   . /usr/share/initramfs-tools/hook-functions
-   mkdir -p "${DESTDIR}/etc/ssl/certs"
-   cp /etc/ssl/certs/ca-certificates.crt "${DESTDIR}/etc/ssl/certs/"
-   HOOK
-   sudo chmod +x /etc/initramfs-tools/hooks/cabundle
-   sudo sed -i 's/^GRUB_CMDLINE_LINUX="/&ip=::::::dhcp /' /etc/default/grub
-   sudo update-grub
-   sudo update-initramfs -u
-   ```
-
-   `lsinitramfs /boot/initrd.img-$(uname -r) | grep ca-certificates` confirms the bundle.
+   Debian and Ubuntu need a CA bundle hook: see [Initramfs](operate.md#initramfs).
 
 9. Reboot. The disk unlocks without a passphrase.
 
-## Rotate and revoke
+## Next
 
-Keys are write-once: `keyset` refuses different keys under a live name, so rotation uses a new name.
-
-1. Mint `server-2`; deploy it with `--new`.
-2. Bind a new slot: `clevis luks bind -d <dev> tang '{"url":"https://tang.example.org/server-2","thp":"<thp>"}'`.
-3. Reboot; the disk must unlock.
-4. Remove the old slot: `clevis luks unbind -d <dev> -s <slot>` (`clevis luks list -d <dev>` shows slots).
-5. Revoke the old set.
-
-   ```sh
-   keyset revoke server-1 --url https://tang.example.org --apply -- --config "$KEYSTONE/deploy/wrangler.toml"
-   ```
-
-6. In your key store, replace `server-1` with `null`. Its keys still open copies of the disk taken before step 4.
-
-Keep the key store offline; it is as sensitive as the disks.
-
-A deploy can take the whole store as one JSON object of secret names to sets, with `null` for a revoked set (a tombstone). Sets left out show as drift. After rotating to `server-2`:
-
-```sh
-jq -n --arg s2 "$(pass tang/server-2)" \
-  '{TANG_KEY_SERVER_1: null, TANG_KEY_SERVER_2: $s2}' |
-  keyset deploy --url https://tang.example.org --apply -- --config "$KEYSTONE/deploy/wrangler.toml"
-```
-
-The plan labels each set `ok`, `new`, `policy`, `revoked` or `REFUSE` and applies only when nothing is refused. A null entry that is still served shows as `REVOKED-LIVE`, and `--apply` redeploys from current secrets to drop it. The drift report lists live sets missing from the input; a plan runs it only when `CLOUDFLARE_API_TOKEN` is set.
-
-`--apply` refuses when the wrangler target's secrets disagree with `--url`. `keyset` prints private keys only from `new` and deletes only the set `revoke` names. `deploy --apply` redeploys the Worker from the config given after `--`; `deploy` refuses when `--url` serves a newer keystone release than the clone, or one that is not an `x.y.z` number. Each check sends a real `rec`, which can raise an alert and marks its source seen.
-
-To upgrade, update the clone and run `npm ci`. Then plan `keyset deploy` over the whole store: `keyset` refuses, before any deploy, a set with a member other than `keys`, `allow` and `approvers`. Fix it in the store, then merge the example config's new bindings and redeploy with `npx wrangler deploy --config "$KEYSTONE/deploy/wrangler.toml"`; secrets persist. A set already answering 500 is repaired with `npx wrangler secret put TANG_KEY_<NAME> --config "$KEYSTONE/deploy/wrangler.toml"` with the cleaned value. To move to a new hostname, change the route and redeploy the same way. Then plan `keyset deploy` against the new `--url`: every set should read `ok`.
-
-## Alerts
-
-When a `rec` succeeds from a new source, keystone mails one alert through a Cloudflare Email Sending `send_email` binding. A source is the client's /24 or /48 with its ASN and country. A failed alert is logged and never changes the unlock. Each set sends at most one alert an hour; up to five sources met meanwhile wait for the hourly digest. The hourly run also mails when another Worker version serves, and names a rollback: a version serves the secrets it was deployed with, so a rollback brings back sets revoked and policies edited since. While a gradual deployment splits traffic the run can land on either version, so the mail repeats hourly until one takes all traffic. A rollback to a version that predates this check is not mailed.
-
-1. Create the namespace: `npx wrangler kv namespace create UNLOCKS`.
-2. Onboard a subdomain such as `mail.example.org` in Email Sending, which needs Workers Paid. The apex domain's mail is untouched.
-3. Uncomment all four blocks in `deploy/wrangler.toml`: the `UNLOCKS` namespace id, the `ALERT` binding, `ALERT_FROM` and `ALERT_TO`, and the hourly cron. `ALERT_FROM` must be on that subdomain.
-4. Redeploy. A cron run with these bindings missing logs `cron run skipped: UNLOCKS, ALERT, ALERT_FROM and ALERT_TO are not all bound`.
-
-Any client may send `keystone-probe: 1`, as `keyset check` does. It mutes only the refusal alert for that request, and a probed `rec` is never served unless its origin is in `allow` or the set has no gate, exactly as without the header. A probed `adv` also reveals the Worker version, the keystone release, the set's policy tag and whether a gated set lacks its bindings, so a probe shows that a set is gated.
-
-## Origin gate
-
-A set may name who can recover it. A set with neither field answers any client.
-
-- `allow`: 1 to 32 prefixes, IPv4 `/8` to `/32` or IPv6 `/16` to `/128`, host bits zero. An origin inside one is served unattended.
-- `approvers`: 1 to 5 addresses. Any other origin's `rec` is held and each approver is mailed a link to approve or deny it. Approval lets any machine in that /24 or /48 recover the set for 10 minutes; the held host is served within about 15 seconds. Removing an approver retires their links.
-
-Both fields live in the set's secret beside its keys. Edit them in the key store, then deploy; the plan reads `policy`. Input with neither field for a set whose live policy has one is refused; pass `--drop-policy <name>` for each such set to write it without a policy.
-
-```sh
-entry=$(pass tang/server-1 | jq -ce '.allow = ["198.51.100.7/32"] | .approvers = ["you@example.org"]') &&
-  printf '%s\n' "$entry" | pass insert -m -f tang/server-1
-pass tang/server-1 | jq -R '{TANG_KEY_SERVER_1: .}' |
-  keyset deploy --url https://tang.example.org --apply -- --config "$KEYSTONE/deploy/wrangler.toml"
-```
-
-- Pin every family the host can egress on, its IPv4 /32 and its delegated IPv6 prefix, since clevis may use either at boot. Approval covers a renumber or a visit.
-- With `approvers` alone, every unlock needs an approval, and a Gate or mail outage, or a full set, leaves the disk's passphrase slot as the only way in; list the host's own prefixes in `allow` so it boots unattended.
-- Any set with `allow` or `approvers` needs `GATE`; `check` fails without it. `approvers` also needs `ALERT` without `destination_address` and `ALERT_FROM`; without them the set refuses every new origin.
-- A set holds 3 origins at a time; a fourth is refused and approvers get one notice naming it and the three. A set sends at most 5 messages an hour to each of its approvers, and all sets together 40, except that each approver of each set still gets their first message of the hour, so strangers asking for one set cannot silence another.
-- Turn Pseudo IPv4 off for the zone. With it on, IPv6 clients arrive as 240.0.0.0/4 addresses, which are refused.
-- `deploy` rewrites a live set only when its keys match stdin and one Worker version, the one `--url` serves, takes all traffic. `check` from outside `allow` prints `SKIP rec`.
-
-## Reference
-
-| Route | Method | Answer |
-|---|---|---|
-| `/<name>/adv` | GET | the advertisement, a JWS over the set's public keys |
-| `/<name>/adv/<thp>` | GET | the same when `<thp>` is the signing key's thumbprint, else 404 |
-| `/<name>/rec/<kid>` | POST | key recovery when `<kid>` names the exchange key, else 404; 403 for an origin a gated set does not admit |
-| `/<name>/approve/<token>` | GET, POST | the approval page a held origin's mail links to; 404 for a set without approvers |
-
-A name is `[a-z0-9-]`, up to 63 characters. A set lives in the Worker secret `TANG_KEY_<NAME>`, with the name upper-cased and `-` becoming `_`. Its value is `{"keys":[<signing key>,<exchange key>]}`: exactly two private JWKs, each with `alg`, on one curve, optionally with `allow` and `approvers`. Any other member or an empty list makes the set malformed. A missing secret answers 404. A malformed one answers 500 and logs the secret's name, never its value.
-
-Every successful `rec` logs one JSON line with the name, IP, ASN and country, and no key material. A refused one logs a `refused` line at most once a minute per set and origin.
-
-### Curves
-
-| Curve | Signing alg | Measured CPU for `rec` |
-|---|---|---|
-| P-521 (default) | ES512 | 7 ms median, up to 12 ms cold |
-| P-256 | ES256 | up to 6 ms cold |
-
-The Free plan allows 10 ms of CPU per request, so P-521 needs Workers Paid.
+- [Rotate and revoke](operate.md#rotate-and-revoke) a key set; the same section covers upgrades.
+- [Alerts](operate.md#alerts) on new unlock sources, and the [origin gate](operate.md#origin-gate).
+- [Routes and curves](operate.md#reference). The [architecture](/architecture/) draws each mechanism.

@@ -25,7 +25,7 @@ const headings = (await render(setup)).headings
   .filter(h => h.depth === 2)
   .map(h => ({ id: h.slug, label: h.text }));
 ---
-<FolioLayout name="keystone" nav={nav} mark={favicon} title="Install" description="Install keystone, bind a first disk, rotate, revoke and set up alerts.">
+<FolioLayout name="keystone" nav={nav} mark={favicon} title="Install" description="Install keystone and bind a first disk.">
   <header class="wrap page-head arch-head head-grid">
     <div>
     <p class="folio">Setup</p>
@@ -38,7 +38,6 @@ const headings = (await render(setup)).headings
     <div class="prose">
       <div class="setup-intro">
         <div class="intro-text">
-        <p>The quickstart deploys an empty Worker, confirms it serves no sets, mints a set into the key store and deploys it, which also checks it. The disk is then bound with the thp (the signing key's thumbprint) read from the live advertisement, and the initramfs is rebuilt with network, DNS and a CA bundle so clevis can reach the Worker before the root filesystem mounts. A reboot then unlocks the disk with no passphrase prompt. The numbered steps under Quickstart give each its commands.</p>
           <Fragment set:html={intro} />
         </div>
         <Figure fig="14-quickstart" />
