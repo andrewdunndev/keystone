@@ -133,7 +133,7 @@ function slab(s, arc) {
   const Y = v3.dot(v3.cross(s.X, s.Y), s.H) < 0 ? s.Y.map(c => -c) : s.Y;
   const m = Math.min(...s.half(s.h / 2));
   const loops = s.rings.map(([f, g]) => {
-    const rise = f * s.h, inset = g * m, [A, B] = s.half(rise).map(v => v - inset), pts = [];
+    const rise = f < 0.4 ? f * Math.min(s.h, s.hr) : f > 0.6 ? s.h - (1 - f) * Math.min(s.h, s.hr) : f * s.h, inset = g * m, [A, B] = s.half(rise).map(v => v - inset), pts = [];
     [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([sx, sy], q) => {
       const rc = Math.min(Math.max(s.r[q] * m - inset, 1), A, B);
       for (let k = 0; k <= arc; k++) {
@@ -173,8 +173,8 @@ export function carve(a, elevation = 30) {
   const d = a.depth / 2, w = (a.ro - a.ri) / 2;
   /* each stone its own: corner radii, the slope of its top, and where its
      rings sit (foot, lower and upper belly, shoulder, top) */
-  const shape = (seed) => ({
-    seed, r: [0, 1, 2, 3].map(q => 0.42 + 0.3 * noise(seed, 40 + q)),
+  const shape = (seed, g = 1) => ({
+    seed, hr: a.pier * a.courses[0], r: [0, 1, 2, 3].map(q => g * (0.42 + 0.3 * noise(seed, 40 + q))),
     tilt: [0.08 * noise(seed, 50), 0.08 * noise(seed, 51)],
     rings: [[0, 0.12 + 0.06 * noise(seed, 60)], [0.2 + 0.06 * noise(seed, 61), 0.01], [0.48 + 0.08 * noise(seed, 62), 0],
       [0.74 + 0.06 * noise(seed, 63), 0.04 + 0.02 * noise(seed, 64)], [1, 0.18 + 0.06 * noise(seed, 65)]],
@@ -197,7 +197,7 @@ export function carve(a, elevation = 30) {
   const ring = (name, a0, a1, [po, pi], seed, key = false) => {
     const mid = ((a0 + a1) / 2) * deg, half = ((a1 - a0) / 2) * deg, r0 = a.ri - pi;
     const er = v3.add([Math.cos(mid), U], [Math.sin(mid), Z]), et = v3.add([-Math.sin(mid), U], [Math.cos(mid), Z]);
-    slabs.push({ name, key, a0, a1, ...shape(seed), O: v3.add([1, at(0, 0, a.pier)], [r0, er]),
+    slabs.push({ name, key, a0, a1, ...shape(seed, 1.6), O: v3.add([1, at(0, 0, a.pier)], [r0, er]),
       H: er, X: et, Y: V, h: a.ro + po - r0, half: (rise) => [(r0 + rise) * Math.tan(half), d] });
   };
   const step = (90 - a.key) / a.perSide;
