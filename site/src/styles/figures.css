@@ -22,13 +22,6 @@ svg text { fill: var(--ink); }
 
 @media (max-width: 860px) {
   .pan { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  /* a figure wider than its column pans: the hint names it, the rule closes the box */
-  .pan[data-pan] { border-bottom: 1px solid var(--hair-2); }
-  .pan[data-pan]::after { content: "Scrolls sideways \2192"; display: block; position: sticky; left: 0; width: max-content; padding: 6px 0;
-    font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--grey); }
-  .pan:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
-  .cropped .sheet { display: none; }
-  .still svg:not(.cropped) { min-width: 640px; max-width: none; }
 }
 @media print {
   .fig { break-inside: avoid; }
