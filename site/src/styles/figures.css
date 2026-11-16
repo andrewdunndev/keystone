@@ -1,14 +1,7 @@
-/* figures: the stage, the stills and the marks of folio's two drawing
-   registers. Colour is ink, grey and the tone ramp; hatch, weight and tone
-   carry difference. */
-.stage { position: sticky; top: calc(var(--pin) + 12px); margin: 0; }
-.stage-inner { width: 100%; }
-.stage svg, .still svg, .fig svg { display: block; width: 100%; height: auto; }
-.still svg, .fig svg { font-family: var(--mono); font-size: 13px; }
-.stage svg { max-height: calc(100vh - var(--pin) - 40px); }
+/* figure marks and the narrow-screen pan hint; the stage and stills come from folio-guide. */
+.fig svg { display: block; width: 100%; height: auto; font-family: var(--mono); font-size: 13px; }
 .fig { margin: 0 0 40px; }
-.still { margin: 0 0 20px; }
-.chapter.stills .stage { display: none; }
+
 .pan { min-width: 0; }
 
 svg text { fill: var(--ink); }
@@ -36,19 +29,10 @@ svg text { fill: var(--ink); }
   .pan:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
   .cropped .sheet { display: none; }
 }
-@media print, (prefers-reduced-motion: reduce), (max-width: 860px) {
-  .stage { position: static; }
-}
 @media print {
-  .still, .fig { break-inside: avoid; }
-  .still svg, .fig svg { max-width: 520px; }
+  .fig { break-inside: avoid; }
+  .fig svg { max-width: 520px; }
 }
 @media print, (prefers-reduced-motion: reduce), (max-width: 860px) {
   .chapter-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .still svg { max-width: 760px; }
-}
-/* live mode: each step takes a stretch of scroll, so the stage pins while they pass */
-@media (min-width: 861px) and (prefers-reduced-motion: no-preference) {
-  .chapter-text [data-step] { min-height: 52vh; }
-  .chapter-text [data-step]:last-child { min-height: 0; }
 }

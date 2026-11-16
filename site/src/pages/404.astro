@@ -4,7 +4,6 @@ import favicon from '../../public/favicon.svg?raw';
 import Colophon from '../components/Colophon.astro';
 import { nav } from '../site.ts';
 import '../styles/site.css';
-import '../styles/figures.css';
 import mark from "../brand/hero-mark.svg?raw";
 ---
 <FolioLayout name="keystone" nav={nav} mark={favicon} title="Not found" description="No page at this address.">
@@ -19,5 +18,4 @@ import mark from "../brand/hero-mark.svg?raw";
     </header>
   </div>
   <Colophon slot="colophon" />
-  <script>import '../scripts/figures.js';</script>
 </FolioLayout>

@@ -35,19 +35,10 @@
 .sheet-index a:hover, .sheet-index a[aria-current] { color: var(--ink); }
 .sheet-index a[aria-current] { text-decoration: underline; text-decoration-color: var(--hair-2); text-underline-offset: 4px; }
 
-/* architecture: a chapter is its text beside its figure */
+/* page head and two-column grid */
 .arch-head { padding-top: 72px; margin-block-end: 40px; }
-.chapter { border-top: 1px solid var(--ink); padding: 40px 0 56px; scroll-margin-top: 0; }
 .chapter-grid { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 56px; align-items: start; }
 .chapter-grid > * { min-width: 0; }
-.chapter-text > :first-child { margin-top: 0; }
-.chapter-text h2 { font-weight: 500; font-size: var(--t-head); letter-spacing: -.02em; line-height: 1.15; margin: 0 0 24px; scroll-margin-top: 72px; }
-.chapter-text h2 .num { display: block; color: var(--grey); font-family: var(--mono); font-size: .6em; font-weight: 500; letter-spacing: .08em; margin-bottom: 8px; }
-.chapter-text p { margin: 0 0 16px; }
-.chapter-full .chapter-grid { grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); }
-.chapter-full .chapter-text { display: contents; }
-.chapter-full .chapter-text h2 { grid-column: 1; }
-.chapter-full .chapter-text p { grid-column: 2; max-width: none; columns: 2 300px; column-gap: 40px; }
 
 @media (max-width: 860px) {
   .cover { min-height: 0; padding: 40px 0 48px; }
@@ -58,9 +49,7 @@
   .arch-head { padding-top: 40px; }
   .sheet-index .wrap { gap: 14px; }
   .sheet-index ol { gap: 2px 14px; padding: 8px 0; font-size: 11px; letter-spacing: .06em; }
-  .chapter { padding: 32px 0 40px; }
-  .chapter-grid, .chapter-full .chapter-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .chapter-full .chapter-text p { grid-column: 1; columns: auto; }
+  .chapter-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
 }
 @media print {
   .sheet-index, .cta-row { display: none; }
