@@ -29,9 +29,11 @@ export const tones = {
 /* ---- the arch, in world units: span along u, depth along v, z up ----
    ro, ri: ring radii; pier: springing height; key: keystone half-angle;
    proud: how far the keystone stands outside and inside the ring; perSide:
-   voussoirs each side; facets: extrados chords per voussoir */
-export const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.33, 0.33, 0.34], arc: 3, ringArc: 2 };
-const small = { ...large, depth: 40, perSide: 2, courses: [0.5, 0.5], arc: 1, ringArc: 0 };
+   voussoirs each side; facets: extrados chords per voussoir; hew: the
+   ranges each stone draws its corner facets and tool strokes from, and how
+   deep its strokes, lumps and chips cut */
+export const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, proud: [7, 4], perSide: 3, courses: [0.33, 0.33, 0.34], hew: { facets: [1, 4], strokes: [1, 3], scale: 1 } };
+const small = { ...large, depth: 40, perSide: 2, courses: [0.5, 0.5], hew: { facets: [1, 1], strokes: [0, 1], scale: 0.5 } };
 export const deg = Math.PI / 180;
 
 /* cross-sections in (u, z), counter-clockwise seen from the front, each edge
@@ -107,8 +109,8 @@ export function build(a, elevation = 30) {
    rectangle across X and Y set in by the profile (foot, belly, shoulder,
    top); quads join the rings and the end rings cap it. A voussoir's height
    runs out from the intrados and its X follows the joint planes; a pier
-   course stands on z. Every stone is dressed the same way: seeded noise moves
-   corners, radii, rings and the slope of the top, so no two stones match. */
+   course stands on z. Every stone is hewn by the same rule from its own seed,
+   so each wears, facets and chips differently and no two stones match. */
 const noise = (seed, k) => {
   let h = Math.imul(seed + 0x9e37, 0x85ebca6b) ^ Math.imul(k + 0x2c1b, 0xc2b2ae35);
   h = Math.imul(h ^ (h >>> 15), 0x27d4eb2f);
@@ -133,16 +135,31 @@ function slab(s, arc) {
   const Y = v3.dot(v3.cross(s.X, s.Y), s.H) < 0 ? s.Y.map(c => -c) : s.Y;
   const m = Math.min(...s.half(s.h / 2));
   const R = s.a0 === undefined ? s.rings : [[0, s.rings[0][1]], [0.027, s.rings[0][1] * 0.5], [0.1, s.rings[0][1] * 0.134], ...s.rings.slice(1, -1), [0.9, s.rings[4][1] * 0.134], [0.973, s.rings[4][1] * 0.5], s.rings[4]];
-  const loops = R.map(([f, g]) => {
-    const rise = f < 0.4 ? f * Math.min(s.h, s.hr) : f > 0.6 ? s.h - (1 - f) * Math.min(s.h, s.hr) : f * s.h, inset = g * m, [A, B] = s.half(rise).map(v => v - inset), pts = [];
-    [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([sx, sy], q) => {
-      const rc = Math.min(Math.max(s.r[q] * m - inset, 1), A, B);
+  const loops = R.map(([f, g], j) => {
+    const rise = f < 0.4 ? f * Math.min(s.h, s.hr) : f > 0.6 ? s.h - (1 - f) * Math.min(s.h, s.hr) : f * s.h, inset = g * m, pts = [];
+    const [A, B] = s.half(rise).map((v, i) => v - inset + s.lump * m * (i ? 0.07 * noise(s.seed, 500 + j) : -0.06 * (noise(s.seed, 520 + j) + 0.5)));
+    const put = (x, y) => pts.push(v3.add([1, s.O], [x, s.X], [y, Y], [rise + f * (s.tilt[0] * x + s.tilt[1] * y), s.H]));
+    const grow = (q) => 1 + 0.1 * noise(s.seed, q % 4 * 5);
+    /* corner q as a circle of radius rc; a chip pushes it in and flattens it */
+    const corner = (q) => {
+      const [sx, sy] = [[1, 1], [-1, 1], [-1, -1], [1, -1]][q % 4], chip = s.chips.find(c => c.q === q % 4 && f >= c.f[0] && f <= c.f[1]);
+      const rc = Math.min(Math.max(s.r[q % 4] * m * (1 + 0.5 * s.lump * noise(s.seed, 600 + j * 4 + q % 4)) - inset, 1) + (chip ? chip.e * m : 0), A, B);
+      return { chip, at: (t) => [sx * (A - rc) + rc * Math.cos(t * deg), sy * (B - rc) + rc * Math.sin(t * deg)] };
+    };
+    for (let q = 0; q < 4; q++) {
+      const c = corner(q), a0 = c.at(q * 90), a1 = c.at(q * 90 + 90);
       for (let k = 0; k <= arc; k++) {
-        const t = (q * 90 + (k * 90) / arc) * deg, grow = 1 + 0.1 * (noise(s.seed, q * 5) * (1 - k / arc) + noise(s.seed, (q + 1) % 4 * 5) * k / arc);
-        const x = (sx * (A - rc) + rc * Math.cos(t)) * grow, y = (sy * (B - rc) + rc * Math.sin(t)) * grow;
-        pts.push(v3.add([1, s.O], [x, s.X], [y, Y], [rise + f * (s.tilt[0] * x + s.tilt[1] * y), s.H]));
+        const w = k / arc, gr = grow(q) * (1 - w) + grow(q + 1) * w;
+        const [x, y] = c.chip ? [a0[0] + (a1[0] - a0[0]) * w, a0[1] + (a1[1] - a0[1]) * w] : c.at(q * 90 + w * 90);
+        put(x * gr, y * gr);
       }
-    });
+      /* the face on to the next corner, dressed in shallow tool strokes */
+      const b = corner(q + 1).at(q * 90 + 90), nx = Math.round(Math.cos((q + 1) * 90 * deg)), ny = Math.round(Math.sin((q + 1) * 90 * deg));
+      for (let k = 1; k <= s.wave.n; k++) {
+        const w = k / (s.wave.n + 1), o = s.wave.amp * m * (0.3 + noise(s.seed, 100 + q * 10 + k) + 0.4 * noise(s.seed, 300 + j * 40 + q * 10 + k));
+        put((a1[0] + (b[0] - a1[0]) * w + nx * o) * grow(q + 1), (a1[1] + (b[1] - a1[1]) * w + ny * o) * grow(q + 1));
+      }
+    }
     return pts;
   });
   const polys = [[...loops[0]].reverse(), loops[loops.length - 1]];
@@ -172,17 +189,29 @@ export function carve(a, elevation = 30) {
   const view = [cE * Math.SQRT1_2, cE * Math.SQRT1_2, sE];
   const at = (u, v, z) => v3.add([u, U], [v, V], [z, Z]);
   const d = a.depth / 2, w = (a.ro - a.ri) / 2;
-  /* each stone its own: corner radii, the slope of its top, and where its
-     rings sit (foot, lower and upper belly, shoulder, top) */
-  const shape = (seed, g = 1) => ({
-    seed, hr: a.pier * a.courses[0], r: [0, 1, 2, 3].map(q => Math.max(g * (0.42 + 0.3 * noise(seed, 40 + q)), g > 1 ? 0.8 : 0)),
-    tilt: [0.08 * noise(seed, 50), 0.08 * noise(seed, 51)],
-    rings: [[0, 0.12 + 0.06 * noise(seed, 60)], [0.2 + 0.06 * noise(seed, 61), 0.01], [0.48 + 0.08 * noise(seed, 62), 0],
-      [0.74 + 0.06 * noise(seed, 63), 0.04 + 0.02 * noise(seed, 64)], [1, 0.18 + 0.06 * noise(seed, 65)]],
-  });
+  /* each stone hewn its own way, all from its seed: how worn it is (its
+     corner radii and the round of its ends, one corner often left crisp),
+     how many facets dress a corner, the tool strokes along its faces, a chip
+     or two off a corner at its top, foot or along its length, the slope of
+     its top, and where its rings sit (foot, lower and upper belly, shoulder,
+     top) */
+  const shape = (seed) => {
+    const u = (k) => noise(seed, k) + 0.5, wear = u(70), crisp = Math.floor(u(71) * 6), pick = (k, [lo, hi]) => lo + Math.floor(u(k) * (hi - lo + 1)), sc = a.hew.scale;
+    return {
+      seed, hr: a.pier * a.courses[0],
+      r: [0, 1, 2, 3].map(q => q === crisp ? 0.08 : Math.min(Math.max(0.22 + 0.5 * wear + 0.3 * noise(seed, 40 + q), 0.12), 0.8)),
+      facets: pick(72, a.hew.facets),
+      wave: { n: pick(73, a.hew.strokes), amp: sc * (0.04 + 0.1 * u(74)) }, lump: sc * (0.3 + 0.7 * u(82)),
+      chips: Array.from({ length: Math.floor(u(75) * 2.6) }, (_, c) => ({
+        q: Math.floor(u(76 + c) * 4), e: sc * (0.12 + 0.18 * u(78 + c)), f: [[0.55, 1], [0, 0.45], [0, 1]][Math.floor(u(80 + c) * 3)] })),
+      tilt: [0.08 * noise(seed, 50), 0.08 * noise(seed, 51)],
+      rings: [[0, 0.05 + 0.12 * wear + 0.04 * noise(seed, 60)], [0.2 + 0.06 * noise(seed, 61), 0.01], [0.48 + 0.08 * noise(seed, 62), 0],
+        [0.74 + 0.06 * noise(seed, 63), 0.04 + 0.02 * noise(seed, 64)], [1, 0.08 + 0.13 * wear + 0.04 * noise(seed, 65)]],
+    };
+  };
   const slabs = [];
-  /* the piers, each in courses from the ground to the springing, dressed
-     exactly as the ring stones are */
+  /* the piers, each in courses from the ground to the springing, hewn
+     by the same rule as the ring stones */
   [-1, 1].forEach((side) => {
     let z = 0;
     a.courses.forEach((share, c) => {
@@ -198,7 +227,7 @@ export function carve(a, elevation = 30) {
   const ring = (name, a0, a1, [po, pi], seed, key = false) => {
     const mid = ((a0 + a1) / 2) * deg, half = ((a1 - a0) / 2) * deg, r0 = a.ri - pi;
     const er = v3.add([Math.cos(mid), U], [Math.sin(mid), Z]), et = v3.add([-Math.sin(mid), U], [Math.cos(mid), Z]);
-    slabs.push({ name, key, a0, a1, ...shape(seed, 2), O: v3.add([1, at(0, 0, a.pier)], [r0, er]),
+    slabs.push({ name, key, a0, a1, ...shape(seed), O: v3.add([1, at(0, 0, a.pier)], [r0, er]),
       H: er, X: et, Y: V, h: a.ro + po - r0, half: (rise) => [(r0 + rise) * Math.tan(half), d] });
   };
   const step = (90 - a.key) / a.perSide;
@@ -221,7 +250,7 @@ export function carve(a, elevation = 30) {
     if (v3.dot(t, view) > 0) after.get(q.name).add(p.name); else after.get(p.name).add(q.name);
   });
   const solids = slabs.map((s) => {
-    const { polys, all, belly } = slab(s, s.a0 === undefined ? a.arc : a.arc + a.ringArc);
+    const { polys, all, belly } = slab(s, s.facets);
     const faces = polys.flatMap((p) => {
       const n = newell(p);
       return n && v3.dot(n, view) > 1e-3 ? [{ pts: p.map(project), tone: toneOf(n) }] : [];
