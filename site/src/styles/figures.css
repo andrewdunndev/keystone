@@ -15,7 +15,7 @@ svg text { fill: var(--ink); }
 .zone-box { fill: none; stroke: var(--grey); stroke-width: .7; stroke-dasharray: 12 3 2 3; }
 .flow .arrow { fill: var(--ink); }
 .packet-box { fill: var(--ink); stroke: none; }
-.packet-text { fill: var(--paper); stroke: none; paint-order: normal; font-size: 13px; }
+.packet .packet-text { fill: var(--paper); stroke: none; paint-order: normal; font-size: 13px; }
 .bar { fill: var(--tone-1); stroke: var(--ink); stroke-width: 1.4; transform-box: fill-box; transform-origin: left center; }
 .bar.cold { fill: none; stroke-width: .7; stroke: var(--grey); }
 .tick { stroke: var(--grey); stroke-width: .55; }
@@ -36,4 +36,9 @@ svg text { fill: var(--ink); }
 }
 @media print, (prefers-reduced-motion: reduce), (max-width: 860px) {
   .chapter-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+}
+
+/* the stage is the larger part of a chapter: a narrower text column leaves the figure room to render its type at a readable size */
+@media (min-width: 861px) {
+  .chapter:not(.chapter-full) .chapter-grid, .run-rail.chapter-grid { grid-template-columns: minmax(260px, 320px) minmax(0, 1fr); gap: 40px; }
 }

@@ -22,5 +22,5 @@ export default function (mount, kit) {
   f.note((X0 + x(6)) / 2, 258, '6 ms cold', { at: [0.8, 1], anchor: 'middle' });
   f.line(x(10), 70, x(10), 330, 'centerline', { at: [0.6, 0.85] });
   f.note(x(10), 62, 'Free plan: 10 ms', { at: [0.6, 0.85], anchor: 'middle' });
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

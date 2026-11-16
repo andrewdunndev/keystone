@@ -20,5 +20,5 @@ export default function (mount, kit) {
   });
   ['K = s·C', 'C', 'e', 'slot passphrase'].forEach((t, i) => f.part(44, 340 + i * 40, 212, 32, t, null, { at: [0.65 + i * 0.07, 0.8 + i * 0.07] }));
   f.part(464, 340, 212, 32, 'exchange key s', null, { at: [0.65, 0.8] });
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

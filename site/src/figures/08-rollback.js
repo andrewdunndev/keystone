@@ -25,5 +25,5 @@ export default function (mount, kit) {
     ['4', 'rollback', 'to version 2'],
     ['5', 'deploy --apply', 'version 4'],
   ], { at: [0.55, 0.95], widths: [40, 180, 180] });
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

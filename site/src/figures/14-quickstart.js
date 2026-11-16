@@ -21,5 +21,5 @@ export default function (mount, kit) {
   f.flow([[xs[2], mid(200)], [xs[1] + W, mid(200)]], { at: at(4) });
   f.flow([[xs[1], mid(200)], [xs[0] + W, mid(200)]], { at: at(5) });
   f.flow([[xs[0] + W / 2, 264], [xs[0] + W / 2, 340]], { at: at(6) });
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

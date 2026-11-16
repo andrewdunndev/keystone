@@ -25,5 +25,5 @@ export default function (mount, kit) {
   f.note(630, 180, 'send fails', { at: [0.6, 0.75], anchor: 'end' });
   f.flow([[596, 296], [596, 400]], { at: [0.7, 0.85] });
   f.flow([[680, 428], [700, 428], [700, 80], [680, 80]], { at: [0.8, 1] });
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

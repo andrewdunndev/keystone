@@ -17,7 +17,7 @@ export default function (mount, kit) {
   f.note(360, 288, 'Y = s·X', { from: 2, anchor: 'middle' });
   f.note(L + 16, 372, 'K = Y − e·S = s·C', { from: 3 });
   f.part(40, 410, 200, 52, 'LUKS slot opens', null, { from: 3, hot: true });
-  return { n: 3, update: f.update, alts: [
+  return { n: 3, update: f.update, enter: f.enter, exit: f.exit, alts: [
     'The host sends X = C + e·G, the stored point blinded by a fresh e, to the rec route.',
     'The Worker returns Y = s·X, multiplied by the exchange private key s.',
     alt,

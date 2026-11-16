@@ -101,5 +101,12 @@ export function sheet(s, kit, n) {
   const line = (x1, y1, x2, y2, cls, o = {}) => add(el('line', { x1, y1, x2, y2, class: cls }, s), o);
 
   const update = v => items.forEach(f => f(v));
-  return { s, sh, el, text, part, zone, flow, note, callout, chip, table, line, add, update, win, motion, dim, iso };
+
+  /* the handoff between chapters: a chapter that is not the current one is
+     faded out whole rather than left at its last pose */
+  const fade = q => { s.style.opacity = q >= 1 ? '' : q.toFixed(3); s.style.visibility = q <= 0 ? 'hidden' : ''; };
+  const enter = p => fade(win(p, 0, 1));
+  const exit = v => fade(1 - win(v, 0, 1));
+
+  return { s, sh, enter, exit, el, text, part, zone, flow, note, callout, chip, table, line, add, update, win, motion, dim, iso };
 }

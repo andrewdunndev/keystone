@@ -20,7 +20,7 @@ export default function (mount, kit) {
     ['revoked', 'null, answers 404'],
     ['REVOKED-LIVE', 'null, yet served'],
     ['drift', 'live, not in stdin'],
-    ['REFUSE', '--url ≠ secret list, …'],
+    ['REFUSE', 'live state contradicts it'],
   ], { from: 1, widths: [124, 236] });
   f.zone(420, 150, 276, 120, 'stop', { from: 2, until: 3 });
   f.note(436, 204, 'any REFUSE: exit 1', { from: 2, until: 3 });
@@ -31,7 +31,7 @@ export default function (mount, kit) {
     ['rec', 'a real exchange answers'],
     ['null', 'answers 404'],
   ], { from: 3, widths: [50, 226] });
-  return { n: 3, update: f.update, alts: [
+  return { n: 3, update: f.update, enter: f.enter, exit: f.exit, alts: [
     'keyset deploy reads the key sets from stdin, one set or null per name, and the plan gives each entry a verdict against the live Worker: ok, new, policy, revoked, REVOKED-LIVE, drift or REFUSE.',
     'The gate stops on any REFUSE with exit 1; without --apply the run ends at the plan with exit 0.',
     alt,
