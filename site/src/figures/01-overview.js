@@ -33,5 +33,5 @@ export default function (mount, kit) {
   const pk = f.el('g', { class: 'packet' }, s);
   f.el('rect', { x: -7, y: -7, width: 14, height: 14, class: 'packet-box' }, pk);
   f.add(pk, { ramp: false, at: [0.5, 1] }, p => { motion.travel(pk, path, p); if (p >= 1) pk.style.opacity = '0'; });
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

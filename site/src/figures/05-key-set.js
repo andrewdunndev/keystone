@@ -18,5 +18,5 @@ export default function (mount, kit) {
   f.callout(ax, ay, 250, 60, ['signing key', 'ES512 · P-521', 'GET /server-1/adv', 'GET /server-1/adv/<thp>'], { at: [0.6, 0.85], anchor: 'end' });
   f.callout(bx, by, 470, 60, ['exchange key', 'ECMR · P-521', 'POST /server-1/rec/<kid>'], { at: [0.7, 0.9] });
   f.callout(sx, sy, 280, 470, ['TANG_KEY_SERVER_1'], { at: [0.8, 1], anchor: 'end' });
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

@@ -20,7 +20,7 @@ export default function (mount, kit) {
   f.part(SX, 358, SW, H, 'clevis: server-1', null, { from: 3 });
   f.part(RX, 358, RW, H, 'key store: null', null, { from: 3, hot: true });
   f.flow([[SX + SW, 380], [RX, 380]], { from: 3, faint: true });
-  return { n: 3, update: f.update, alts: [
+  return { n: 3, update: f.update, enter: f.enter, exit: f.exit, alts: [
     'The LUKS header holds a passphrase slot and a clevis slot bound to server-1, which is live at keystone.',
     'A clevis slot bound to server-2 is added, the host reboots to prove it, and the server-1 slot is unbound; server-1 is then revoked and answers 404.',
     alt,

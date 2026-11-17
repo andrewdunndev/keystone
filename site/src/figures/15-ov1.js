@@ -28,5 +28,5 @@ export default function (mount, kit) {
     ['6', 'computer opens the disk, no passphrase typed'],
     ['7', 'owner deletes the key set if it is stolen'],
   ], { at: [0.7, 1], widths: [28, 400] });
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

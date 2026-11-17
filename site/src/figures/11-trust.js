@@ -18,5 +18,5 @@ export default function (mount, kit) {
   f.note(436, 254, 'names only', { at: [0.8, 1], anchor: 'middle' });
   f.part(520, 380, 176, 60, 'disk hosts', 'public keys only', { at: [0.6, 0.8] });
   f.flow([[364, 286], [440, 286], [440, 410], [520, 410]], { at: [0.75, 1], faint: true });
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

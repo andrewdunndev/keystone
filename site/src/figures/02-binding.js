@@ -17,7 +17,7 @@ export default function (mount, kit) {
   f.flow([[xs[2] + W / 2, Y + H], [xs[2] + W / 2, Y2]], { from: 3 });
   f.chip(xs[1], Y2, W, H, 'c and K discarded', { from: 3 });
   f.flow([[xs[2] + 24, Y + H], [xs[2] + 24, 262], [xs[1] + W / 2, 262], [xs[1] + W / 2, Y2]], { from: 3, faint: true });
-  return { n: 3, update: f.update, alts: [
+  return { n: 3, update: f.update, enter: f.enter, exit: f.exit, alts: [
     'The Worker serves the signed advertisement to clevis, which verifies its signature against the pinned thumbprint.',
     'clevis picks a random c and derives K = c·S from the exchange public key S in the advertisement.',
     alt,

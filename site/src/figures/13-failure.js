@@ -15,5 +15,5 @@ export default function (mount, kit) {
   };
   row(100, 'keystone unreachable, or the quota spent', [['host boots'], ['keystone down', { ghost: true }], ['clevis fails'], ['passphrase']], 0);
   row(320, 'disk stolen, set revoked', [['stolen disk'], ['keystone: 404'], ['clevis fails'], ['stays locked', { hot: true }]], 0.5);
-  return { n: 1, update: f.update, alt: alt };
+  return { n: 1, update: f.update, enter: f.enter, exit: f.exit, alt: alt };
 }

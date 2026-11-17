@@ -1,5 +1,5 @@
 /* The arch of mark.mjs drawn as cairn's home cover is, in thin wire: a
-   hairline edge, a dash-dot ground plate, and a keystone that drops once. */
+   hairline edge, a dash-dot ground plate, and stones that drop once in order. */
 
 import { carve, fitted, large, deg, bounds, points, path, tones, open, LABEL, castMarkup } from './mark.mjs';
 
@@ -36,29 +36,40 @@ export const archBody = (edge = wire.edge, plate = false) => {
 };
 
 /* the hero: mark's geometry plus the plate on a canvas with headroom, so the
-   settled frame is the mark on its ground. The keystone starts clear above
-   its dashed landing and falls on cairn's DROP: it leads by 200 ms, accelerates
-   to land at 56% of 820 ms, lifts a hair, settles, and plays once. Reduced
-   motion drops the animation and shows the finished frame */
+   settled frame is the mark on its ground. The stones fall as cairn's home
+   cover drops them: in order from the ground up, each course of both piers,
+   then the ring from the springers to the crown, the keystone last. Each
+   leads by 200 ms, lags the one below by LAG, accelerates to land at 56% of
+   820 ms, lifts a hair, rocks, settles, and plays once. The piers' cast fades
+   in as the first course lands. Reduced motion drops the animation and shows
+   the finished frame */
+const DROP = { lead: 200, lag: 260, ms: 820, land: 0.56, shade: 300 };
+const rank = (name, courses, perSide) => {
+  const [kind, , c] = name.split('-');
+  return kind === 'pier' ? +c : kind === 'keystone' ? courses + perSide : courses + +name.split('-')[1];
+};
 export const hero = (label = LABEL) => {
   const { solids, casts, fit } = fitted(large, [2, 2, 60, 60], carve);
+  const rk = (s) => rank(s.name, large.courses.length, large.perSide);
+  const fall = (r) => 10 + 3 * r;
   const key = solids.find(s => s.key), kb = bounds(fit(key.hull));
-  const lift = Math.ceil(kb.maxY - kb.minY) + 3;
   const plate = plateOf(fit), pb = bounds(plate);
   const x0 = Math.floor(Math.min(0, pb.minX - 1)), x1 = Math.ceil(Math.max(64, pb.maxX + 1));
-  const y0 = -Math.ceil(lift - kb.minY + 2), y1 = Math.ceil(Math.max(64, pb.maxY + 1));
-  const land = `<polygon class="keystone-land" points="${points(fit(key.hull), 1)}" fill="none" stroke="${wire.plateColor}" stroke-width="${wire.plate}" stroke-dasharray="1 .8" stroke-linejoin="round"/>`;
-  const css = `.keystone-key{transform-box:fill-box;transform-origin:50% 100%;animation:keystone-drop 820ms linear 200ms both}` +
-    `.keystone-land{opacity:0;animation:keystone-land 820ms linear 200ms both}` +
-    `@keyframes keystone-drop{0%{opacity:0;transform:translateY(-${lift}px) rotate(1.4deg);animation-timing-function:cubic-bezier(.5,0,1,.6)}` +
-    `12%{opacity:1}56%{opacity:1;transform:translateY(0) rotate(0);animation-timing-function:ease-out}` +
-    `70%{transform:translateY(-.4px);animation-timing-function:ease-in-out}84%{transform:translateY(0);animation-timing-function:ease-in-out}` +
+  const y0 = -Math.ceil(Math.max(...solids.map(s => fall(rk(s)) - bounds(fit(s.hull)).minY)) + 2), y1 = Math.ceil(Math.max(64, pb.maxY + 1));
+  const land = `<polygon class="keystone-land" style="--i:${rk(key)}" points="${points(fit(key.hull), 1)}" fill="none" stroke="${wire.plateColor}" stroke-width="${wire.plate}" stroke-dasharray="1 .8" stroke-linejoin="round"/>`;
+  const { lead, lag, ms, land: at, shade } = DROP, pct = (u) => `${+(u * 100).toFixed(1)}%`;
+  const delay = `calc(${lead}ms + var(--i) * ${lag}ms)`;
+  const css = `.st{transform-box:fill-box;transform-origin:50% 100%;animation:st-drop ${ms}ms linear ${delay} both}` +
+    `.cast{animation:st-cast ${shade}ms cubic-bezier(.215,.61,.355,1) ${lead + Math.round(at * ms)}ms both}` +
+    `.keystone-land{opacity:0;animation:st-land ${ms}ms linear ${delay} both}` +
+    `@keyframes st-drop{0%{opacity:0;transform:translateY(calc(var(--d) * -1px)) rotate(-2deg);animation-timing-function:cubic-bezier(.55,.09,.68,.53)}` +
+    `${pct(at * 0.22)}{opacity:1}${pct(at)}{opacity:1;transform:translateY(0) rotate(-.6deg);animation-timing-function:cubic-bezier(.215,.61,.355,1)}` +
+    `70%{transform:translateY(-.5px) rotate(.8deg);animation-timing-function:ease-in-out}` +
+    `84%{transform:translateY(0) rotate(-.25deg);animation-timing-function:ease-in-out}` +
     `100%{opacity:1;transform:none}}` +
-    `@keyframes keystone-land{0%,50%{opacity:1}60%,100%{opacity:0}}` +
-    `@media (prefers-reduced-motion:reduce){.keystone-key,.keystone-land{animation:none}}`;
-  const body = solids.map(s => s.key
-    ? `<g class="keystone-key">${stoneWire(s, fit)}</g>`
-    : stoneWire(s, fit)).join('');
-  return `${open(label, `${x0} ${y0} ${x1 - x0} ${y1 - y0}`)}<style>${css}</style>${plateMarkup(plate)}${castMarkup(casts, fit)}${land}${body}</svg>\n`;
+    `@keyframes st-cast{from{opacity:0}to{opacity:1}}` +
+    `@keyframes st-land{0%,50%{opacity:1}60%,100%{opacity:0}}` +
+    `@media (prefers-reduced-motion:reduce){.st,.cast,.keystone-land{animation:none}}`;
+  const body = solids.map(s => `<g class="st" style="--i:${rk(s)};--d:${fall(rk(s))}">${stoneWire(s, fit)}</g>`).join('');
+  return `${open(label, `${x0} ${y0} ${x1 - x0} ${y1 - y0}`)}<style>${css}</style>${plateMarkup(plate)}<g class="cast">${castMarkup(casts, fit)}</g>${land}${body}</svg>\n`;
 };
-

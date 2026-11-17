@@ -18,7 +18,7 @@ export default function (mount, kit) {
   f.note(cx + 16, 375, 'null entry', { from: 2 });
   f.part(440, 160, 250, H, 'new keys, same name', 'REFUSE · rotate to server-2', { from: 3, ghost: true });
   f.flow([[440, 190], [340, 190]], { from: 3, faint: true });
-  return { n: 3, update: f.update, alts: [
+  return { n: 3, update: f.update, enter: f.enter, exit: f.exit, alts: [
     'A set is minted, deployed with --new so it is live and answers adv 200, then revoked when its secret is deleted, and answers adv 404.',
     'The deploy input then holds null under that name, a tombstone, and every later deploy checks that it still answers 404.',
     alt,
