@@ -1,7 +1,6 @@
 /* keystone mark: an isometric stone arch whose crown is the moss keystone.
-   Elevation 30; tones and the #404040 edge follow cairn's src/brand. At 64 px
-   and up each stone is a rounded slab of many faces toned by normal; below
-   that each is a flat prism. */
+   Elevation 30; tones and the #404040 edge follow cairn's src/brand. Every
+   stone, at every size, is one hewn block of many faces toned by normal. */
 
 
 /* ---- palette and tones, the estate's table ---- */
@@ -10,13 +9,7 @@ const mix = (a, b, pct) => {
   const c = (h, i) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
   return '#' + [0, 1, 2].map(i => Math.round(c(a, i) * pct / 100 + c(b, i) * (1 - pct / 100)).toString(16).padStart(2, '0')).join('');
 };
-/* a body lit from above, as cairn's stones are: faces that look up carry the
-   stone's own colour, faces turned left and right sink toward dark, faces
-   that look down sink furthest */
-const lit = (top, dark, k) => ({ top, left: mix(dark, top, k[0]), right: mix(dark, top, k[1]), shade: mix(dark, top, k[2]) });
-const stone = lit(palette.white, palette.e600, [7, 16, 30]);
-const moss = lit(palette.m400, palette.e600, [18, 36, 55]);
-/* the large form's ramp: each step k% of the way from a body's top toward
+/* the ramp: each step k% of the way from a body's top toward
    dark, cairn's table (stone 7 16 30, moss 18 36 55) with steps between */
 const ramp = (top, ks) => ks.map(k => mix(palette.e600, top, k));
 export const tones = {
@@ -36,33 +29,7 @@ export const large = { ro: 100, ri: 60, pier: 72, depth: 44, yaw: -24, key: 15, 
 const small = { ...large, depth: 40, perSide: 2, courses: [0.5, 0.5], hew: { facets: [1, 1], strokes: [0, 1], scale: 0.5 } };
 export const deg = Math.PI / 180;
 
-/* cross-sections in (u, z), counter-clockwise seen from the front, each edge
-   tagged with the face it extrudes: out (extrados or outer wall), in (the
-   opening), joint (a bed; drawn only where it faces the slot, since the
-   stone that covers it paints over the rest). Painted in order: piers, then
-   the ring upward, the keystone just before the right crown stone so that
-   stone covers the keystone's joint face where they meet. */
-function sections(a) {
-  const at = (r, ang) => [r * Math.cos(ang * deg), a.pier + r * Math.sin(ang * deg)];
-  const wedge = (name, a0, a1, [po, pi] = [0, 0], upper = 'hidden', lower = 'hidden', facets = a.facets ?? 1) => {
-    const outer = Array.from({ length: facets + 1 }, (_, f) => at(a.ro + po, a0 + ((a1 - a0) * f) / facets));
-    return { name, pts: [...outer, at(a.ri - pi, a1), at(a.ri - pi, a0)], tags: [...Array(facets).fill('out'), upper, 'in', lower] };
-  };
-  const k = a.key, step = (90 - k) / a.perSide, out = [
-    { name: 'pier-left', pts: [[-a.ro, 0], [-a.ri, 0], [-a.ri, a.pier], [-a.ro, a.pier]], tags: ['hidden', 'in', 'hidden', 'out'] },
-    { name: 'pier-right', pts: [[a.ri, 0], [a.ro, 0], [a.ro, a.pier], [a.ri, a.pier]], tags: ['hidden', 'out', 'hidden', 'in'] },
-  ];
-  for (let i = 0; i < a.perSide; i++) {
-    const crown = i === a.perSide - 1;
-    out.push(wedge(`left-${i}`, 180 - (i + 1) * step, 180 - i * step, [0, 0], 'hidden', crown ? 'joint' : 'hidden'));
-    if (crown) out.push({ ...wedge('keystone', 90 - k, 90 + k, a.proud, 'joint', 'joint', 1), key: true });
-    out.push(wedge(`right-${i}`, i * step, (i + 1) * step, [0, 0], crown ? 'joint' : 'hidden', 'hidden'));
-  }
-  return out;
-}
-
 /* ---- projection ---- */
-const norm2 = ([x, y]) => { const l = Math.hypot(x, y); return [x / l, y / l]; };
 const hull = (pts) => {
   const p = [...pts].sort((m, n) => m[0] - n[0] || m[1] - n[1]);
   const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
@@ -73,44 +40,14 @@ const hull = (pts) => {
   return [...half(p), ...half([...p].reverse())];
 };
 
-export function build(a, elevation = 30) {
-  const sE = Math.sin(elevation * deg), cE = Math.cos(elevation * deg);
-  const th = a.yaw * deg, U = [Math.cos(th), Math.sin(th)], V = [-Math.sin(th), Math.cos(th)];
-  const world = (u, v, z) => [u * U[0] + v * V[0], u * U[1] + v * V[1], z];
-  const project = ([x, y, z]) => [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2 * sE - z * cE];
-  const view = [cE * Math.SQRT1_2, cE * Math.SQRT1_2, sE];
-  const dU = U[0] * view[0] + U[1] * view[1];   // how much a face along +u shows
-  const d = a.depth / 2;
-  /* a hewn hint: every corner no neighbour shares moves a seeded hair, so
-     joints still close and each stone sits a little off true */
-  const secs = sections(a), key = ([u, z]) => `${u.toFixed(3)},${z.toFixed(3)}`, seen = new Map();
-  secs.forEach(s => s.pts.forEach(p => seen.set(key(p), (seen.get(key(p)) ?? 0) + 1)));
-  const rough = a.rough ?? 0;
-  const solids = secs.map((s, i) => ({ ...s, pts: s.pts.map((p, j) => seen.get(key(p)) > 1 ? p
-    : [p[0] + rough * noise(70 + i, 2 * j), p[1] + rough * noise(70 + i, 2 * j + 1)]) })).map((s) => {
-    const n = s.pts.length;
-    const front = s.pts.map(([u, z]) => world(u, d, z)), back = s.pts.map(([u, z]) => world(u, -d, z));
-    const faces = [{ pts: front.map(project) }];
-    s.pts.forEach((p, i) => {
-      const q = s.pts[(i + 1) % n], tag = s.tags[i];
-      if (tag === 'hidden') return;
-      const [nu, nz] = norm2([q[1] - p[1], p[0] - q[0]]);   // outward normal of a CCW section
-      if (nu * dU + nz * sE <= 0) return;
-      faces.push({ pts: [front[i], front[(i + 1) % n], back[(i + 1) % n], back[i]].map(project) });
-    });
-    const all = [...front, ...back];
-    return { name: s.name, key: !!s.key, faces, hull: hull(all.map(project)), all: all.map(project) };
-  });
-  return { solids, all: solids.flatMap(s => s.all) };
-}
-
-/* ---- the large form: every stone a rounded slab ----
+/* ---- the stones: every one the same hewn block ----
    A slab is rings stacked along its own height axis H, each ring a rounded
    rectangle across X and Y set in by the profile (foot, belly, shoulder,
    top); quads join the rings and the end rings cap it. A voussoir's height
    runs out from the intrados and its X follows the joint planes; a pier
-   course stands on z. Every stone is hewn by the same rule from its own seed,
-   so each wears, facets and chips differently and no two stones match. */
+   course is the same block with no taper. Every stone is hewn by the same
+   rule from its own seed, so each wears, facets and chips differently and no
+   two stones match. */
 const noise = (seed, k) => {
   let h = Math.imul(seed + 0x9e37, 0x85ebca6b) ^ Math.imul(k + 0x2c1b, 0xc2b2ae35);
   h = Math.imul(h ^ (h >>> 15), 0x27d4eb2f);
@@ -134,7 +71,7 @@ const newell = (poly) => {
 function slab(s, arc) {
   const Y = v3.dot(v3.cross(s.X, s.Y), s.H) < 0 ? s.Y.map(c => -c) : s.Y;
   const m = Math.min(...s.half(s.h / 2));
-  const R = s.a0 === undefined ? s.rings : [[0, s.rings[0][1]], [0.027, s.rings[0][1] * 0.5], [0.1, s.rings[0][1] * 0.134], ...s.rings.slice(1, -1), [0.9, s.rings[4][1] * 0.134], [0.973, s.rings[4][1] * 0.5], s.rings[4]];
+  const R = [[0, s.rings[0][1]], [0.027, s.rings[0][1] * 0.5], [0.1, s.rings[0][1] * 0.134], ...s.rings.slice(1, -1), [0.9, s.rings[4][1] * 0.134], [0.973, s.rings[4][1] * 0.5], s.rings[4]];
   const loops = R.map(([f, g], j) => {
     const rise = f < 0.4 ? f * Math.min(s.h, s.hr) : f > 0.6 ? s.h - (1 - f) * Math.min(s.h, s.hr) : f * s.h, inset = g * m, pts = [];
     const [A, B] = s.half(rise).map((v, i) => v - inset + s.lump * m * (i ? 0.07 * noise(s.seed, 500 + j) : -0.06 * (noise(s.seed, 520 + j) + 0.5)));
@@ -167,7 +104,7 @@ function slab(s, arc) {
     const lo = loops[j], hi = loops[j + 1], n = lo.length;
     for (let k = 0; k < n; k++) polys.push([lo[k], lo[(k + 1) % n], hi[(k + 1) % n], hi[k]]);
   }
-  return { polys, all: loops.flat(), belly: loops[1] };
+  return { polys, all: loops.flat() };
 }
 
 /* which step of the ramp a face takes, from its world normal: faces that
@@ -188,7 +125,7 @@ export function carve(a, elevation = 30) {
   const project = ([x, y, z]) => [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2 * sE - z * cE];
   const view = [cE * Math.SQRT1_2, cE * Math.SQRT1_2, sE];
   const at = (u, v, z) => v3.add([u, U], [v, V], [z, Z]);
-  const d = a.depth / 2, w = (a.ro - a.ri) / 2;
+  const d = a.depth / 2;
   /* each stone hewn its own way, all from its seed: how worn it is (its
      corner radii and the round of its ends, one corner often left crisp),
      how many facets dress a corner, the tool strokes along its faces, a chip
@@ -210,15 +147,16 @@ export function carve(a, elevation = 30) {
     };
   };
   const slabs = [];
-  /* the piers, each in courses from the ground to the springing, hewn
-     by the same rule as the ring stones */
+  /* the piers, each in courses from the ground to the springing: a course is
+     a ring stone with no taper, its height running out from the opening and
+     its beds the joint planes */
   [-1, 1].forEach((side) => {
     let z = 0;
     a.courses.forEach((share, c) => {
       const seed = (side > 0 ? 20 : 10) + c;
-      const top = c === a.courses.length - 1 ? a.pier : z + share * a.pier;
-      slabs.push({ name: `pier-${side > 0 ? 'right' : 'left'}-${c}`, ...shape(seed), O: at(side * (a.ri + w), 0, z),
-        H: Z, X: U, Y: V, h: top - z, half: () => [w, d] });
+      const top = c === a.courses.length - 1 ? a.pier : z + share * a.pier, bed = (top - z) / 2;
+      slabs.push({ name: `pier-${side > 0 ? 'right' : 'left'}-${c}`, ground: c === 0, ...shape(seed), O: at(side * a.ri, 0, (z + top) / 2),
+        H: v3.add([side, U]), X: Z, Y: V, h: a.ro - a.ri, half: () => [bed, d] });
       z = top;
     });
   });
@@ -250,15 +188,15 @@ export function carve(a, elevation = 30) {
     if (v3.dot(t, view) > 0) after.get(q.name).add(p.name); else after.get(p.name).add(q.name);
   });
   const solids = slabs.map((s) => {
-    const { polys, all, belly } = slab(s, s.facets);
+    const { polys, all } = slab(s, s.facets);
     const faces = polys.flatMap((p) => {
       const n = newell(p);
       return n && v3.dot(n, view) > 1e-3 ? [{ pts: p.map(project), tone: toneOf(n) }] : [];
     });
     const centre = all.reduce((c, p) => c.map((v, i) => v + p[i] / all.length), [0, 0, 0]);
     const flat = all.map(project);
-    /* a course on the ground casts its belly onto the ground, down and to the right */
-    const cast = s.O[2] === 0 ? hull([...belly, ...belly.map(([x, y]) => [x + 10, y - 10, 0])].map(([x, y]) => project([x, y, 0]))) : null;
+    /* a course on the ground casts its footprint on the ground, down and to the right */
+    const cast = s.ground ? hull([...all, ...all.map(([x, y]) => [x + 10, y - 10, 0])].map(([x, y]) => project([x, y, 0]))) : null;
     return { name: s.name, key: s.key, faces, cast, hull: hull(flat), all: flat, depth: v3.dot(centre, view) };
   });
   const order = [], rest = new Set(solids);
@@ -280,7 +218,7 @@ export const fmt = (p, d = 1) => p.map(v => v.toFixed(d)).join(',');
 export const points = (pts, d = 1) => pts.map(p => fmt(p, d)).join(' ');
 export const path = (pts, d = 1) => 'M' + pts.map(p => fmt(p, d)).join('L') + 'Z';
 
-export function fitted(a, box, make = build) {
+export function fitted(a, box, make = carve) {
   const g = make(a);
   const [bx, by, bw, bh] = box;
   const b = bounds(g.all);
